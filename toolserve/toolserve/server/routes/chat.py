@@ -23,55 +23,16 @@ from fastapi import Request, HTTPException, status, Depends
 
 from toolserve.server.core.depends import get_catalog
 from toolserve.utils.openai_tool import schema_to_openai_tool
+from toolserve.llm.base import (
+    CompletionResponse,
+    CompletionRequest,
+    OpenAIProvider,
+)
 
 router = APIRouter()
 
 
-class FunctionCall(BaseModel):
-    type: Literal["none", "auto", "function"]
-    function: Optional[ChatCompletionFunctionCallOptionParam]
-
-class Function(BaseModel):
-    name: str
-    description: Optional[str]
-    parameters: Optional[shared_params.FunctionParameters]
-
-class ResponseFormat(BaseModel):
-    type: Literal["text", "json_object"]
-
-class CompletionCreateParamsBase(BaseModel):
-    messages: List[ChatCompletionMessageParam]
-    model: Union[str, ChatModel]
-    frequency_penalty: Optional[float] = None
-    #function_call: Optional[FunctionCall] = None
-    #functions: Optional[List[Function]] = None
-    logit_bias: Optional[dict[str, int]] = None
-    logprobs: Optional[bool] = None
-    max_tokens: Optional[int] = None
-    n: Optional[int] = None
-    presence_penalty: Optional[float] = None
-    response_format: Optional[ResponseFormat] = None
-    seed: Optional[int] = None
-    stop: Optional[Union[str, List[str]]] = None
-    stream_options: Optional[ChatCompletionStreamOptionsParam] = None
-    temperature: Optional[float] = None
-    tool_choice: Optional[ChatCompletionToolChoiceOptionParam] = None
-    tools: Optional[Union[List[ChatCompletionToolParam], List[str]]] = None
-    top_logprobs: Optional[int] = None
-    top_p: Optional[float] = None
-    user: Optional[str] = None
-
-class CompletionCreateParamsNonStreaming(CompletionCreateParamsBase):
-    stream: Literal[False]
-
-class CompletionCreateParamsStreaming(CompletionCreateParamsBase):
-    stream: Literal[True]
-
-CompletionCreateParams = Union[CompletionCreateParamsNonStreaming, CompletionCreateParamsStreaming]
-
-
-
-def get_openai_key(request: Request) -> str:
+def get_api_key(request: Request) -> str:
     """
     Extracts the API key from the Authorization header as a Bearer token.
 
@@ -96,29 +57,46 @@ def get_openai_key(request: Request) -> str:
 
 @router.post(
     '/completions',
-    summary='Chat Completions Endpoints mimicking OpenAI'
+    summary='Chat Completions Endpoints mimicking OpenAI',
+    response_model=CompletionResponse
 )
 async def create_chat_completion(
-    completion: CompletionCreateParams,
-    api_key: str = Depends(get_openai_key),
-    catalog=Depends(get_catalog)
-):
+    completion: CompletionRequest,
+    api_key: str = Depends(get_api_key),
+    catalog=Depends(get_catalog),
+) -> CompletionResponse:
     """
     Create a chat completion
     """
     try:
-        oai_client = openai.AsyncOpenAI(api_key=api_key)
+        # select the model
+        model = completion.model
+        # select the provider from the model
+        provider = OpenAIProvider()
+        if provider.config.auth:
+            provider.config.api_key = api_key
 
+        exe = False
         if completion.tools:
             if isinstance(completion.tools[0], str):
                 specs = []
                 for tool in completion.tools:
                     specs.append(json.loads(schema_to_openai_tool(catalog[tool])))
-                completion.tool_choice = "required"
                 completion.tools = specs
+                if completion.tool_choice == "execute":
+                    exe = True
+                    completion.tool_choice == "required"
+        print(completion)
+        # send the request to the provider
+        response = await provider.chat(completion)
 
-        result = await oai_client.chat.completions.create(**completion.dict())
-        return result
+        if exe:
+            tool_args = response.choices[0].message
+            print(tool_args)
+
+        # TODO background task to save input and output if tool calls for it
+
+        return response
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

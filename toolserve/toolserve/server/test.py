@@ -14,6 +14,7 @@ async def get_chat_response():
         ],
         model="gpt-4-turbo",
         tools=["ReadEmail"],
+        tool_choice="execute",
         stream=False
     )
     return response
