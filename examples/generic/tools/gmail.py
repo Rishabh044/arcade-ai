@@ -9,18 +9,17 @@ from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
 
 from arcade.sdk import Param, tool, get_secret
-from arcade.sdk.client import log
 
 
 @tool
 async def send_email(
-    sender_email: Param(str, "Email address of the sender"),
     recipient_email: Param(str, "Email address of the recipient"),
     subject: Param(str, "Subject of the email"),
     body: Param(str, "Body of the email"),
 ):
     """Send an email via gmail SMTP server"""
 
+    sender_email = get_secret("gmail_email")
     sender_password = get_secret("gmail_password")
     server = get_secret("gmail_stmp_server", "smtp.gmail.com")
     port = get_secret("gmail_stmp_port", 587)
@@ -34,12 +33,12 @@ async def send_email(
     server = smtplib.SMTP(server, port)
     server.starttls()
     server.login(sender_email, sender_password)
-    log(f"Logged in to SMTP server at {':'.join((server, port))}", "DEBUG")
+    print(f"Logged in to SMTP server at {':'.join((server, port))}", "DEBUG")
 
     server.send_message(message)
     server.quit()
 
-    log(f"Email sent from {sender_email} to {recipient_email}", "INFO")
+    print(f"Email sent from {sender_email} to {recipient_email}", "INFO")
 
 
 @tool

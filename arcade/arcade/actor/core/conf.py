@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # Static Server
     STATIC_FILES: bool = False
 
+    # Logs
+    LOG_STDOUT_FILENAME: str = "actor.log"
+    LOG_STDERR_FILENAME: str = "actor.err"
+
     # DateTime
     DATETIME_TIMEZONE: str = "US/Pacific"
     DATETIME_FORMAT: str = "%Y-%m-%d %H:%M:%S"

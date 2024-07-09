@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from arcade.actor.common.response import ResponseModel, response_base
 from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.depends import get_catalog
-from arcade.utils.openai_tool import schema_to_openai_tool
+from arcade.tool.openai import schema_to_openai_tool
 
 router = APIRouter()
 
@@ -20,7 +20,7 @@ async def list_tools(catalog=Depends(get_catalog)) -> ResponseModel:
     return await response_base.success(data=tools)
 
 
-@router.get("/oai_function", summary="Get the OpenAI function format of an tool")
+@router.get("/json", summary="Get the JSON (openai) format of a tool")
 async def get_oai_function(
     tool_name: str = Query(..., title="Tool Name", description="The name of the tool"),
     catalog=Depends(get_catalog),
