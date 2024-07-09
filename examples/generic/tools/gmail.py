@@ -79,7 +79,7 @@ async def read_email(
                 body = msg.get_payload(decode=True).decode("utf-8")
                 email_details["body"] = clean_email_body(body)
         except Exception as e:
-            log(f"Error reading email {email_id}: {e}", "ERROR")
+            print(f"Error reading email {email_id}: {e}", "ERROR")
             continue
 
         emails.append(email_details)
