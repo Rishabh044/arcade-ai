@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "invocation_id": {
+      "type": "string",
+      "description": "ID of this specific tool call"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "success": {
+      "type": "boolean"
+    },
+    "output": {
+      "type": "object",
+      "oneOf": [
+        {
+          "properties": {
+            "value": {
+              "oneOf": [
+                { "type": "object", "additionalProperties": true },
+                { "type": "number" },
+                { "type": "string" },
+                { "type": "boolean" },
+                { "type": "null" }
+              ]
+            }
+          },
+          "required": ["value"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "error": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "An error message that can be shown to the user or the AI model"
+                },
+                "developer_message": {
+                  "type": "string",
+                  "description": "An internal message that will be logged but will not be shown to the user or the AI model"
+                }
+              },
+              "required": ["message"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["error"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "requires_authorization": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "A message that can be shown to the user or AI model that explains the authorization requirement"
+                },
+                "oauth2": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "scope": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["message"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["requires_authorization"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "artifact": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "content_type": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                },
+                "metadata": {
+                  "type": "object",
+                  "properties": {
+                    "description": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["description"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["url", "content_type", "size", "metadata"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["artifact"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "required": ["invocation_id", "finished_at", "success"],
+  "additionalProperties": false
+}
