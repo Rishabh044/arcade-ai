@@ -2,6 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "$schema": { // Explicitly allow JSON-Schema to be referenced (needed due to additionalProperties: false)
+      "type": "string",
+      "format": "uri"
+    },
     "run_id": {
       "type": "string",
       "description": "ID of the overall run"
@@ -42,7 +46,6 @@
             "token": {
               "type": "string"
             },
-            "required": ["token"],
             "additionalProperties": false
           }
         },

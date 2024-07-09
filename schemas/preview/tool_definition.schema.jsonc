@@ -1,30 +1,39 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "primitives": {
+    "primitives": { // All supported primitive data types
       "type": "string",
       "enum": ["string", "integer", "decimal", "boolean", "json"]
     },
-    "value_schema": {
+    "value_schema": { // Represents a value schema (e.g. function input parameter)
       "type": "object",
       "properties": {
         "type": {
           "$ref": "#/$defs/primitives"
-        },
-        "enum": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "required": ["type"],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "type": { "const": "string" }
+        }
+      },
+      "then": { // String values can optionally be constrained to a known list
+        "properties": {
+          "enum": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
     }
   },
   "type": "object",
   "properties": {
-    "$schema": { // Explicitly allow JSON-Schema to be referenced (needed due to additionalProperties: false)
+    "$schema": { // Explicitly allow JSON-Schema to be referenced (due to additionalProperties: false)
       "type": "string",
       "format": "uri"
     },
@@ -67,7 +76,7 @@
                 "default": true
               }
             },
-            "required": ["name", "required", "description", "schema"],
+            "required": ["name", "required", "schema"],
             "additionalProperties": false
           }
         }

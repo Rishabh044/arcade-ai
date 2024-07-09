@@ -2,6 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "$schema": { // Explicitly allow JSON-Schema to be referenced (needed due to additionalProperties: false)
+      "type": "string",
+      "format": "uri"
+    },
     "invocation_id": {
       "type": "string",
       "description": "ID of this specific tool call"
@@ -11,20 +15,21 @@
       "format": "date-time"
     },
     "success": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Whether the tool call was successful"
     },
-    "output": {
+    "output": { // Can be null/omitted, in the case of a null-returning (void) function
       "type": "object",
       "oneOf": [
         {
           "properties": {
             "value": {
+              "description": "The value returned from the function",
               "oneOf": [
-                { "type": "object", "additionalProperties": true },
+                { "type": "object", "additionalProperties": true }, // aka JSON
                 { "type": "number" },
                 { "type": "string" },
-                { "type": "boolean" },
-                { "type": "null" }
+                { "type": "boolean" }
               ]
             }
           },
@@ -90,19 +95,23 @@
               "properties": {
                 "url": {
                   "type": "string",
-                  "format": "uri"
+                  "format": "uri",
+                  "description": "The location of the stored artifact"
                 },
                 "content_type": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "The MIME Media Type of the data inside the artifact (e.g. text/csv or application/json)"
                 },
                 "size": {
-                  "type": "integer"
+                  "type": "integer",
+                  "description": "The size of the artifact, in bytes"
                 },
                 "metadata": {
                   "type": "object",
                   "properties": {
                     "description": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "A descriptive, human-readable explanation of the data inside the artifact"
                     }
                   },
                   "required": ["description"],
