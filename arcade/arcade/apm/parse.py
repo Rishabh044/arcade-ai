@@ -1,12 +1,11 @@
 import ast
-import sys
-import os
-import shutil
-from typing import Dict, List, Optional, Tuple, Any
 import importlib.metadata
 import importlib.util
-import toml
+import sys
+from typing import Optional
+
 from stdlib_list import stdlib_list
+
 
 def load_ast_tree(filepath: str) -> ast.AST:
     """
@@ -16,10 +15,11 @@ def load_ast_tree(filepath: str) -> ast.AST:
     :return: AST of the Python file.
     """
     try:
-        with open(filepath, "r") as file:
+        with open(filepath) as file:
             return ast.parse(file.read(), filename=filepath)
     except FileNotFoundError:
         raise FileNotFoundError(f"File {filepath} not found")
+
 
 def get_python_version() -> str:
     """
@@ -29,7 +29,8 @@ def get_python_version() -> str:
     """
     return f"{sys.version_info.major}.{sys.version_info.minor}"
 
-def retrieve_imported_libraries(tree: ast.AST) -> Dict[str, Optional[str]]:
+
+def retrieve_imported_libraries(tree: ast.AST) -> dict[str, Optional[str]]:
     """
     Retrieve non-standard libraries imported in the AST.
 
@@ -42,8 +43,8 @@ def retrieve_imported_libraries(tree: ast.AST) -> Dict[str, Optional[str]]:
 
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
-            package_name = node.module.split('.')[0] if node.module else None
-            if package_name == 'dstar' or package_name in stdlib_modules:
+            package_name = node.module.split(".")[0] if node.module else None
+            if package_name == "dstar" or package_name in stdlib_modules:
                 continue
             try:
                 package_version = importlib.metadata.version(package_name)
@@ -60,13 +61,14 @@ def get_function_name_if_decorated(node: ast.FunctionDef) -> Optional[str]:
     :param node: The function definition node from the AST.
     :return: The name of the function if it has the specified decorators, otherwise None.
     """
-    decorator_ids = {'toolserve.tool', 'tool'}
+    decorator_ids = {"toolserve.tool", "tool"}
     for decorator in node.decorator_list:
         if isinstance(decorator, ast.Name) and decorator.id in decorator_ids:
             return node.name
     return None
 
-def get_tools_from_file(filepath: str) -> List[str]:
+
+def get_tools_from_file(filepath: str) -> list[str]:
     """
     Get the names of all functions in a Python file that are decorated with either "@toolserve.tool" or "@tool".
 

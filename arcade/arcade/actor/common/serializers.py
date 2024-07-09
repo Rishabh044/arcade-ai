@@ -1,6 +1,6 @@
-import msgspec
-from typing import Any, Sequence
+from typing import Any
 
+import msgspec
 from starlette.responses import JSONResponse
 
 

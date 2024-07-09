@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 from datetime import datetime
 from typing import Any
 
@@ -10,7 +9,7 @@ from arcade.actor.core.conf import settings
 
 _ExcludeData = set[int | str] | dict[int | str, Any]
 
-__all__ = ['ResponseModel', 'response_base']
+__all__ = ["ResponseModel", "response_base"]
 
 
 class ResponseModel(BaseModel):
@@ -33,7 +32,9 @@ class ResponseModel(BaseModel):
     """
 
     # TODO: json_encoders: https://github.com/tiangolo/fastapi/discussions/10252
-    model_config = ConfigDict(json_encoders={datetime: lambda x: x.strftime(settings.DATETIME_FORMAT)})
+    model_config = ConfigDict(
+        json_encoders={datetime: lambda x: x.strftime(settings.DATETIME_FORMAT)}
+    )
 
     code: int = CustomResponseCode.HTTP_200.code
     msg: str = CustomResponseCode.HTTP_200.msg
@@ -56,7 +57,12 @@ class ResponseBase:
     """
 
     @staticmethod
-    async def __response(*, res: CustomResponseCode | CustomResponse = None, msg: str | None = None, data: Any | None = None) -> ResponseModel:
+    async def __response(
+        *,
+        res: CustomResponseCode | CustomResponse = None,
+        msg: str | None = None,
+        data: Any | None = None,
+    ) -> ResponseModel:
         """
         General method for successful response
 

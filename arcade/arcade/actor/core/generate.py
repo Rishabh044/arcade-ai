@@ -1,19 +1,13 @@
-import os
-import sys
 import traceback
-import inspect
 from textwrap import dedent
-from typing import List, Optional, Type, Annotated, Dict
-from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends, Path, HTTPException
-from pydantic import BaseModel, ValidationError, create_model
-from importlib import import_module
+from fastapi import APIRouter
+from pydantic import BaseModel, ValidationError
 
-from arcade.tool.catalog import ToolSchema
-from arcade.actor.core.conf import settings
+from arcade.actor.common.response import response_base
 from arcade.actor.common.response_code import CustomResponseCode
-from arcade.actor.common.response import ResponseModel, response_base
+from arcade.actor.core.conf import settings
+from arcade.tool.catalog import ToolSchema
 
 
 def create_endpoint_function(name, description, func, input_model, output_model):
@@ -38,14 +32,12 @@ def create_endpoint_function(name, description, func, input_model, output_model)
     return run
 
 
-
-def generate_endpoint(schemas: List[ToolSchema]) -> APIRouter:
+def generate_endpoint(schemas: list[ToolSchema]) -> APIRouter:
     routers = []
     top_level_router = APIRouter(prefix=settings.API_ACTION_STR)
 
     for schema in schemas:
         router = APIRouter(prefix="/" + schema.meta.module)
-
 
         # Create the endpoint function
         run = create_endpoint_function(
@@ -53,7 +45,7 @@ def generate_endpoint(schemas: List[ToolSchema]) -> APIRouter:
             description=schema.description,
             func=schema.tool,
             input_model=schema.input_model,
-            output_model=schema.output_model
+            output_model=schema.output_model,
         )
 
         # Add the endpoint to the FastAPI app
@@ -65,8 +57,8 @@ def generate_endpoint(schemas: List[ToolSchema]) -> APIRouter:
             response_model=schema.output_model,
             response_model_exclude_unset=True,
             response_model_exclude_none=True,
-            response_description=create_output_description(schema.output_model)
-            )(run)
+            response_description=create_output_description(schema.output_model),
+        )(run)
 
         routers.append(router)
     for router in routers:
@@ -74,8 +66,7 @@ def generate_endpoint(schemas: List[ToolSchema]) -> APIRouter:
     return top_level_router
 
 
-
-def create_output_description(output_model: Type[BaseModel]) -> str:
+def create_output_description(output_model: type[BaseModel]) -> str:
     """
     Create a description string for the output model.
     """

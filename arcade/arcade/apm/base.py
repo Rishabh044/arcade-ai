@@ -1,12 +1,10 @@
-
 import os
-import toml
-import json
-import tomlkit
-
 from pathlib import Path
-from pydantic import BaseModel, ValidationError, EmailStr, Field
-from typing import Dict, List, Optional, TypeVar, Any, Tuple, Union
+from typing import Optional, Union
+
+import toml
+import tomlkit
+from pydantic import BaseModel, EmailStr
 
 
 class PackInfo(BaseModel):
@@ -19,11 +17,11 @@ class PackInfo(BaseModel):
 
 class ToolPack(BaseModel):
     pack: PackInfo
-    depends: Optional[Dict[str, str]] = None
-    tools: Optional[Dict[str, str]] = {}
+    depends: Optional[dict[str, str]] = None
+    tools: Optional[dict[str, str]] = {}
 
     def write_lock_file(self, pack_dir: Union[str, os.PathLike]):
-        lock_file = Path(pack_dir) / 'pack.lock.toml'
+        lock_file = Path(pack_dir) / "pack.lock.toml"
         pack_dict = self.dict(by_alias=True, exclude_none=True)
         pack_ordered_dict = {
             "pack": pack_dict.get("pack"),
@@ -37,13 +35,13 @@ class ToolPack(BaseModel):
             doc[key] = value
 
         # Write the tomlkit document to file
-        with open(lock_file, 'w') as f:
+        with open(lock_file, "w") as f:
             f.write(tomlkit.dumps(doc))
 
     @classmethod
     def from_lock_file(cls, pack_dir: Union[str, os.PathLike]):
         pack_dir = Path(pack_dir).resolve()
-        lock_file = pack_dir / 'pack.lock.toml'
-        with open(lock_file, 'r') as f:
+        lock_file = pack_dir / "pack.lock.toml"
+        with open(lock_file) as f:
             data = toml.load(f)
         return cls(**data)

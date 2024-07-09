@@ -1,9 +1,9 @@
 import json
-from typing import Any, Dict, Type
+from enum import Enum
+from typing import Any
+
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefined
-from enum import Enum
-
 
 from arcade.tool.catalog import ToolSchema
 
@@ -16,7 +16,8 @@ PYTHON_TO_JSON_TYPES = {
     dict: "object",
 }
 
-def python_type_to_json_type(python_type: Type) -> Dict[str, Any]:
+
+def python_type_to_json_type(python_type: type) -> dict[str, Any]:
     """
     Map Python types to JSON Schema types, including handling of complex types such as lists and dictionaries.
 
@@ -26,23 +27,23 @@ def python_type_to_json_type(python_type: Type) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: A dictionary representing the JSON schema for the given Python type.
     """
-    if hasattr(python_type, '__origin__'):
+    if hasattr(python_type, "__origin__"):
         origin = python_type.__origin__
-
 
         if origin is list:
             item_type = python_type_to_json_type(python_type.__args__[0])
-            return {'type': 'array', 'items': item_type}
+            return {"type": "array", "items": item_type}
         elif origin is dict:
             value_type = python_type_to_json_type(python_type.__args__[1])
-            return {'type': 'object', 'additionalProperties': value_type}
+            return {"type": "object", "additionalProperties": value_type}
 
     elif issubclass(python_type, BaseModel):
         return model_to_json_schema(python_type)
 
     return PYTHON_TO_JSON_TYPES.get(python_type, "string")
 
-def model_to_json_schema(model: Type[BaseModel]) -> Dict[str, Any]:
+
+def model_to_json_schema(model: type[BaseModel]) -> dict[str, Any]:
     """
     Convert a Pydantic model to a JSON schema.
 
@@ -77,7 +78,8 @@ def model_to_json_schema(model: Type[BaseModel]) -> Dict[str, Any]:
         "required": required,
     }
 
-def schema_to_openai_tool(tool_schema: 'ToolSchema') -> str:
+
+def schema_to_openai_tool(tool_schema: "ToolSchema") -> str:
     """Convert an ToolSchema object to a JSON schema string in the specified function format.
 
     Example output format:
@@ -116,6 +118,6 @@ def schema_to_openai_tool(tool_schema: 'ToolSchema') -> str:
             "name": tool_schema.name,
             "description": tool_schema.description,
             "parameters": input_model_schema,
-        }
+        },
     }
     return json.dumps(function_schema, indent=2)

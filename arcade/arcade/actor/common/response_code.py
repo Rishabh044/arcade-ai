@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 import dataclasses
-
 from enum import Enum
 
 
@@ -25,27 +23,30 @@ class CustomCodeBase(Enum):
 
 class CustomResponseCode(CustomCodeBase):
     """自定义响应状态码"""
-    HTTP_200 = (200, 'Request Successful')
-    HTTP_201 = (201, 'Created Successfully')
-    HTTP_202 = (202, 'Request Accepted, but Processing Not Yet Complete')
-    HTTP_204 = (204, 'Request Successful, but No Content Returned')
-    HTTP_400 = (400, 'Bad Request')
-    HTTP_401 = (401, 'Unauthorized')
-    HTTP_403 = (403, 'Forbidden Access')
-    HTTP_404 = (404, 'Requested Resource Not Found')
-    HTTP_410 = (410, 'Requested Resource Permanently Deleted')
-    HTTP_422 = (422, 'Invalid Request Parameters')
-    HTTP_425 = (425, 'Request Unexecutable, as Server Cannot Meet Requirements')
-    HTTP_429 = (429, 'Too Many Requests, Server Limiting')
-    HTTP_500 = (500, 'Internal Server Error')
-    HTTP_502 = (502, 'Gateway Error')
-    HTTP_503 = (503, 'Server Temporarily Unable to Process Request')
-    HTTP_504 = (504, 'Gateway Timeout')
+
+    HTTP_200 = (200, "Request Successful")
+    HTTP_201 = (201, "Created Successfully")
+    HTTP_202 = (202, "Request Accepted, but Processing Not Yet Complete")
+    HTTP_204 = (204, "Request Successful, but No Content Returned")
+    HTTP_400 = (400, "Bad Request")
+    HTTP_401 = (401, "Unauthorized")
+    HTTP_403 = (403, "Forbidden Access")
+    HTTP_404 = (404, "Requested Resource Not Found")
+    HTTP_410 = (410, "Requested Resource Permanently Deleted")
+    HTTP_422 = (422, "Invalid Request Parameters")
+    HTTP_425 = (425, "Request Unexecutable, as Server Cannot Meet Requirements")
+    HTTP_429 = (429, "Too Many Requests, Server Limiting")
+    HTTP_500 = (500, "Internal Server Error")
+    HTTP_502 = (502, "Gateway Error")
+    HTTP_503 = (503, "Server Temporarily Unable to Process Request")
+    HTTP_504 = (504, "Gateway Timeout")
+
 
 class CustomErrorCode(CustomCodeBase):
     """自定义错误状态码"""
 
-    CAPTCHA_ERROR = (40001, 'CAPTCHA Error')
+    CAPTCHA_ERROR = (40001, "CAPTCHA Error")
+
 
 @dataclasses.dataclass
 class CustomResponse:
@@ -55,6 +56,7 @@ class CustomResponse:
 
     code: int
     msg: str
+
 
 class StandardResponseCode:
     """Standard response status codes"""

@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 
-from arcade.actor.routes import v1
-from arcade.actor.core.conf import settings
 from arcade.actor.common.serializers import MsgSpecJSONResponse
+from arcade.actor.core.conf import settings
+from arcade.actor.routes import v1
 
 
 @asynccontextmanager
@@ -38,7 +37,7 @@ def register_app():
 
     register_router(app)
 
-    #register_exception(app)
+    # register_exception(app)
 
     generate_actions_routers(app)
 
@@ -56,9 +55,9 @@ def register_static_file(app: FastAPI):
 
         from fastapi.staticfiles import StaticFiles
 
-        if not os.path.exists('./static'):
-            os.mkdir('./static')
-        app.mount('/static', StaticFiles(directory='static'), name='static')
+        if not os.path.exists("./static"):
+            os.mkdir("./static")
+        app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 def register_middleware(app: FastAPI):
@@ -79,10 +78,10 @@ def register_middleware(app: FastAPI):
 
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=['*'],
+            allow_origins=["*"],
             allow_credentials=True,
-            allow_methods=['*'],
-            allow_headers=['*'],
+            allow_methods=["*"],
+            allow_headers=["*"],
         )
 
 

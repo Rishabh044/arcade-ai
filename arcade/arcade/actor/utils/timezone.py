@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 import zoneinfo
-
 from datetime import datetime
 
 from arcade.actor.core.conf import settings

@@ -1,9 +1,10 @@
-from typing import Annotated, TypeVar, _AnnotatedAlias, Type, Callable, Any, Optional
+import asyncio
 import functools
 import os
-import asyncio
+from typing import Annotated, Any, Callable, Optional, TypeVar
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 class Description:
     def __init__(self, description: str):
@@ -12,8 +13,10 @@ class Description:
     def __str__(self):
         return self.description
 
-def Param(type_: Type[T], description: str) -> Annotated[T, Description]:
+
+def Param(type_: type[T], description: str) -> Annotated[T, Description]:
     return Annotated[type_, Description(description)]
+
 
 def tool(func: Callable) -> Callable:
     @functools.wraps(func)
@@ -24,7 +27,9 @@ def tool(func: Callable) -> Callable:
             loop = asyncio.get_running_loop()
             partial_func = functools.partial(func, *args, **kwargs)
             return await loop.run_in_executor(None, partial_func)
+
     return wrapper
+
 
 def get_secret(name: str, default: Optional[Any] = None) -> str:
     secret = os.getenv(name)

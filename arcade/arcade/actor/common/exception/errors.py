@@ -1,5 +1,4 @@
-
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import HTTPException
 from starlette.background import BackgroundTask
@@ -10,7 +9,13 @@ from arcade.actor.common.response_code import CustomErrorCode, StandardResponseC
 class BaseExceptionMixin(Exception):
     code: int
 
-    def __init__(self, *, msg: str = None, data: Any = None, background: BackgroundTask | None = None):
+    def __init__(
+        self,
+        *,
+        msg: Optional[str] = None,
+        data: Any = None,
+        background: BackgroundTask | None = None,
+    ):
         self.msg = msg
         self.data = data
         # The original background task: https://www.starlette.io/background/
@@ -23,7 +28,9 @@ class HTTPError(HTTPException):
 
 
 class CustomError(BaseExceptionMixin):
-    def __init__(self, *, error: CustomErrorCode, data: Any = None, background: BackgroundTask | None = None):
+    def __init__(
+        self, *, error: CustomErrorCode, data: Any = None, background: BackgroundTask | None = None
+    ):
         self.code = error.code
         super().__init__(msg=error.msg, data=data, background=background)
 
@@ -31,21 +38,31 @@ class CustomError(BaseExceptionMixin):
 class RequestError(BaseExceptionMixin):
     code = StandardResponseCode.HTTP_400
 
-    def __init__(self, *, msg: str = 'Bad Request', data: Any = None, background: BackgroundTask | None = None):
+    def __init__(
+        self,
+        *,
+        msg: str = "Bad Request",
+        data: Any = None,
+        background: BackgroundTask | None = None,
+    ):
         super().__init__(msg=msg, data=data, background=background)
 
 
 class ForbiddenError(BaseExceptionMixin):
     code = StandardResponseCode.HTTP_403
 
-    def __init__(self, *, msg: str = 'Forbidden', data: Any = None, background: BackgroundTask | None = None):
+    def __init__(
+        self, *, msg: str = "Forbidden", data: Any = None, background: BackgroundTask | None = None
+    ):
         super().__init__(msg=msg, data=data, background=background)
 
 
 class NotFoundError(BaseExceptionMixin):
     code = StandardResponseCode.HTTP_404
 
-    def __init__(self, *, msg: str = 'Not Found', data: Any = None, background: BackgroundTask | None = None):
+    def __init__(
+        self, *, msg: str = "Not Found", data: Any = None, background: BackgroundTask | None = None
+    ):
         super().__init__(msg=msg, data=data, background=background)
 
 
@@ -53,7 +70,11 @@ class ServerError(BaseExceptionMixin):
     code = StandardResponseCode.HTTP_500
 
     def __init__(
-        self, *, msg: str = 'Internal Server Error', data: Any = None, background: BackgroundTask | None = None
+        self,
+        *,
+        msg: str = "Internal Server Error",
+        data: Any = None,
+        background: BackgroundTask | None = None,
     ):
         super().__init__(msg=msg, data=data, background=background)
 
@@ -61,19 +82,31 @@ class ServerError(BaseExceptionMixin):
 class GatewayError(BaseExceptionMixin):
     code = StandardResponseCode.HTTP_502
 
-    def __init__(self, *, msg: str = 'Bad Gateway', data: Any = None, background: BackgroundTask | None = None):
+    def __init__(
+        self,
+        *,
+        msg: str = "Bad Gateway",
+        data: Any = None,
+        background: BackgroundTask | None = None,
+    ):
         super().__init__(msg=msg, data=data, background=background)
 
 
 class AuthorizationError(BaseExceptionMixin):
     code = StandardResponseCode.HTTP_401
 
-    def __init__(self, *, msg: str = 'Permission Denied', data: Any = None, background: BackgroundTask | None = None):
+    def __init__(
+        self,
+        *,
+        msg: str = "Permission Denied",
+        data: Any = None,
+        background: BackgroundTask | None = None,
+    ):
         super().__init__(msg=msg, data=data, background=background)
 
 
 class TokenError(HTTPError):
     code = StandardResponseCode.HTTP_401
 
-    def __init__(self, *, msg: str = 'Not Authenticated', headers: dict[str, Any] | None = None):
-        super().__init__(code=self.code, msg=msg, headers=headers or {'WWW-Authenticate': 'Bearer'})
+    def __init__(self, *, msg: str = "Not Authenticated", headers: dict[str, Any] | None = None):
+        super().__init__(code=self.code, msg=msg, headers=headers or {"WWW-Authenticate": "Bearer"})
