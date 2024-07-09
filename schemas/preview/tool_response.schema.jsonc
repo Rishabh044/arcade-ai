@@ -106,7 +106,7 @@
                   "type": "integer",
                   "description": "The size of the artifact, in bytes"
                 },
-                "metadata": {
+                "meta": {
                   "type": "object",
                   "properties": {
                     "description": {
@@ -118,7 +118,7 @@
                   "additionalProperties": false
                 }
               },
-              "required": ["url", "content_type", "size", "metadata"],
+              "required": ["url", "content_type", "size", "meta"],
               "additionalProperties": false
             }
           },
