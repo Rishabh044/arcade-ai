@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import os
-from typing import Annotated, Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 
 T = TypeVar("T")
 
@@ -12,10 +12,6 @@ class Description:
 
     def __str__(self):
         return self.description
-
-
-def Param(type_: type[T], description: str) -> Annotated[T, Description]:
-    return Annotated[type_, Description(description)]
 
 
 def tool(func: Callable) -> Callable:

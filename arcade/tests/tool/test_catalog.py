@@ -2,7 +2,6 @@ from typing import Annotated, Optional
 
 from pydantic import BaseModel
 
-from arcade.sdk.tool import Param
 from arcade.tool.catalog import create_func_models
 
 
@@ -80,22 +79,6 @@ def test_create_func_model_with_Annotated_has_correct_fields():
     def sample_function(
         param1: Annotated[int, "The first operand"], param2: Annotated[str, "The second operand"]
     ) -> Annotated[str, "Returns magical things"]:
-        return f"{param1} {param2}"
-
-    input_model, output_model = create_func_models(sample_function)
-
-    check_model_fields(
-        input_model, {"param1": (int, "The first operand"), "param2": (str, "The second operand")}
-    )
-
-    check_model_fields(output_model, {"result": (Optional[str], "Returns magical things")})
-
-
-def test_create_func_model_with_Param_has_correct_fields():
-    def sample_function(
-        param1: Param(int, "The first operand"),
-        param2: Param(str, "The second operand"),
-    ) -> Param(str, "Returns magical things"):
         return f"{param1} {param2}"
 
     input_model, output_model = create_func_models(sample_function)

@@ -12,7 +12,6 @@ from arcade.actor.common.response import ResponseModel
 from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
-from arcade.sdk.tool import Param
 from arcade.utils import snake_to_camel
 
 
@@ -170,17 +169,8 @@ def extract_field_info(param: inspect.Parameter) -> dict:
     }
 
     # If the param is annotated, unwrap the annotation to get the "real" type
-    # For Annotated[T, "description"]
-    if get_origin(annotation) is Annotated:
-        field_type = annotation.__args__[0]
-
-    # For Param(T, "description"), Arcade's version of Annotated
-    elif hasattr(annotation, "__origin__") and annotation.__origin__ in [Param]:
-        field_type = annotation.__args__[0]
-
-    # No annotations, keep the literal type
-    else:
-        field_type = annotation
+    # Otherwise, use the literal type
+    field_type = annotation.__args__[0] if get_origin(annotation) is Annotated else annotation
 
     return {"type": field_type, "field_params": field_params}
 
@@ -219,8 +209,9 @@ def determine_output_model(func: Callable) -> type[BaseModel]:
         # Handle simple return types (like str)
         return create_model(
             output_model_name,
-            result=(return_annotation, Field(description="No description provided."))
+            result=(return_annotation, Field(description="No description provided.")),
         )
+
 
 def create_response_model(name: str, output_model: type[BaseModel]) -> type[ResponseModel]:
     """
