@@ -12,7 +12,7 @@ from arcade.actor.common.response import ResponseModel
 from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
-from arcade.sdk import Param
+from arcade.sdk.tool import Param
 from arcade.utils import snake_to_camel
 
 
@@ -189,8 +189,9 @@ def determine_output_model(func: Callable) -> type[BaseModel]:
         Type[BaseModel]: A Pydantic model representing the output.
     """
     return_annotation = inspect.signature(func).return_annotation
+    output_model_name = f"{snake_to_camel(func.__name__)}Output"
     if return_annotation is inspect.Signature.empty:
-        return create_model(f"{snake_to_camel(func.__name__)}Output")
+        return create_model(output_model_name)
     elif hasattr(return_annotation, "__origin__"):
         if hasattr(return_annotation, "__metadata__"):
             field_type = Optional[return_annotation.__args__[0]]
@@ -199,15 +200,20 @@ def determine_output_model(func: Callable) -> type[BaseModel]:
             )
             if description:
                 return create_model(
-                    f"{snake_to_camel(func.__name__)}Output",
+                    output_model_name,
                     result=(field_type, Field(description=str(description))),
                 )
         else:
             return create_model(
-                f"{snake_to_camel(func.__name__)}Output",
+                output_model_name,
                 result=(return_annotation, Field(description="No description provided.")),
             )
-
+    else:
+        # Handle simple return types (like str)
+        return create_model(
+            output_model_name,
+            result=(return_annotation, Field(description="No description provided."))
+        )
 
 def create_response_model(name: str, output_model: type[BaseModel]) -> type[ResponseModel]:
     """
