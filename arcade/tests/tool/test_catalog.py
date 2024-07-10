@@ -1,8 +1,10 @@
 from typing import Annotated, Optional
-import pytest
+
 from pydantic import BaseModel
+
 from arcade.sdk.tool import Param
 from arcade.tool.catalog import create_func_models
+
 
 def test_models_subclass_BaseModel():
     def sample_function():
@@ -52,16 +54,16 @@ def test_create_func_model_with_simple_types_has_correct_fields():
 
     # Check if input_model has the correct fields
     assert 'param1' in input_model.model_fields
-    assert input_model.__annotations__['param1'] == int
+    assert input_model.__annotations__['param1'] is int
     assert input_model.model_fields['param1'].description == "No description provided."
 
     assert 'param2' in input_model.model_fields
-    assert input_model.__annotations__['param2'] == str
+    assert input_model.__annotations__['param2'] is str
     assert input_model.model_fields['param2'].description == "No description provided."
 
     # Check if output_model has the correct fields
     assert 'result' in output_model.model_fields
-    assert output_model.__annotations__['result'] == str # Not Optional[str]
+    assert output_model.__annotations__['result'] is str # Not Optional[str]
     assert output_model.model_fields['result'].description == "No description provided."
 
 def test_create_func_model_with_Annotated_has_correct_fields():
