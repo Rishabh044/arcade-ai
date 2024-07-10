@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from importlib import import_module
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Annotated, get_origin
 
 from pydantic import BaseModel, Field, create_model
 
@@ -169,9 +169,16 @@ def extract_field_info(param: inspect.Parameter) -> dict:
         "description": str(description) if description else "No description provided.",
     }
 
-    # Handle specific annotations like Param and Secret if needed
-    if hasattr(annotation, "__origin__") and annotation.__origin__ in [Param]:
+    # If the param is annotated, unwrap the annotation to get the "real" type
+    # For Annotated[T, "description"]
+    if get_origin(annotation) is Annotated:
         field_type = annotation.__args__[0]
+
+    # For Param(T, "description"), Arcade's version of Annotated
+    elif hasattr(annotation, "__origin__") and annotation.__origin__ in [Param]:
+        field_type = annotation.__args__[0]
+
+    # No annotations, keep the literal type
     else:
         field_type = annotation
 
