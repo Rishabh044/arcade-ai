@@ -19,10 +19,9 @@ from arcade.actor.common.response import ResponseModel
 from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
+from arcade.sdk.annotations import Inferrable
 from arcade.sdk.models import (
-    Inferrable,
     InputParameter,
-    OutputValue,
     ToolDefinition,
     ToolInput,
     ToolOutput,
@@ -173,17 +172,15 @@ def create_output_model(func: Callable) -> ToolOutput:
 
     wire_type = get_wire_type(return_type)
 
-    available_modes = ["value"]
+    available_modes = ["value", "error"]
 
     if is_optional:
         available_modes.append("null")
 
     return ToolOutput(
-        value=OutputValue(
-            description=description,
-            value_schema=ValueSchema(type=wire_type),
-        ),
+        description=description,
         available_modes=available_modes,
+        value_schema=ValueSchema(type=wire_type),
     )
 
 

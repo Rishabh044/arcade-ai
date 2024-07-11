@@ -1,10 +1,11 @@
 from typing import Annotated, Literal, Optional
 
+from arcade.sdk.annotations import Inferrable
 from arcade.sdk.models import (
-    Inferrable,
     InputParameter,
     OAuth2AuthorizationRequirement,
     ToolInput,
+    ToolOutput,
     ValueSchema,
 )
 from arcade.sdk.tool import tool
@@ -278,7 +279,7 @@ def test_create_tool_with_no_return():
     tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
 
     assert tool_def.output.available_modes == ["null"]
-    assert not tool_def.output.value
+    assert not tool_def.output.value_schema
 
 
 def test_create_tool_with_output_value():
@@ -288,8 +289,11 @@ def test_create_tool_with_output_value():
 
     tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
 
-    assert tool_def.output.value.value_schema == ValueSchema(type="string", enum=None)
-    assert "value" in tool_def.output.available_modes
+    assert tool_def.output == ToolOutput(
+        description="No description provided.",
+        available_modes=["value", "error"],
+        value_schema=ValueSchema(type="string", enum=None),
+    )
 
 
 def test_create_tool_with_optional_output_value():
@@ -299,8 +303,11 @@ def test_create_tool_with_optional_output_value():
 
     tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
 
-    assert tool_def.output.value.value_schema == ValueSchema(type="string", enum=None)
-    assert "null" in tool_def.output.available_modes
+    assert tool_def.output == ToolOutput(
+        description="No description provided.",
+        available_modes=["value", "error", "null"],
+        value_schema=ValueSchema(type="string", enum=None),
+    )
 
 
 def test_create_tool_with_annotated_output_value():
@@ -310,6 +317,8 @@ def test_create_tool_with_annotated_output_value():
 
     tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
 
-    assert tool_def.output.value.value_schema == ValueSchema(type="string", enum=None)
-    assert tool_def.output.value.description == "output description"
-    assert "value" in tool_def.output.available_modes
+    assert tool_def.output == ToolOutput(
+        description="output description",
+        available_modes=["value", "error"],
+        value_schema=ValueSchema(type="string", enum=None),
+    )
