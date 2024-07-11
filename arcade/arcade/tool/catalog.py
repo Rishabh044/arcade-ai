@@ -23,7 +23,7 @@ from arcade.sdk.annotations import Inferrable
 from arcade.sdk.models import (
     InputParameter,
     ToolDefinition,
-    ToolInput,
+    ToolInputs,
     ToolOutput,
     ToolRequirements,
     ValueSchema,
@@ -80,7 +80,7 @@ class ToolCatalog:
             name=tool_name,
             description=tool_description,
             version=version,
-            input=create_input_model(tool),
+            inputs=create_input_model(tool),
             output=create_output_model(tool),
             requirements=ToolRequirements(
                 authorization=getattr(tool, "__tool_requires_auth__", None),
@@ -106,12 +106,16 @@ class ToolCatalog:
             return f"/tool/{t.meta.module}/{t.name}"
 
         return [
-            {"name": t.name, "description": t.description, "endpoint": get_tool_endpoint(t)}
+            {
+                "name": t.name,
+                "description": t.description,
+                "endpoint": get_tool_endpoint(t),
+            }
             for t in self.tools.values()
         ]
 
 
-def create_input_model(func: Callable) -> ToolInput:
+def create_input_model(func: Callable) -> ToolInputs:
     """
     Create an input model for a function based on its parameters.
     """
@@ -135,13 +139,13 @@ def create_input_model(func: Callable) -> ToolInput:
                 and not field_info["field_params"]["optional"],
                 inferrable=field_info["field_params"]["inferrable"],
                 value_schema=ValueSchema(
-                    type=field_info["field_params"]["wire_type"],
+                    val_type=field_info["field_params"]["wire_type"],
                     enum=enum_values if is_enum else None,
                 ),
             )
         )
 
-    return ToolInput(parameters=input_parameters)
+    return ToolInputs(parameters=input_parameters)
 
 
 def is_string_literal(_type: type) -> bool:
@@ -180,7 +184,7 @@ def create_output_model(func: Callable) -> ToolOutput:
     return ToolOutput(
         description=description,
         available_modes=available_modes,
-        value_schema=ValueSchema(type=wire_type),
+        value_schema=ValueSchema(val_type=wire_type),
     )
 
 
@@ -195,10 +199,15 @@ def extract_field_info(param: inspect.Parameter) -> dict:
         dict: A dictionary with 'type' and 'field_params'.
     """
     annotation = param.annotation
+    if annotation == inspect.Parameter.empty:
+        raise TypeError(f"Parameter {param} has no type annotation.")
+
     metadata = getattr(annotation, "__metadata__", [])
 
     default = param.default if param.default is not inspect.Parameter.empty else None
     description = next((m for m in metadata if isinstance(m, str)), None)
+    # TODO throw error if no description is provided
+
     inferrable = next((m.inferrable for m in metadata if isinstance(m, Inferrable)), True)
 
     # If the param is Annotated[], unwrap the annotation
@@ -227,7 +236,9 @@ def extract_field_info(param: inspect.Parameter) -> dict:
     return {"type": field_type, "field_params": field_params}
 
 
-def get_wire_type(_type: type) -> Literal["string", "integer", "decimal", "boolean", "json"]:
+def get_wire_type(
+    _type: type,
+) -> Literal["string", "integer", "decimal", "boolean", "json"]:
     if issubclass(_type, str):
         return "string"
     elif issubclass(_type, bool):
@@ -270,7 +281,10 @@ def determine_output_model(func: Callable) -> type[BaseModel]:
         else:
             return create_model(
                 output_model_name,
-                result=(return_annotation, Field(description="No description provided.")),
+                result=(
+                    return_annotation,
+                    Field(description="No description provided."),
+                ),
             )
     else:
         # Handle simple return types (like str)

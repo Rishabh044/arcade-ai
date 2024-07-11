@@ -5,14 +5,15 @@ from pydantic import AnyUrl, BaseModel, Field, conlist
 
 
 class ValueSchema(BaseModel):
-    type: Literal["string", "integer", "decimal", "boolean", "json"]
+    val_type: Literal["string", "integer", "decimal", "boolean", "json"]
     enum: Optional[list[str]] = None
 
 
 class InputParameter(BaseModel):
     name: str = Field(..., description="The human-readable name of this parameter.")
     required: bool = Field(
-        ..., description="Whether this parameter is required (true) or optional (false)."
+        ...,
+        description="Whether this parameter is required (true) or optional (false).",
     )
     description: Optional[str] = Field(
         None, description="A descriptive, human-readable explanation of the parameter."
@@ -27,7 +28,7 @@ class InputParameter(BaseModel):
     )
 
 
-class ToolInput(BaseModel):
+class ToolInputs(BaseModel):
     parameters: conlist(InputParameter)
 
 
@@ -36,7 +37,8 @@ class ToolOutput(BaseModel):
         None, description="A descriptive, human-readable explanation of the output."
     )
     available_modes: conlist(
-        Literal["value", "error", "null", "artifact", "requires_authorization"], min_length=1
+        Literal["value", "error", "null", "artifact", "requires_authorization"],
+        min_length=1,
     ) = Field(
         ...,
         description="The available modes for the output.",
@@ -64,6 +66,6 @@ class ToolDefinition(BaseModel):
     name: str
     description: str
     version: str
-    input: ToolInput
+    inputs: ToolInputs
     output: ToolOutput
     requirements: ToolRequirements
