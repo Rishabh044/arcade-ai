@@ -1,4 +1,4 @@
-from arcade.sdk.models import OAuth2AuthorizationRequirement
+from arcade.sdk.models import InputParameter, OAuth2AuthorizationRequirement, ToolInput, ValueSchema
 from arcade.sdk.tool import tool
 from arcade.tool.catalog import ToolCatalog
 
@@ -78,3 +78,116 @@ def test_create_tool_def_with_oauth2_auth_requirement():
     assert tool_def.requirements.authorization == OAuth2AuthorizationRequirement(
         url="https://example.com/oauth2/auth", scopes=["scope1", "scope2"]
     )
+
+
+def test_create_tool_with_input_param():
+    @tool
+    def sample_function(param1: str):
+        pass
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.input == ToolInput(
+        parameters=[
+            InputParameter(
+                name="param1",
+                description="No description provided.",
+                inferrable=True,
+                required=True,
+                value_schema=ValueSchema(type="string", enum=None),
+            )
+        ]
+    )
+
+
+def test_create_tool_with_input_param_with_default():
+    @tool
+    def sample_function(param1: str = "default"):
+        pass
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.input == ToolInput(
+        parameters=[
+            InputParameter(
+                name="param1",
+                description="No description provided.",
+                inferrable=True,
+                required=False,  # Because default is provided
+                value_schema=ValueSchema(type="string", enum=None),
+            )
+        ]
+    )
+
+
+def test_create_tool_with_optional_input_param():
+    from typing import Optional
+
+    @tool
+    def sample_function(param1: Optional[str]):
+        pass
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.input == ToolInput(
+        parameters=[
+            InputParameter(
+                name="param1",
+                description="No description provided.",
+                inferrable=True,
+                required=False,  # Because of Optional[str]
+                value_schema=ValueSchema(type="string", enum=None),
+            )
+        ]
+    )
+
+
+def test_create_tool_with_multiple_input_params():
+    @tool
+    def sample_function(param1: str, param2: int, param3: float, param4: bool):
+        pass
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.input == ToolInput(
+        parameters=[
+            InputParameter(
+                name="param1",
+                description="No description provided.",
+                inferrable=True,
+                required=True,
+                value_schema=ValueSchema(type="string", enum=None),
+            ),
+            InputParameter(
+                name="param2",
+                description="No description provided.",
+                inferrable=True,
+                required=True,
+                value_schema=ValueSchema(type="integer", enum=None),
+            ),
+            InputParameter(
+                name="param3",
+                description="No description provided.",
+                inferrable=True,
+                required=True,
+                value_schema=ValueSchema(type="decimal", enum=None),
+            ),
+            InputParameter(
+                name="param4",
+                description="No description provided.",
+                inferrable=True,
+                required=True,
+                value_schema=ValueSchema(type="boolean", enum=None),
+            ),
+        ]
+    )
+
+
+# TODO: Test with dict (json) parameter
+# TODO: Test with string parameter with enum values
+# TODO: Test with unsupported parameter (raises TypeError)
+# TODO: Test with Annotated[str, ...] parameter
+
+# TODO: Test with output (return) value -> TO.value.value_schema is set
+# TODO: Test with Optional[] output value -> ToolOutput.available_modes includes `null`
+# TODO: Test with Annotated[str, ...] output value -> TO.value.description is set

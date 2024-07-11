@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from importlib import import_module
 from pathlib import Path
-from typing import Callable, Optional, Annotated, get_origin
+from typing import Callable, Literal, Optional, Annotated, get_args, get_origin, Union
 
 from pydantic import BaseModel, Field, create_model
 
@@ -13,7 +13,14 @@ from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
 from arcade.utils import snake_to_camel
-from arcade.sdk.models import ToolDefinition, ToolRequirements
+from arcade.sdk.models import (
+    ToolInput,
+    InputParameter,
+    ToolDefinition,
+    ToolOutput,
+    ToolRequirements,
+    ValueSchema,
+)
 
 
 # class ToolMeta(BaseModel):
@@ -88,14 +95,14 @@ class ToolCatalog:
         if tool_description is None:
             tool_description = tool.__doc__ or "No description provided."
 
-        input_model, output_model = create_func_models(tool)
-        response_model = create_response_model(tool_name, output_model)
+        # inputs, output = create_func_models(tool)
+        # response_model = create_response_model(tool_name, output)
         tool_def = ToolDefinition(
             name=tool_name,
             description=tool_description,
             version=version,
-            input_model=input_model,
-            output_model=response_model,
+            input=create_input_model(tool),
+            output=ToolOutput(),
             requirements=ToolRequirements(
                 authorization=getattr(tool, "__tool_requires_auth__", None),
             ),
@@ -123,6 +130,26 @@ class ToolCatalog:
             {"name": t.name, "description": t.description, "endpoint": get_tool_endpoint(t)}
             for t in self.tools.values()
         ]
+
+
+def create_input_model(func: Callable) -> ToolInput:
+    """
+    Create an input model for a function based on its parameters.
+    """
+    input_parameters = []
+    for name, param in inspect.signature(func, follow_wrapped=True).parameters.items():
+        field_info = extract_field_info(param)
+        input_parameters.append(
+            InputParameter(
+                name=name,
+                description=field_info["field_params"]["description"],
+                required=field_info["field_params"]["default"] is None
+                and not field_info["field_params"]["optional"],
+                value_schema=ValueSchema(type=field_info["field_params"]["wire_type"]),
+            )
+        )
+
+    return ToolInput(parameters=input_parameters)
 
 
 def create_func_models(func: Callable) -> tuple[type[BaseModel], type[BaseModel]]:
@@ -167,16 +194,42 @@ def extract_field_info(param: inspect.Parameter) -> dict:
         else None
     )
 
+    # If the param is Annotated[], unwrap the annotation
+    # Otherwise, use the literal type
+    original_type = annotation.__args__[0] if get_origin(annotation) is Annotated else annotation
+    field_type = original_type
+
+    # Unwrap Optional types
+    is_optional = False
+    if get_origin(field_type) is Union and type(None) in get_args(field_type):
+        field_type = next(arg for arg in get_args(field_type) if arg is not type(None))
+        is_optional = True
+
     field_params = {
         "default": default,
+        "optional": is_optional,
         "description": str(description) if description else "No description provided.",
+        "type": field_type,
+        "wire_type": get_wire_type(field_type),
+        "original_type": original_type,
     }
 
-    # If the param is annotated, unwrap the annotation to get the "real" type
-    # Otherwise, use the literal type
-    field_type = annotation.__args__[0] if get_origin(annotation) is Annotated else annotation
-
     return {"type": field_type, "field_params": field_params}
+
+
+def get_wire_type(_type: type) -> Literal["string", "integer", "decimal", "boolean", "json"]:
+    if issubclass(_type, str):
+        return "string"
+    elif issubclass(_type, bool):
+        return "boolean"
+    elif issubclass(_type, int):
+        return "integer"
+    elif issubclass(_type, float):
+        return "decimal"
+    elif issubclass(_type, dict):
+        return "json"
+    else:
+        raise TypeError(f"Unsupported type: {_type}")
 
 
 def determine_output_model(func: Callable) -> type[BaseModel]:
