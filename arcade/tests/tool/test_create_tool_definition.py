@@ -101,8 +101,8 @@ def test_create_tool_with_input_param():
             InputParameter(
                 name="param1",
                 description="No description provided.",
-                inferrable=True,
-                required=True,
+                inferrable=True,  # Defaults to true
+                required=True,  # Defaults to required (no default value in the function signature)
                 value_schema=ValueSchema(type="string", enum=None),
             )
         ]
@@ -122,7 +122,7 @@ def test_create_tool_with_input_param_with_default():
                 name="param1",
                 description="No description provided.",
                 inferrable=True,
-                required=False,  # Because default is provided
+                required=False,  # Because a default value is provided
                 value_schema=ValueSchema(type="string", enum=None),
             )
         ]
@@ -151,7 +151,7 @@ def test_create_tool_with_optional_input_param():
 
 def test_create_tool_with_inferrable_input_param():
     @tool
-    def sample_function(param1: Annotated[str, "param description", Inferrable(True)]):
+    def sample_function(param1: Annotated[str, "param description", Inferrable(False)]):
         pass
 
     tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
@@ -161,8 +161,8 @@ def test_create_tool_with_inferrable_input_param():
             InputParameter(
                 name="param1",
                 description="param description",
-                inferrable=True,  # Thanks to Inferrable(True)
-                required=True,  # It is not an optional param
+                inferrable=False,  # Not the default, thanks to Inferrable(False)
+                required=True,
                 value_schema=ValueSchema(type="string", enum=None),
             )
         ]
@@ -263,12 +263,18 @@ def test_create_tool_with_unsupported_input_param():
 
 def test_create_tool_with_annotated_param():
     @tool
-    def sample_function(param1: Annotated[str, "description"]):
+    def sample_function(my_param: Annotated[str, "a description"]):
         pass
 
     tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
 
-    assert tool_def.input.parameters[0].description == "description"
+    assert tool_def.input.parameters[0] == InputParameter(
+        name="my_param",
+        description="a description",
+        inferrable=True,
+        required=True,
+        value_schema=ValueSchema(type="string", enum=None),
+    )
 
 
 def test_create_tool_with_no_return():

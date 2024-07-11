@@ -34,7 +34,7 @@ async def test_async_function():
     assert result == 3
 
 
-def test_tool_decorator_with_name_and_description():
+def test_tool_decorator_with_all_options():
     @tool(
         name="TestTool",
         description="Test description",
