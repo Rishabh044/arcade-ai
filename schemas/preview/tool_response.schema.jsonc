@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": { // Explicitly allow JSON-Schema to be referenced (needed due to additionalProperties: false)
+      "type": "string",
+      "format": "uri"
+    },
+    "invocation_id": {
+      "type": "string",
+      "description": "ID of this specific tool call"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "success": {
+      "type": "boolean",
+      "description": "Whether the tool call was successful"
+    },
+    "output": { // Can be null/omitted, in the case of a null-returning (void) function
+      "type": "object",
+      "oneOf": [
+        {
+          "properties": {
+            "value": {
+              "description": "The value returned from the function",
+              "oneOf": [
+                { "type": "object", "additionalProperties": true }, // aka JSON
+                { "type": "number" },
+                { "type": "string" },
+                { "type": "boolean" }
+              ]
+            }
+          },
+          "required": ["value"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "error": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "An error message that can be shown to the user or the AI model"
+                },
+                "developer_message": {
+                  "type": "string",
+                  "description": "An internal message that will be logged but will not be shown to the user or the AI model"
+                }
+              },
+              "required": ["message"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["error"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "requires_authorization": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "A message that can be shown to the user or AI model that explains the authorization requirement"
+                },
+                "oauth2": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "scope": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["message"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["requires_authorization"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "artifact": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "The location of the stored artifact"
+                },
+                "content_type": {
+                  "type": "string",
+                  "description": "The MIME Media Type of the data inside the artifact (e.g. text/csv or application/json)"
+                },
+                "size": {
+                  "type": "integer",
+                  "description": "The size of the artifact, in bytes"
+                },
+                "meta": {
+                  "type": "object",
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "description": "A descriptive, human-readable explanation of the data inside the artifact"
+                    }
+                  },
+                  "required": ["description"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["url", "content_type", "size", "meta"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["artifact"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "required": ["invocation_id", "finished_at", "success"],
+  "additionalProperties": false
+}
