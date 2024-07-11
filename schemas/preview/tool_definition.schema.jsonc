@@ -1,26 +1,20 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "primitives": { // All supported primitive data types
+    "primitives": {
+      // All supported primitive data types
       "type": "string",
-      "enum": [
-        "string",
-        "integer",
-        "decimal",
-        "boolean",
-        "json"
-      ]
+      "enum": ["string", "integer", "decimal", "boolean", "json"]
     },
-    "value_schema": { // Represents a value schema (e.g. function input parameter)
+    "value_schema": {
+      // Represents a value schema (e.g. function input parameter)
       "type": "object",
       "properties": {
         "type": {
           "$ref": "#/$defs/primitives"
         }
       },
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "additionalProperties": false,
       "if": {
         "properties": {
@@ -29,7 +23,8 @@
           }
         }
       },
-      "then": { // String values can optionally be constrained to a known list
+      "then": {
+        // String values can optionally be constrained to a known list
         "properties": {
           "enum": {
             "type": "array",
@@ -43,7 +38,8 @@
   },
   "type": "object",
   "properties": {
-    "$schema": { // Explicitly allow JSON-Schema to be referenced (due to additionalProperties: false)
+    "$schema": {
+      // Explicitly allow JSON-Schema to be referenced (due to additionalProperties: false)
       "type": "string",
       "format": "uri"
     },
@@ -90,18 +86,12 @@
                 "default": true
               }
             },
-            "required": [
-              "name",
-              "required",
-              "schema"
-            ],
+            "required": ["name", "required", "schema"],
             "additionalProperties": false
           }
         }
       },
-      "required": [
-        "parameters"
-      ],
+      "required": ["parameters"],
       "additionalProperties": false
     },
     "output": {
@@ -131,15 +121,11 @@
               "$ref": "#/$defs/value_schema"
             }
           },
-          "required": [
-            "schema"
-          ],
+          "required": ["schema"],
           "additionalProperties": false
         }
       },
-      "required": [
-        "available_modes"
-      ],
+      "required": ["available_modes"],
       "additionalProperties": false
     },
     "requirements": {
@@ -149,10 +135,7 @@
           "oneOf": [
             {
               "type": "string",
-              "enum": [
-                "none",
-                "token"
-              ]
+              "enum": ["none", "token"]
             },
             {
               "type": "object",
@@ -168,15 +151,11 @@
                       "type": "string"
                     }
                   },
-                  "required": [
-                    "url"
-                  ],
+                  "required": ["url"],
                   "additionalProperties": false
                 }
               },
-              "required": [
-                "oauth2"
-              ],
+              "required": ["oauth2"],
               "additionalProperties": false
             }
           ]
@@ -184,11 +163,6 @@
       }
     }
   },
-  "required": [
-    "name",
-    "version",
-    "input",
-    "output"
-  ],
+  "required": ["name", "version", "input", "output"],
   "additionalProperties": false
 }

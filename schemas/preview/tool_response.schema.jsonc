@@ -2,7 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "$schema": { // Explicitly allow JSON-Schema to be referenced (needed due to additionalProperties: false)
+    "$schema": {
+      // Explicitly allow JSON-Schema to be referenced (needed due to additionalProperties: false)
       "type": "string",
       "format": "uri"
     },
@@ -18,7 +19,8 @@
       "type": "boolean",
       "description": "Whether the tool call was successful"
     },
-    "output": { // Can be null/omitted, in the case of a null-returning (void) function
+    "output": {
+      // Can be null/omitted, in the case of a null-returning (void) function
       "type": "object",
       "oneOf": [
         {

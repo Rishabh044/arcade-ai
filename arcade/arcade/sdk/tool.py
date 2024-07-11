@@ -1,7 +1,7 @@
 import os
 from typing import Any, Callable, Optional, TypeVar, Union
 
-from arcade.sdk.models import ToolAuthorizationRequirement
+from arcade.sdk.schemas import ToolAuthorizationRequirement
 
 T = TypeVar("T")
 

@@ -2,7 +2,8 @@ from typing import Annotated, Literal, Optional
 
 import pytest
 
-from arcade.sdk.models import (
+from arcade.sdk.annotations import Opaque
+from arcade.sdk.schemas import (
     InputParameter,
     OAuth2AuthorizationRequirement,
     ToolInputs,
@@ -76,7 +77,7 @@ def test_create_tool_with_optional_input_param():
 
 def test_create_tool_with_inferrable_input_param():
     @tool
-    def sample_function(param1: Annotated[str, "param description"]):
+    def sample_function(param1: Annotated[Opaque[str], "param description"]):
         pass
 
     tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
@@ -86,7 +87,7 @@ def test_create_tool_with_inferrable_input_param():
             InputParameter(
                 name="param1",
                 description="param description",
-                inferrable=False,  # Not the default, thanks to Inferrable(False)
+                inferrable=False,  # Not the default, thanks to Opaque
                 required=True,
                 value_schema=ValueSchema(val_type="string", enum=None),
             )
@@ -286,14 +287,14 @@ def test_create_tool_with_annotated_output_value():
         pytest.param(
             {
                 "requires_auth": OAuth2AuthorizationRequirement(
-                    url="https://example.com/oauth2/auth", scopes=["scope1", "scope2"]
+                    url="https://example.com/oauth2/auth", scope=["scope1", "scope2"]
                 )
             },
             {
                 "requirements": ToolRequirements(**{
                     "authorization": OAuth2AuthorizationRequirement(
                         url="https://example.com/oauth2/auth",
-                        scopes=["scope1", "scope2"],
+                        scope=["scope1", "scope2"],
                     )
                 })
             },

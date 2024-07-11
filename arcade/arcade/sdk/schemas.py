@@ -55,7 +55,7 @@ class ToolAuthorizationRequirement(BaseModel, ABC):
 
 class OAuth2AuthorizationRequirement(ToolAuthorizationRequirement):
     url: AnyUrl
-    scopes: Optional[list[str]] = None
+    scope: Optional[list[str]] = None
 
 
 class ToolRequirements(BaseModel):
