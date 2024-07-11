@@ -14,7 +14,10 @@ class Description:
         return self.description
 
 
-def tool(func: Callable) -> Callable:
+def tool(func: Callable, name: str | None = None, description: str | None = None) -> Callable:
+    func.__tool_name__ = name or getattr(func, "__name__", "unknown")
+    func.__tool_description__ = description or func.__doc__
+
     @functools.wraps(func)
     async def wrapper(*args, **kwargs) -> Any:
         if asyncio.iscoroutinefunction(func):

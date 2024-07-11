@@ -13,25 +13,26 @@ from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
 from arcade.utils import snake_to_camel
+from arcade.sdk.models import ToolDefinition
 
 
-class ToolMeta(BaseModel):
-    module: str
-    path: str
-    date_added: datetime = Field(default_factory=datetime.now)
-    date_updated: datetime = Field(default_factory=datetime.now)
+# class ToolMeta(BaseModel):
+#     module: str
+#     path: str
+#     date_added: datetime = Field(default_factory=datetime.now)
+#     date_updated: datetime = Field(default_factory=datetime.now)
 
 
-class ToolSchema(BaseModel):
-    name: str
-    description: str
-    version: str
-    tool: Callable
+# class ToolSchema(BaseModel):
+#     name: str
+#     description: str
+#     version: str
+#     tool: Callable
 
-    input_model: type[BaseModel]
-    output_model: type[BaseModel]
+#     input_model: type[BaseModel]
+#     output_model: type[BaseModel]
 
-    meta: ToolMeta
+#     meta: ToolMeta
 
 
 class ToolCatalog:
@@ -40,7 +41,7 @@ class ToolCatalog:
         # self.tools.update(self.__get_builitin_tools())
 
     @staticmethod
-    def read_tools(directory: str) -> list[ToolSchema]:
+    def read_tools(directory: str) -> list[ToolDefinition]:
         toolpack = ToolPack.from_lock_file(directory)
         sys.path.append(str(Path(directory).resolve() / "tools"))
 
@@ -51,54 +52,50 @@ class ToolCatalog:
             func_name, version = versioned_tool.split("@")
 
             module = import_module(module_name)
-            tool = getattr(module, func_name)
+            tool_func = getattr(module, func_name)
+            tools[name] = ToolCatalog.create_tool_definition(tool_func, version)
 
-            tool_meta = ToolMeta(module=module_name, path=module.__file__)
+            # TODO restore
+            # tool_meta = ToolMeta(module=module_name, path=module.__file__)
 
-            input_model, output_model = create_func_models(tool)
-            response_model = create_response_model(name, output_model)
-            tool_schema = ToolSchema(
-                name=name,
-                description=tool.__doc__,
-                version=version,
-                tool=tool,
-                input_model=input_model,
-                output_model=response_model,
-                meta=tool_meta,
-            )
-            tools[name] = tool_schema
-
-        return tools
-
-    def __get_builitin_tools(self) -> dict[str, ToolSchema]:
-        tools = {}
-        sys.path.append(str(settings.BUILTIN_TOOLS_DIR))
-
-        for tool_spec in settings.BUILTIN_TOOLS:
-            print(tool_spec)
-
-            module_name, versioned_tool = tool_spec.split(".", 1)
-            func_name, version = versioned_tool.split("@")
-
-            module = import_module(module_name)
-            tool = getattr(module, func_name)
-
-            input_model, output_model = create_func_models(tool)
-            response_model = create_response_model(func_name, output_model)
-            tool_schema = ToolSchema(
-                name=func_name,
-                description=tool.__doc__,
-                version="builtin",
-                tool=tool,
-                input_model=input_model,
-                output_model=response_model,
-                meta=ToolMeta(module=module_name, path=module.__file__),
-            )
-            tools[func_name] = tool_schema
+            # input_model, output_model = create_func_models(tool_func)
+            # response_model = create_response_model(name, output_model)
+            # tool_schema = ToolSchema(
+            #     name=name,
+            #     description=tool.__doc__,
+            #     version=version,
+            #     tool=tool,
+            #     input_model=input_model,
+            #     output_model=response_model,
+            #     meta=tool_meta,
+            # tool_def = ToolDefinition(
+            #     name=name,
+            #     description=tool_func.__doc__,
+            #     version=version,
+            #     # tool=tool,
+            #     input_model=input_model,
+            #     output_model=response_model,
+            #     # meta=tool_meta,
+            # )
+            # tools[name] = tool_def
 
         return tools
 
-    def __getitem__(self, name: str) -> Optional[ToolSchema]:
+    @staticmethod
+    def create_tool_definition(tool: Callable, version: str) -> ToolDefinition:
+        tool_name = getattr(tool, "name", tool.__name__)
+        input_model, output_model = create_func_models(tool)
+        response_model = create_response_model(tool_name, output_model)
+        tool_def = ToolDefinition(
+            name=tool_name,
+            description=tool.__doc__ or "No description provided.",
+            version=version,
+            input_model=input_model,
+            output_model=response_model,
+        )
+        return tool_def
+
+    def __getitem__(self, name: str) -> Optional[ToolDefinition]:
         # TODO error handling
         for tool_name, tool in self.tools.items():
             if tool_name == name:
@@ -112,7 +109,7 @@ class ToolCatalog:
         return None
 
     def list_tools(self) -> list[dict[str, str]]:
-        def get_tool_endpoint(t: ToolSchema) -> str:
+        def get_tool_endpoint(t: ToolDefinition) -> str:
             return f"/tool/{t.meta.module}/{t.name}"
 
         return [
