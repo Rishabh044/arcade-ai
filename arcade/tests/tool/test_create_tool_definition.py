@@ -1,3 +1,5 @@
+from typing import Annotated, Optional
+
 from arcade.sdk.models import InputParameter, OAuth2AuthorizationRequirement, ToolInput, ValueSchema
 from arcade.sdk.tool import tool
 from arcade.tool.catalog import ToolCatalog
@@ -246,6 +248,46 @@ def test_create_tool_with_annotated_param():
     assert tool_def.input.parameters[0].description == "description"
 
 
-# TODO: Test with output (return) value -> TO.value.value_schema is set
-# TODO: Test with Optional[] output value -> ToolOutput.available_modes includes `null`
-# TODO: Test with Annotated[str, ...] output value -> TO.value.description is set
+def test_create_tool_with_no_return():
+    @tool
+    def sample_function():
+        pass
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.output.available_modes == ["null"]
+    assert not tool_def.output.value
+
+
+def test_create_tool_with_output_value():
+    @tool
+    def sample_function() -> str:
+        return "output"
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.output.value.value_schema == ValueSchema(type="string", enum=None)
+    assert "value" in tool_def.output.available_modes
+
+
+def test_create_tool_with_optional_output_value():
+    @tool
+    def sample_function() -> Optional[str]:
+        return "output"
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.output.value.value_schema == ValueSchema(type="string", enum=None)
+    assert "null" in tool_def.output.available_modes
+
+
+def test_create_tool_with_annotated_output_value():
+    @tool
+    def sample_function() -> Annotated[str, "output description"]:
+        return "output"
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.output.value.value_schema == ValueSchema(type="string", enum=None)
+    assert tool_def.output.value.description == "output description"
+    assert "value" in tool_def.output.available_modes

@@ -4,7 +4,16 @@ import sys
 from datetime import datetime
 from importlib import import_module
 from pathlib import Path
-from typing import Callable, Literal, Optional, Annotated, get_args, get_origin, Union
+from typing import (
+    Callable,
+    Literal,
+    Optional,
+    Annotated,
+    get_args,
+    get_origin,
+    Union,
+    get_type_hints,
+)
 
 from pydantic import BaseModel, Field, create_model
 
@@ -14,6 +23,7 @@ from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
 from arcade.utils import snake_to_camel
 from arcade.sdk.models import (
+    OutputValue,
     ToolInput,
     InputParameter,
     ToolDefinition,
@@ -102,7 +112,7 @@ class ToolCatalog:
             description=tool_description,
             version=version,
             input=create_input_model(tool),
-            output=ToolOutput(),
+            output=create_output_model(tool),
             requirements=ToolRequirements(
                 authorization=getattr(tool, "__tool_requires_auth__", None),
             ),
@@ -150,6 +160,42 @@ def create_input_model(func: Callable) -> ToolInput:
         )
 
     return ToolInput(parameters=input_parameters)
+
+
+def create_output_model(func: Callable) -> ToolOutput:
+    """
+    Create an output model for a function based on its return annotation.
+    """
+    return_type = inspect.signature(func, follow_wrapped=True).return_annotation
+    description = "No description provided."
+
+    if return_type is inspect.Signature.empty:
+        return ToolOutput(
+            available_modes=["null"],
+        )
+
+    if hasattr(return_type, "__metadata__"):
+        description = return_type.__metadata__[0] if return_type.__metadata__ else None
+        return_type = return_type.__origin__
+
+    # Unwrap Optional types
+    is_optional = False
+    if get_origin(return_type) is Union and type(None) in get_args(return_type):
+        return_type = next(arg for arg in get_args(return_type) if arg is not type(None))
+        is_optional = True
+
+    wire_type = get_wire_type(return_type)
+    available_modes = ["value"]
+
+    if is_optional:
+        available_modes.append("null")
+
+    return ToolOutput(
+        value=OutputValue(
+            description=description, value_schema=ValueSchema(type=wire_type, enum=None)
+        ),
+        available_modes=available_modes,
+    )
 
 
 def create_func_models(func: Callable) -> tuple[type[BaseModel], type[BaseModel]]:
