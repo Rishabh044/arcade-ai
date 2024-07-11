@@ -1,18 +1,16 @@
-import asyncio
 import inspect
 import sys
 from datetime import datetime
 from importlib import import_module
 from pathlib import Path
 from typing import (
+    Annotated,
     Callable,
     Literal,
     Optional,
-    Annotated,
+    Union,
     get_args,
     get_origin,
-    Union,
-    get_type_hints,
 )
 
 from pydantic import BaseModel, Field, create_model
@@ -21,30 +19,35 @@ from arcade.actor.common.response import ResponseModel
 from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
-from arcade.utils import snake_to_camel
 from arcade.sdk.models import (
     Inferrable,
-    OutputValue,
-    ToolInput,
     InputParameter,
+    OutputValue,
     ToolDefinition,
+    ToolInput,
     ToolOutput,
     ToolRequirements,
     ValueSchema,
 )
+from arcade.utils import snake_to_camel
 
 
-# class ToolMeta(BaseModel):
-#     module: str
-#     path: str
-#     date_added: datetime = Field(default_factory=datetime.now)
-#     date_updated: datetime = Field(default_factory=datetime.now)
+class ToolMeta(BaseModel):
+    module: str
+    path: str
+    date_added: datetime = Field(default_factory=datetime.now)
+    date_updated: datetime = Field(default_factory=datetime.now)
+
+
+class MaterializedTool(BaseModel):
+    tool: Callable
+    definition: ToolDefinition
+    meta: ToolMeta
 
 
 class ToolCatalog:
     def __init__(self, tools_dir: str = settings.TOOLS_DIR):
         self.tools = self.read_tools(tools_dir)
-        # self.tools.update(self.__get_builitin_tools())
 
     @staticmethod
     def read_tools(directory: str) -> list[ToolDefinition]:
@@ -59,10 +62,11 @@ class ToolCatalog:
 
             module = import_module(module_name)
             tool_func = getattr(module, func_name)
-            tools[name] = ToolCatalog.create_tool_definition(tool_func, version)
-
-            # TODO restore
-            # tool_meta = ToolMeta(module=module_name, path=module.__file__)
+            tools[name] = MaterializedTool(
+                definition=ToolCatalog.create_tool_definition(tool_func, version),
+                tool=tool_func,
+                meta=ToolMeta(module=module_name, path=module.__file__),
+            )
 
         return tools
 
