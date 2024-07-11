@@ -1,23 +1,21 @@
 import os
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar, Union
+
+from arcade.sdk.models import ToolAuthorizationRequirement
 
 T = TypeVar("T")
 
 
-class Description:
-    def __init__(self, description: str):
-        self.description = description
-
-    def __str__(self):
-        return self.description
-
-
 def tool(
-    func: Callable | None = None, name: str | None = None, description: str | None = None
+    func: Callable | None = None,
+    name: str | None = None,
+    description: str | None = None,
+    requires_auth: Union[ToolAuthorizationRequirement, None] = None,
 ) -> Callable:
     def decorator(func: Callable) -> Callable:
         func.__tool_name__ = name or getattr(func, "__name__", "unknown")
         func.__tool_description__ = description or func.__doc__
+        func.__tool_requires_auth__ = requires_auth
 
         return func
 

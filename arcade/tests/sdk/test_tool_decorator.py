@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 
+from arcade.sdk.models import OAuth2AuthorizationRequirement
 from arcade.sdk.tool import tool
 
 
@@ -34,9 +35,18 @@ async def test_async_function():
 
 
 def test_tool_decorator_with_name_and_description():
-    @tool(name="TestTool", description="Test description")
+    @tool(
+        name="TestTool",
+        description="Test description",
+        requires_auth=OAuth2AuthorizationRequirement(
+            url="https://example.com/oauth2/auth",
+            scopes=["test_scope"],
+        ),
+    )
     def test_tool(x, y):
         return x + y
 
     assert test_tool.__tool_name__ == "TestTool"
     assert test_tool.__tool_description__ == "Test description"
+    assert str(test_tool.__tool_requires_auth__.url) == "https://example.com/oauth2/auth"
+    assert test_tool.__tool_requires_auth__.scopes == ["test_scope"]

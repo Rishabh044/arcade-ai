@@ -13,7 +13,7 @@ from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
 from arcade.utils import snake_to_camel
-from arcade.sdk.models import ToolDefinition
+from arcade.sdk.models import ToolDefinition, ToolRequirements
 
 
 # class ToolMeta(BaseModel):
@@ -83,15 +83,22 @@ class ToolCatalog:
 
     @staticmethod
     def create_tool_definition(tool: Callable, version: str) -> ToolDefinition:
-        tool_name = getattr(tool, "name", tool.__name__)
+        tool_name = getattr(tool, "__tool_name__", tool.__name__)
+        tool_description = getattr(tool, "__tool_description__", None)
+        if tool_description is None:
+            tool_description = tool.__doc__ or "No description provided."
+
         input_model, output_model = create_func_models(tool)
         response_model = create_response_model(tool_name, output_model)
         tool_def = ToolDefinition(
             name=tool_name,
-            description=tool.__doc__ or "No description provided.",
+            description=tool_description,
             version=version,
             input_model=input_model,
             output_model=response_model,
+            requirements=ToolRequirements(
+                authorization=getattr(tool, "__tool_requires_auth__", None),
+            ),
         )
         return tool_def
 

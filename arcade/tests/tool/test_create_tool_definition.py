@@ -1,3 +1,4 @@
+from arcade.sdk.models import OAuth2AuthorizationRequirement
 from arcade.sdk.tool import tool
 from arcade.tool.catalog import ToolCatalog
 
@@ -61,3 +62,19 @@ def test_create_tool_def_with_docstring_description():
     tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
 
     assert tool_def.description == "Docstring description"  # Uses docstring description
+
+
+def test_create_tool_def_with_oauth2_auth_requirement():
+    @tool(
+        requires_auth=OAuth2AuthorizationRequirement(
+            url="https://example.com/oauth2/auth", scopes=["scope1", "scope2"]
+        )
+    )
+    def sample_function():
+        pass
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.requirements.authorization == OAuth2AuthorizationRequirement(
+        url="https://example.com/oauth2/auth", scopes=["scope1", "scope2"]
+    )
