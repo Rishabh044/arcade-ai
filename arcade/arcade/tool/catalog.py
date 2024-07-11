@@ -229,7 +229,7 @@ def get_wire_type(_type: type) -> Literal["string", "integer", "decimal", "boole
     elif issubclass(_type, dict):
         return "json"
     else:
-        raise TypeError(f"Unsupported type: {_type}")
+        raise TypeError(f"Unsupported parameter type: {_type}")
 
 
 def determine_output_model(func: Callable) -> type[BaseModel]:

@@ -183,10 +183,68 @@ def test_create_tool_with_multiple_input_params():
     )
 
 
-# TODO: Test with dict (json) parameter
-# TODO: Test with string parameter with enum values
-# TODO: Test with unsupported parameter (raises TypeError)
-# TODO: Test with Annotated[str, ...] parameter
+def test_create_tool_with_input_dict_param():
+    @tool
+    def sample_function(param1: dict):
+        pass
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.input == ToolInput(
+        parameters=[
+            InputParameter(
+                name="param1",
+                description="No description provided.",
+                inferrable=True,
+                required=True,
+                value_schema=ValueSchema(type="json", enum=None),
+            )
+        ]
+    )
+
+
+# def test_create_tool_with_input_string_enum_param():
+#     @tool
+#     def sample_function(param1: str):
+#         pass
+
+#     tool_def = ToolCatalog.create_tool_definition(
+#         sample_function, "1.0", input_parameters=[
+#             InputParameter(
+#                 name="param1",
+#                 description="No description provided.",
+#                 inferrable=True,
+#                 required=True,
+#                 value_schema=ValueSchema(type="string", enum=["value1", "value2"]),
+#             )
+#         ]
+#     )
+
+#     assert tool_def.input.parameters[0].value_schema.enum == ["value1", "value2"]
+
+
+def test_create_tool_with_unsupported_input_param():
+    @tool
+    def sample_function(param1: complex):
+        pass
+
+    try:
+        ToolCatalog.create_tool_definition(sample_function, "1.0")
+    except TypeError as e:
+        assert str(e) == "Unsupported parameter type: <class 'complex'>"
+
+
+def test_create_tool_with_annotated_param():
+    from typing import Annotated
+
+    @tool
+    def sample_function(param1: Annotated[str, "description"]):
+        pass
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.input.parameters[0].description == "description"
+
 
 # TODO: Test with output (return) value -> TO.value.value_schema is set
 # TODO: Test with Optional[] output value -> ToolOutput.available_modes includes `null`
