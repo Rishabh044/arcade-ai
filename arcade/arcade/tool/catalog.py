@@ -41,18 +41,6 @@ from arcade.sdk.models import (
 #     date_updated: datetime = Field(default_factory=datetime.now)
 
 
-# class ToolSchema(BaseModel):
-#     name: str
-#     description: str
-#     version: str
-#     tool: Callable
-
-#     input_model: type[BaseModel]
-#     output_model: type[BaseModel]
-
-#     meta: ToolMeta
-
-
 class ToolCatalog:
     def __init__(self, tools_dir: str = settings.TOOLS_DIR):
         self.tools = self.read_tools(tools_dir)
@@ -76,27 +64,6 @@ class ToolCatalog:
             # TODO restore
             # tool_meta = ToolMeta(module=module_name, path=module.__file__)
 
-            # input_model, output_model = create_func_models(tool_func)
-            # response_model = create_response_model(name, output_model)
-            # tool_schema = ToolSchema(
-            #     name=name,
-            #     description=tool.__doc__,
-            #     version=version,
-            #     tool=tool,
-            #     input_model=input_model,
-            #     output_model=response_model,
-            #     meta=tool_meta,
-            # tool_def = ToolDefinition(
-            #     name=name,
-            #     description=tool_func.__doc__,
-            #     version=version,
-            #     # tool=tool,
-            #     input_model=input_model,
-            #     output_model=response_model,
-            #     # meta=tool_meta,
-            # )
-            # tools[name] = tool_def
-
         return tools
 
     @staticmethod
@@ -106,8 +73,6 @@ class ToolCatalog:
         if tool_description is None:
             tool_description = tool.__doc__ or "No description provided."
 
-        # inputs, output = create_func_models(tool)
-        # response_model = create_response_model(tool_name, output)
         tool_def = ToolDefinition(
             name=tool_name,
             description=tool_description,
@@ -216,30 +181,6 @@ def create_output_model(func: Callable) -> ToolOutput:
         ),
         available_modes=available_modes,
     )
-
-
-def create_func_models(func: Callable) -> tuple[type[BaseModel], type[BaseModel]]:
-    """
-    Analyze a function to create corresponding Pydantic models for its input and output.
-
-    Args:
-        func (Callable): The function to analyze.
-
-    Returns:
-        Tuple[Type[BaseModel], Type[BaseModel]]: A tuple containing the input and output Pydantic models.
-    """
-    input_fields = {}
-    if asyncio.iscoroutinefunction(func):
-        func = func.__wrapped__
-    for name, param in inspect.signature(func, follow_wrapped=True).parameters.items():
-        field_info = extract_field_info(param)
-        input_fields[name] = (field_info["type"], Field(**field_info["field_params"]))
-
-    input_model = create_model(f"{snake_to_camel(func.__name__)}Input", **input_fields)
-
-    output_model = determine_output_model(func)
-
-    return input_model, output_model
 
 
 def extract_field_info(param: inspect.Parameter) -> dict:
