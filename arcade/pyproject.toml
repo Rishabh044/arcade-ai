@@ -5,7 +5,7 @@ description = ""
 packages = [
     {include="arcade", from="."}
 ]
-authors = ["Sam Partee <Partees21@gmail.com>"]
+authors = ["Arcade AI <sam@arcade-ai.com>"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

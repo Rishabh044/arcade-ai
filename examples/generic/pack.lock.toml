@@ -8,9 +8,10 @@ email = "sam@partee.io"
 [depends]
 
 [tools]
-Summarize = "llm.summarize@0.0.1"
-Respond = "llm.respond@0.0.1"
+TextSearch = "BM25.text_search@0.0.1"
 ReadSqlite = "read_sqlite.read_sqlite@0.0.1"
 ReadProducts = "read_sqlite.read_products@0.0.1"
 SendEmail = "gmail.send_email@0.0.1"
 ReadEmail = "gmail.read_email@0.0.1"
+OauthReadEmail = "gmail.oauth_read_email@0.0.1"
+ListDriveFiles = "gmail.list_drive_files@0.0.1"
