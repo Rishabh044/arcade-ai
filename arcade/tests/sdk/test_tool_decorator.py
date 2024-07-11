@@ -8,7 +8,7 @@ from arcade.sdk.tool import tool
 @pytest.mark.asyncio
 async def test_sync_function():
     """
-    Ensures a sync function will run when decorated by @tool
+    Ensures a function will run when decorated by @tool
     """
 
     @tool
