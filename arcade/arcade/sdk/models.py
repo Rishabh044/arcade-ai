@@ -4,6 +4,11 @@ from typing import Literal, Optional, Union
 from pydantic import AnyUrl, BaseModel, Field, conlist
 
 
+class Inferrable:
+    def __init__(self, inferrable: bool):
+        self.inferrable = inferrable
+
+
 class ValueSchema(BaseModel):
     type: Literal["string", "integer", "decimal", "boolean", "json"]
     enum: Optional[list[str]] = None

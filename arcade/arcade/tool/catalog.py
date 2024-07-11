@@ -23,6 +23,7 @@ from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
 from arcade.utils import snake_to_camel
 from arcade.sdk.models import (
+    Inferrable,
     OutputValue,
     ToolInput,
     InputParameter,
@@ -149,17 +150,34 @@ def create_input_model(func: Callable) -> ToolInput:
     input_parameters = []
     for name, param in inspect.signature(func, follow_wrapped=True).parameters.items():
         field_info = extract_field_info(param)
+
+        is_enum = False
+        enum_values = []
+
+        # Special case: Literal["string1", "string2"] can be enumerated on the wire
+        if is_string_literal(field_info["field_params"]["type"]):
+            is_enum = True
+            enum_values = get_args(field_info["field_params"]["type"])
+
         input_parameters.append(
             InputParameter(
                 name=name,
                 description=field_info["field_params"]["description"],
                 required=field_info["field_params"]["default"] is None
                 and not field_info["field_params"]["optional"],
-                value_schema=ValueSchema(type=field_info["field_params"]["wire_type"]),
+                inferrable=field_info["field_params"]["inferrable"],
+                value_schema=ValueSchema(
+                    type=field_info["field_params"]["wire_type"],
+                    enum=enum_values if is_enum else None,
+                ),
             )
         )
 
     return ToolInput(parameters=input_parameters)
+
+
+def is_string_literal(_type: type) -> bool:
+    return get_origin(_type) is Literal and all(isinstance(arg, str) for arg in get_args(_type))
 
 
 def create_output_model(func: Callable) -> ToolOutput:
@@ -185,6 +203,7 @@ def create_output_model(func: Callable) -> ToolOutput:
         is_optional = True
 
     wire_type = get_wire_type(return_type)
+
     available_modes = ["value"]
 
     if is_optional:
@@ -192,7 +211,8 @@ def create_output_model(func: Callable) -> ToolOutput:
 
     return ToolOutput(
         value=OutputValue(
-            description=description, value_schema=ValueSchema(type=wire_type, enum=None)
+            description=description,
+            value_schema=ValueSchema(type=wire_type),
         ),
         available_modes=available_modes,
     )
@@ -233,12 +253,11 @@ def extract_field_info(param: inspect.Parameter) -> dict:
         dict: A dictionary with 'type' and 'field_params'.
     """
     annotation = param.annotation
+    metadata = getattr(annotation, "__metadata__", [])
+
     default = param.default if param.default is not inspect.Parameter.empty else None
-    description = (
-        getattr(annotation, "__metadata__", [None])[0]
-        if hasattr(annotation, "__metadata__")
-        else None
-    )
+    description = next((m for m in metadata if isinstance(m, str)), None)
+    inferrable = next((m.inferrable for m in metadata if isinstance(m, Inferrable)), True)
 
     # If the param is Annotated[], unwrap the annotation
     # Otherwise, use the literal type
@@ -251,12 +270,15 @@ def extract_field_info(param: inspect.Parameter) -> dict:
         field_type = next(arg for arg in get_args(field_type) if arg is not type(None))
         is_optional = True
 
+    wire_type = get_wire_type(str) if is_string_literal(field_type) else get_wire_type(field_type)
+
     field_params = {
         "default": default,
         "optional": is_optional,
+        "inferrable": inferrable,
         "description": str(description) if description else "No description provided.",
         "type": field_type,
-        "wire_type": get_wire_type(field_type),
+        "wire_type": wire_type,
         "original_type": original_type,
     }
 

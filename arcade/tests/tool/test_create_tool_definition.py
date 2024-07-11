@@ -1,6 +1,12 @@
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
-from arcade.sdk.models import InputParameter, OAuth2AuthorizationRequirement, ToolInput, ValueSchema
+from arcade.sdk.models import (
+    Inferrable,
+    InputParameter,
+    OAuth2AuthorizationRequirement,
+    ToolInput,
+    ValueSchema,
+)
 from arcade.sdk.tool import tool
 from arcade.tool.catalog import ToolCatalog
 
@@ -123,8 +129,6 @@ def test_create_tool_with_input_param_with_default():
 
 
 def test_create_tool_with_optional_input_param():
-    from typing import Optional
-
     @tool
     def sample_function(param1: Optional[str]):
         pass
@@ -138,6 +142,26 @@ def test_create_tool_with_optional_input_param():
                 description="No description provided.",
                 inferrable=True,
                 required=False,  # Because of Optional[str]
+                value_schema=ValueSchema(type="string", enum=None),
+            )
+        ]
+    )
+
+
+def test_create_tool_with_inferrable_input_param():
+    @tool
+    def sample_function(param1: Annotated[str, "param description", Inferrable(True)]):
+        pass
+
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
+
+    assert tool_def.input == ToolInput(
+        parameters=[
+            InputParameter(
+                name="param1",
+                description="param description",
+                inferrable=True,  # Thanks to Inferrable(True)
+                required=True,  # It is not an optional param
                 value_schema=ValueSchema(type="string", enum=None),
             )
         ]
@@ -205,24 +229,24 @@ def test_create_tool_with_input_dict_param():
     )
 
 
-# def test_create_tool_with_input_string_enum_param():
-#     @tool
-#     def sample_function(param1: str):
-#         pass
+def test_create_tool_with_input_string_enum_param():
+    @tool
+    def sample_function(param1: Literal["value1", "value2"]):
+        pass
 
-#     tool_def = ToolCatalog.create_tool_definition(
-#         sample_function, "1.0", input_parameters=[
-#             InputParameter(
-#                 name="param1",
-#                 description="No description provided.",
-#                 inferrable=True,
-#                 required=True,
-#                 value_schema=ValueSchema(type="string", enum=["value1", "value2"]),
-#             )
-#         ]
-#     )
+    tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")
 
-#     assert tool_def.input.parameters[0].value_schema.enum == ["value1", "value2"]
+    assert tool_def.input == ToolInput(
+        parameters=[
+            InputParameter(
+                name="param1",
+                description="No description provided.",
+                inferrable=True,
+                required=True,
+                value_schema=ValueSchema(type="string", enum=["value1", "value2"]),
+            )
+        ]
+    )
 
 
 def test_create_tool_with_unsupported_input_param():
@@ -237,8 +261,6 @@ def test_create_tool_with_unsupported_input_param():
 
 
 def test_create_tool_with_annotated_param():
-    from typing import Annotated
-
     @tool
     def sample_function(param1: Annotated[str, "description"]):
         pass
