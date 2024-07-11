@@ -43,7 +43,7 @@ def test_create_tool_def_with_no_description():
 
 
 def test_create_tool_def_with_specified_description():
-    @tool(desc="Custom description")
+    @tool(description="Custom description")
     def sample_function():
         pass
 

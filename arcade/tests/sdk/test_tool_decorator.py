@@ -5,8 +5,7 @@ import pytest
 from arcade.sdk.tool import tool
 
 
-@pytest.mark.asyncio
-async def test_sync_function():
+def test_sync_function():
     """
     Ensures a function will run when decorated by @tool
     """
@@ -15,7 +14,7 @@ async def test_sync_function():
     def sync_func(x, y):
         return x + y
 
-    result = await sync_func(1, 2)
+    result = sync_func(1, 2)
     assert result == 3
 
 
@@ -32,3 +31,12 @@ async def test_async_function():
 
     result = await async_func(1, 2)
     assert result == 3
+
+
+def test_tool_decorator_with_name_and_description():
+    @tool(name="TestTool", description="Test description")
+    def test_tool(x, y):
+        return x + y
+
+    assert test_tool.__tool_name__ == "TestTool"
+    assert test_tool.__tool_description__ == "Test description"

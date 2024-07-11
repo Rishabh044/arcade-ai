@@ -14,20 +14,18 @@ class Description:
         return self.description
 
 
-def tool(func: Callable, name: str | None = None, description: str | None = None) -> Callable:
-    func.__tool_name__ = name or getattr(func, "__name__", "unknown")
-    func.__tool_description__ = description or func.__doc__
+def tool(
+    func: Callable | None = None, name: str | None = None, description: str | None = None
+) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        func.__tool_name__ = name or getattr(func, "__name__", "unknown")
+        func.__tool_description__ = description or func.__doc__
 
-    @functools.wraps(func)
-    async def wrapper(*args, **kwargs) -> Any:
-        if asyncio.iscoroutinefunction(func):
-            return await func(*args, **kwargs)
-        else:
-            loop = asyncio.get_running_loop()
-            partial_func = functools.partial(func, *args, **kwargs)
-            return await loop.run_in_executor(None, partial_func)
+        return func
 
-    return wrapper
+    if func:  # This means the decorator is used without parameters
+        return decorator(func)
+    return decorator
 
 
 def get_secret(name: str, default: Optional[Any] = None) -> str:
