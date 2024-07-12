@@ -10,6 +10,7 @@ from typing import (
     Literal,
     Optional,
     Union,
+    cast,
     get_args,
     get_origin,
 )
@@ -34,7 +35,7 @@ from arcade.utils import first_or_none, snake_to_camel
 
 class ToolMeta(BaseModel):
     module: str
-    path: str
+    path: Optional[str] = None
     date_added: datetime = Field(default_factory=datetime.now)
     date_updated: datetime = Field(default_factory=datetime.now)
 
@@ -54,11 +55,11 @@ class ToolCatalog:
         self.tools = self.read_tools(tools_dir)
 
     @staticmethod
-    def read_tools(directory: str) -> list[ToolDefinition]:
+    def read_tools(directory: str) -> dict[str, MaterializedTool]:
         toolpack = ToolPack.from_lock_file(directory)
         sys.path.append(str(Path(directory).resolve() / "tools"))
 
-        tools = {}
+        tools: dict[str, MaterializedTool] = {}
         for name, tool_spec in toolpack.tools.items():
             print(name, tool_spec)
             module_name, versioned_tool = tool_spec.split(".", 1)
@@ -96,7 +97,7 @@ class ToolCatalog:
         )
         return tool_def
 
-    def __getitem__(self, name: str) -> Optional[ToolDefinition]:
+    def __getitem__(self, name: str) -> Optional[MaterializedTool]:
         # TODO error handling
         for tool_name, tool in self.tools.items():
             if tool_name == name:
@@ -104,19 +105,19 @@ class ToolCatalog:
         return None
 
     def get_tool(self, name: str) -> Optional[Callable]:
-        for tool in self.tools:
-            if tool.name == name:
+        for _, tool in self.tools.items():
+            if tool.definition.name == name:
                 return tool.tool
         return None
 
     def list_tools(self) -> list[dict[str, str]]:
-        def get_tool_endpoint(t: ToolDefinition) -> str:
-            return f"/tool/{t.meta.module}/{t.name}"
+        def get_tool_endpoint(t: MaterializedTool) -> str:
+            return f"/tool/{t.meta.module}/{t.definition.name}"
 
         return [
             {
-                "name": t.name,
-                "description": t.description,
+                "name": t.definition.name,
+                "description": t.definition.description,
                 "endpoint": get_tool_endpoint(t),
             }
             for t in self.tools.values()
@@ -132,12 +133,12 @@ def create_input_model(func: Callable) -> ToolInputs:
         field_info = extract_field_info(param)
 
         is_enum = False
-        enum_values = []
+        enum_values: list[str] = []
 
         # Special case: Literal["string1", "string2"] can be enumerated on the wire
         if is_string_literal(field_info["field_params"]["type"]):
             is_enum = True
-            enum_values = get_args(field_info["field_params"]["type"])
+            enum_values = [str(e) for e in get_args(field_info["field_params"]["type"])]
 
         input_parameters.append(
             InputParameter(
@@ -169,6 +170,8 @@ def create_output_model(func: Callable) -> ToolOutput:
 
     if return_type is inspect.Signature.empty:
         return ToolOutput(
+            value_schema=None,
+            description="No description provided.",
             available_modes=["null"],
         )
 
@@ -262,7 +265,7 @@ def get_wire_type(
 
     wire_type = type_mapping.get(_type)
     if wire_type:
-        return wire_type
+        return cast(Literal["string", "integer", "decimal", "boolean", "json"], wire_type)
     elif hasattr(_type, "__origin__"):
         # account for "list[str]" and "dict[str, int]" and "Optional[str]" and other typing types
         origin = _type.__origin__
