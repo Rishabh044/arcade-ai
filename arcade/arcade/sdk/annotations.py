@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import _AnnotatedAlias, _tp_cache, _type_check
 
 
@@ -17,13 +18,8 @@ class BaseParamAnnotation:
         return _AnnotatedAlias(origin, metadata)
 
 
-class Inferrable(BaseParamAnnotation):
-    """An annotation for a parameter that can be inferred by a model."""
+@dataclass(frozen=True)
+class Inferrable:
+    """An annotation indicating that a parameter can be inferred by a model (default: True)."""
 
-    pass
-
-
-class Opaque(BaseParamAnnotation):
-    """An annotation for a parameter that cannot be inferred by a model."""
-
-    pass
+    value: bool = True

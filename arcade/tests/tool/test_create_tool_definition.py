@@ -2,7 +2,7 @@ from typing import Annotated, Literal, Optional
 
 import pytest
 
-from arcade.sdk.annotations import Opaque
+from arcade.sdk.annotations import Inferrable
 from arcade.sdk.schemas import (
     InputParameter,
     OAuth2AuthorizationRequirement,
@@ -77,7 +77,7 @@ def test_create_tool_with_optional_input_param():
 
 def test_create_tool_with_inferrable_input_param():
     @tool
-    def sample_function(param1: Annotated[Opaque[str], "param description"]):
+    def sample_function(param1: Annotated[str, "param description", Inferrable(False)]):
         pass
 
     tool_def = ToolCatalog.create_tool_definition(sample_function, "1.0")

@@ -20,6 +20,7 @@ from arcade.actor.common.response import ResponseModel
 from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
+from arcade.sdk.annotations import Inferrable
 from arcade.sdk.schemas import (
     InputParameter,
     ToolDefinition,
@@ -28,7 +29,7 @@ from arcade.sdk.schemas import (
     ToolRequirements,
     ValueSchema,
 )
-from arcade.utils import snake_to_camel
+from arcade.utils import first_or_none, snake_to_camel
 
 
 class ToolMeta(BaseModel):
@@ -228,13 +229,15 @@ def extract_field_info(param: inspect.Parameter) -> dict:
 
     wire_type = get_wire_type(str) if is_string_literal(field_type) else get_wire_type(field_type)
 
-    annotated_as_opaque = False  # = any(issubclass(arg, Opaque) for arg in get_args(annotation))
-    # annotated_as_inferrable = any(issubclass(arg, Inferrable) for arg in get_args(annotation))
+    # Get the Inferrable annotation, if it exists
+    inferrable_annotation = first_or_none(Inferrable, get_args(annotation))
 
     field_params = {
         "default": default,
         "optional": is_optional,
-        "inferrable": not annotated_as_opaque,  # or annotated_as_inferrable,
+        "inferrable": inferrable_annotation.value
+        if inferrable_annotation
+        else True,  # Params are inferrable by default
         "description": str(description) if description else "No description provided.",
         "type": field_type,
         "wire_type": wire_type,
@@ -257,7 +260,7 @@ def get_wire_type(
         BaseModel: "json",
     }
 
-    wire_type = type_mapping.get(_type, None)
+    wire_type = type_mapping.get(_type)
     if wire_type:
         return wire_type
     elif hasattr(_type, "__origin__"):
