@@ -101,8 +101,8 @@ class ToolCatalog:
             name=tool_name,
             description=tool_description,
             version=version,
-            inputs=create_input_model(tool),
-            output=create_output_model(tool),
+            inputs=create_input_definition(tool),
+            output=create_output_definition(tool),
             requirements=ToolRequirements(
                 authorization=getattr(tool, "__tool_requires_auth__", None),
             ),
@@ -135,7 +135,7 @@ class ToolCatalog:
         ]
 
 
-def create_input_model(func: Callable) -> ToolInputs:
+def create_input_definition(func: Callable) -> ToolInputs:
     """
     Create an input model for a function based on its parameters.
     """
@@ -174,7 +174,7 @@ def create_input_model(func: Callable) -> ToolInputs:
     return ToolInputs(parameters=input_parameters)
 
 
-def create_output_model(func: Callable) -> ToolOutput:
+def create_output_definition(func: Callable) -> ToolOutput:
     """
     Create an output model for a function based on its return annotation.
     """
