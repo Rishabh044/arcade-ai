@@ -55,6 +55,18 @@ class MaterializedTool(BaseModel):
     input_model: type[BaseModel]
     output_model: type[BaseModel]
 
+    @property
+    def name(self) -> str:
+        return self.definition.name
+
+    @property
+    def version(self) -> str:
+        return self.definition.version
+
+    @property
+    def description(self) -> str:
+        return self.definition.description
+
 
 class ToolCatalog:
     def __init__(self, tools_dir: str = settings.TOOLS_DIR):
@@ -67,14 +79,14 @@ class ToolCatalog:
 
         tools: dict[str, MaterializedTool] = {}
         for name, tool_spec in toolpack.tools.items():
-            print(name, tool_spec)
             module_name, versioned_tool = tool_spec.split(".", 1)
             func_name, version = versioned_tool.split("@")
 
             module = import_module(module_name)
             tool_func = getattr(module, func_name)
             input_model, output_model = create_func_models(tool_func)
-            tools[name] = MaterializedTool(
+            tool_name = snake_to_camel(name)
+            tools[tool_name] = MaterializedTool(
                 definition=ToolCatalog.create_tool_definition(tool_func, version),
                 tool=tool_func,
                 meta=ToolMeta(module=module_name, path=module.__file__),
@@ -98,7 +110,7 @@ class ToolCatalog:
             raise ToolDefinitionError(f"Tool {tool_name} must have a return type annotation")
 
         return ToolDefinition(
-            name=tool_name,
+            name=snake_to_camel(tool_name),
             description=tool_description,
             version=version,
             inputs=create_input_definition(tool),
@@ -115,11 +127,14 @@ class ToolCatalog:
                 return tool
         return None
 
+    def __iter__(self) -> MaterializedTool:
+        yield from self.tools.values()
+
     def get_tool(self, name: str) -> Optional[Callable]:
-        for _, tool in self.tools.items():
+        for _, tool in self:
             if tool.definition.name == name:
                 return tool.tool
-        return None
+        raise ValueError(f"Tool {name} not found.")
 
     def list_tools(self) -> list[dict[str, str]]:
         def get_tool_endpoint(t: MaterializedTool) -> str:
@@ -129,6 +144,7 @@ class ToolCatalog:
             {
                 "name": t.definition.name,
                 "description": t.definition.description,
+                "version": t.version,
                 "endpoint": get_tool_endpoint(t),
             }
             for t in self.tools.values()
