@@ -47,26 +47,38 @@ class MaterializedTool(BaseModel):
     input_model: type[BaseModel]
     output_model: type[BaseModel]
 
+    @property
+    def name(self) -> str:
+        return self.definition.name
+
+    @property
+    def version(self) -> str:
+        return self.definition.version
+
+    @property
+    def description(self) -> str:
+        return self.definition.description
+
 
 class ToolCatalog:
     def __init__(self, tools_dir: str = settings.TOOLS_DIR):
         self.tools = self.read_tools(tools_dir)
 
     @staticmethod
-    def read_tools(directory: str) -> list[ToolDefinition]:
+    def read_tools(directory: str) -> dict[str, MaterializedTool]:
         toolpack = ToolPack.from_lock_file(directory)
         sys.path.append(str(Path(directory).resolve() / "tools"))
 
         tools = {}
         for name, tool_spec in toolpack.tools.items():
-            print(name, tool_spec)
             module_name, versioned_tool = tool_spec.split(".", 1)
             func_name, version = versioned_tool.split("@")
 
             module = import_module(module_name)
             tool_func = getattr(module, func_name)
             input_model, output_model = create_func_models(tool_func)
-            tools[name] = MaterializedTool(
+            tool_name = snake_to_camel(name)
+            tools[tool_name] = MaterializedTool(
                 definition=ToolCatalog.create_tool_definition(tool_func, version),
                 tool=tool_func,
                 meta=ToolMeta(module=module_name, path=module.__file__),
@@ -84,7 +96,7 @@ class ToolCatalog:
             tool_description = tool.__doc__ or "No description provided."
 
         tool_def = ToolDefinition(
-            name=tool_name,
+            name=snake_to_camel(tool_name),
             description=tool_description,
             version=version,
             inputs=create_input_model(tool),
@@ -102,11 +114,16 @@ class ToolCatalog:
                 return tool
         return None
 
+    def __iter__(self) -> MaterializedTool:
+        yield from self.tools.values()
+
     def get_tool(self, name: str) -> Optional[Callable]:
-        for tool in self.tools:
+        # TODO handle error more gracefully
+        for tool in self:
+            print(tool.name, name)
             if tool.name == name:
                 return tool.tool
-        return None
+        raise ValueError(f"Tool {name} not found.")
 
     def list_tools(self) -> list[dict[str, str]]:
         def get_tool_endpoint(t: ToolDefinition) -> str:
@@ -116,6 +133,7 @@ class ToolCatalog:
             {
                 "name": t.name,
                 "description": t.description,
+                "version": t.version,
                 "endpoint": get_tool_endpoint(t),
             }
             for t in self.tools.values()

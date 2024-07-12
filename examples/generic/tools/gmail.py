@@ -254,4 +254,4 @@ async def list_drive_files(
         for item in items:
             print("{0} ({1})".format(item["name"], item["id"]))
 
-    return
+    return items
