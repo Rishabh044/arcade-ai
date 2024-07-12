@@ -5,7 +5,7 @@ from pydantic import AnyUrl, BaseModel, Field, conlist
 
 
 class ValueSchema(BaseModel):
-    val_type: Literal["string", "integer", "decimal", "boolean", "json"]
+    val_type: Literal["string", "integer", "float", "boolean", "json"]
     enum: Optional[list[str]] = None
 
 

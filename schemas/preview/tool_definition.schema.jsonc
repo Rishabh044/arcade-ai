@@ -4,7 +4,13 @@
     "primitives": {
       // All supported primitive data types
       "type": "string",
-      "enum": ["string", "integer", "decimal", "boolean", "json"]
+      "enum": [
+        "string",
+        "integer",
+        "float",
+        "boolean",
+        "json"
+      ]
     },
     "value_schema": {
       // Represents a value schema (e.g. function input parameter)
@@ -14,7 +20,9 @@
           "$ref": "#/$defs/primitives"
         }
       },
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "additionalProperties": false,
       "if": {
         "properties": {
@@ -86,12 +94,18 @@
                 "default": true
               }
             },
-            "required": ["name", "required", "schema"],
+            "required": [
+              "name",
+              "required",
+              "schema"
+            ],
             "additionalProperties": false
           }
         }
       },
-      "required": ["parameters"],
+      "required": [
+        "parameters"
+      ],
       "additionalProperties": false
     },
     "output": {
@@ -121,11 +135,15 @@
               "$ref": "#/$defs/value_schema"
             }
           },
-          "required": ["schema"],
+          "required": [
+            "schema"
+          ],
           "additionalProperties": false
         }
       },
-      "required": ["available_modes"],
+      "required": [
+        "available_modes"
+      ],
       "additionalProperties": false
     },
     "requirements": {
@@ -135,7 +153,10 @@
           "oneOf": [
             {
               "type": "string",
-              "enum": ["none", "token"]
+              "enum": [
+                "none",
+                "token"
+              ]
             },
             {
               "type": "object",
@@ -151,11 +172,15 @@
                       "type": "string"
                     }
                   },
-                  "required": ["url"],
+                  "required": [
+                    "url"
+                  ],
                   "additionalProperties": false
                 }
               },
-              "required": ["oauth2"],
+              "required": [
+                "oauth2"
+              ],
               "additionalProperties": false
             }
           ]
@@ -163,6 +188,11 @@
       }
     }
   },
-  "required": ["name", "version", "input", "output"],
+  "required": [
+    "name",
+    "version",
+    "input",
+    "output"
+  ],
   "additionalProperties": false
 }

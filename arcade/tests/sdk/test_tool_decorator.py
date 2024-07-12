@@ -37,7 +37,7 @@ async def test_async_function():
 def test_tool_decorator_with_all_options():
     @tool(
         name="TestTool",
-        description="Test description",
+        desc="Test description",
         requires_auth=OAuth2AuthorizationRequirement(
             url="https://example.com/oauth2/auth",
             scope=["test_scope", "another.scope"],

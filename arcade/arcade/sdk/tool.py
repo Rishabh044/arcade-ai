@@ -8,13 +8,13 @@ T = TypeVar("T")
 
 def tool(
     func: Callable | None = None,
+    desc: str | None = None,
     name: str | None = None,
-    description: str | None = None,
     requires_auth: Union[ToolAuthorizationRequirement, None] = None,
 ) -> Callable:
     def decorator(func: Callable) -> Callable:
         func.__tool_name__ = name or getattr(func, "__name__", "unknown")
-        func.__tool_description__ = description or func.__doc__
+        func.__tool_description__ = desc or func.__doc__
         func.__tool_requires_auth__ = requires_auth
 
         return func

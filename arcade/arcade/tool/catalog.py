@@ -22,6 +22,7 @@ from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
 from arcade.sdk.annotations import Inferrable
+from arcade.sdk.errors import ToolDefinitionError
 from arcade.sdk.schemas import (
     InputParameter,
     ToolDefinition,
@@ -30,7 +31,12 @@ from arcade.sdk.schemas import (
     ToolRequirements,
     ValueSchema,
 )
-from arcade.utils import first_or_none, snake_to_camel
+from arcade.utils import (
+    does_function_return_value,
+    first_or_none,
+    is_string_literal,
+    snake_to_camel,
+)
 
 
 class ToolMeta(BaseModel):
@@ -81,11 +87,17 @@ class ToolCatalog:
     @staticmethod
     def create_tool_definition(tool: Callable, version: str) -> ToolDefinition:
         tool_name = getattr(tool, "__tool_name__", tool.__name__)
+
+        # Hard requirement: tools must have descriptions
         tool_description = getattr(tool, "__tool_description__", None)
         if tool_description is None:
-            tool_description = tool.__doc__ or "No description provided."
+            raise ToolDefinitionError(f"Tool {tool_name} is missing a description")
 
-        tool_def = ToolDefinition(
+        # If the function returns a value, it must have a type annotation
+        if does_function_return_value(tool) and tool.__annotations__.get("return") is None:
+            raise ToolDefinitionError(f"Tool {tool_name} must have a return type annotation")
+
+        return ToolDefinition(
             name=tool_name,
             description=tool_description,
             version=version,
@@ -95,7 +107,6 @@ class ToolCatalog:
                 authorization=getattr(tool, "__tool_requires_auth__", None),
             ),
         )
-        return tool_def
 
     def __getitem__(self, name: str) -> Optional[MaterializedTool]:
         # TODO error handling
@@ -129,8 +140,14 @@ def create_input_model(func: Callable) -> ToolInputs:
     Create an input model for a function based on its parameters.
     """
     input_parameters = []
-    for name, param in inspect.signature(func, follow_wrapped=True).parameters.items():
+    for _, param in inspect.signature(func, follow_wrapped=True).parameters.items():
         field_info = extract_field_info(param)
+
+        # Hard requirement: params must be described
+        if field_info["field_params"]["description"] is None:
+            raise ToolDefinitionError(
+                f"Parameter {field_info['field_params']['name']} is missing a description"
+            )
 
         is_enum = False
         enum_values: list[str] = []
@@ -142,7 +159,7 @@ def create_input_model(func: Callable) -> ToolInputs:
 
         input_parameters.append(
             InputParameter(
-                name=name,
+                name=field_info["field_params"]["name"],
                 description=field_info["field_params"]["description"],
                 required=field_info["field_params"]["default"] is None
                 and not field_info["field_params"]["optional"],
@@ -155,10 +172,6 @@ def create_input_model(func: Callable) -> ToolInputs:
         )
 
     return ToolInputs(parameters=input_parameters)
-
-
-def is_string_literal(_type: type) -> bool:
-    return get_origin(_type) is Literal and all(isinstance(arg, str) for arg in get_args(_type))
 
 
 def create_output_model(func: Callable) -> ToolOutput:
@@ -215,9 +228,19 @@ def extract_field_info(param: inspect.Parameter) -> dict:
 
     metadata = getattr(annotation, "__metadata__", [])
 
+    name = param.name
+    description = None
+
+    str_annotations = [m for m in metadata if isinstance(m, str)]
+    if len(str_annotations) == 1:
+        description = str_annotations[0]
+    elif len(str_annotations) == 2:
+        name = str_annotations[0]
+        description = str_annotations[1]
+    else:
+        raise ToolDefinitionError(f"Parameter {param} has multiple descriptions")
+
     default = param.default if param.default is not inspect.Parameter.empty else None
-    description = next((m for m in metadata if isinstance(m, str)), None)
-    # TODO throw error if no description is provided
 
     # If the param is Annotated[], unwrap the annotation
     # Otherwise, use the literal type
@@ -236,12 +259,13 @@ def extract_field_info(param: inspect.Parameter) -> dict:
     inferrable_annotation = first_or_none(Inferrable, get_args(annotation))
 
     field_params = {
+        "name": name,
+        "description": str(description) if description else None,
         "default": default,
         "optional": is_optional,
         "inferrable": inferrable_annotation.value
         if inferrable_annotation
         else True,  # Params are inferrable by default
-        "description": str(description) if description else "No description provided.",
         "type": field_type,
         "wire_type": wire_type,
         "original_type": original_type,
@@ -252,12 +276,12 @@ def extract_field_info(param: inspect.Parameter) -> dict:
 
 def get_wire_type(
     _type: type,
-) -> Literal["string", "integer", "decimal", "boolean", "json"]:
+) -> Literal["string", "integer", "float", "boolean", "json"]:
     type_mapping = {
         str: "string",
         bool: "boolean",
         int: "integer",
-        float: "decimal",
+        float: "float",
         dict: "json",
         list: "json",
         BaseModel: "json",
@@ -265,7 +289,7 @@ def get_wire_type(
 
     wire_type = type_mapping.get(_type)
     if wire_type:
-        return cast(Literal["string", "integer", "decimal", "boolean", "json"], wire_type)
+        return cast(Literal["string", "integer", "float", "boolean", "json"], wire_type)
     elif hasattr(_type, "__origin__"):
         # account for "list[str]" and "dict[str, int]" and "Optional[str]" and other typing types
         origin = _type.__origin__
