@@ -17,13 +17,18 @@ def first_or_none(_type: type[T], iterable: Iterable[Any]) -> Optional[T]:
     return None
 
 
-# Utility function to convert CamelCase to snake_case
-def camel_to_snake(name: str) -> str:
+def pascal_to_snake_case(name: str) -> str:
+    """
+    Converts a PascalCase name to snake_case.
+    """
     name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
 
-def snake_to_camel(name: str) -> str:
+def snake_to_pascal_case(name: str) -> str:
+    """
+    Converts a snake_case name to PascalCase.
+    """
     return "".join(x.capitalize() or "_" for x in name.split("_"))
 
 

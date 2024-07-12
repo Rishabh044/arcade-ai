@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from arcade.apm.base import PackInfo, ToolPack
 from arcade.apm.parse import get_tools_from_file
-from arcade.utils import snake_to_camel
+from arcade.utils import snake_to_pascal_case
 
 
 class Packer:
@@ -44,7 +44,7 @@ class Packer:
                 found_tools = get_tools_from_file(tool_file)
                 for tool in found_tools:
                     tool_name = module + "." + tool + "@" + version
-                    tools[snake_to_camel(tool)] = tool_name
+                    tools[snake_to_pascal_case(tool)] = tool_name
             except Exception as e:
                 print(f"Error loading tool from {tool_file}: {e}")
         return tools

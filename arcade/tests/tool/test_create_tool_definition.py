@@ -135,7 +135,7 @@ def func_with_complex_return() -> list[dict[str, str]]:
         pytest.param(
             func_with_description,
             {
-                "name": "func_with_description",  # Defaults to the literal name of the function
+                "name": "FuncWithDescription",  # Defaults to the camelCased function name
             },
             id="func_with_default_name",
         ),

@@ -8,7 +8,7 @@ from arcade.actor.common.response import response_base
 from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.tool.catalog import ToolDefinition
-from arcade.utils import snake_to_camel
+from arcade.utils import snake_to_pascal_case
 
 
 def create_endpoint_function(name, description, func, input_model, output_model):
@@ -44,7 +44,7 @@ def generate_endpoint(schemas: list[ToolDefinition]) -> APIRouter:
 
         # Create the endpoint function
         run = create_endpoint_function(
-            name=snake_to_camel(define.name),
+            name=snake_to_pascal_case(define.name),
             description=define.description,
             func=schema.tool,
             input_model=schema.input_model,
@@ -53,8 +53,8 @@ def generate_endpoint(schemas: list[ToolDefinition]) -> APIRouter:
 
         # Add the endpoint to the FastAPI app
         router.post(
-            f"/{snake_to_camel(define.name)}",
-            name=snake_to_camel(define.name),
+            f"/{snake_to_pascal_case(define.name)}",
+            name=snake_to_pascal_case(define.name),
             summary=define.description,
             tags=[schema.meta.module],
             response_model=schema.output_model,

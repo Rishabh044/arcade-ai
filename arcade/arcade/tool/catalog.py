@@ -35,7 +35,7 @@ from arcade.utils import (
     does_function_return_value,
     first_or_none,
     is_string_literal,
-    snake_to_camel,
+    snake_to_pascal_case,
 )
 
 
@@ -85,7 +85,9 @@ class ToolCatalog:
             module = import_module(module_name)
             tool_func = getattr(module, func_name)
             input_model, output_model = create_func_models(tool_func)
-            tool_name = snake_to_camel(name)
+            tool_name = snake_to_pascal_case(
+                name
+            )  # TODO make sure this follows create_tool_definition
             tools[tool_name] = MaterializedTool(
                 definition=ToolCatalog.create_tool_definition(tool_func, version),
                 tool=tool_func,
@@ -110,7 +112,7 @@ class ToolCatalog:
             raise ToolDefinitionError(f"Tool {tool_name} must have a return type annotation")
 
         return ToolDefinition(
-            name=snake_to_camel(tool_name),
+            name=tool_name,
             description=tool_description,
             version=version,
             inputs=create_input_definition(tool),
@@ -342,7 +344,7 @@ def create_func_models(func: Callable) -> tuple[type[BaseModel], type[BaseModel]
         }
         input_fields[name] = (field_info["type"], Field(**param_fields))
 
-    input_model = create_model(f"{snake_to_camel(func.__name__)}Input", **input_fields)
+    input_model = create_model(f"{snake_to_pascal_case(func.__name__)}Input", **input_fields)
 
     output_model = determine_output_model(func)
 
@@ -360,7 +362,7 @@ def determine_output_model(func: Callable) -> type[BaseModel]:
         Type[BaseModel]: A Pydantic model representing the output.
     """
     return_annotation = inspect.signature(func).return_annotation
-    output_model_name = f"{snake_to_camel(func.__name__)}Output"
+    output_model_name = f"{snake_to_pascal_case(func.__name__)}Output"
     if return_annotation is inspect.Signature.empty:
         return create_model(output_model_name)
     elif hasattr(return_annotation, "__origin__"):
@@ -396,7 +398,7 @@ def create_response_model(name: str, output_model: type[BaseModel]) -> type[Resp
     """
     # Create a new response model
     response_model = create_model(
-        f"{snake_to_camel(name)}Response",
+        f"{snake_to_pascal_case(name)}Response",
         code=(int, CustomResponseCode.HTTP_200.code),
         msg=(str, CustomResponseCode.HTTP_200.msg),
         data=(Optional[output_model], None),

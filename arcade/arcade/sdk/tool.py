@@ -2,6 +2,7 @@ import os
 from typing import Any, Callable, Optional, TypeVar, Union
 
 from arcade.sdk.schemas import ToolAuthorizationRequirement
+from arcade.utils import snake_to_pascal_case
 
 T = TypeVar("T")
 
@@ -13,7 +14,7 @@ def tool(
     requires_auth: Union[ToolAuthorizationRequirement, None] = None,
 ) -> Callable:
     def decorator(func: Callable) -> Callable:
-        func.__tool_name__ = name or getattr(func, "__name__", "unknown")
+        func.__tool_name__ = name or snake_to_pascal_case(getattr(func, "__name__", None))
         func.__tool_description__ = desc or func.__doc__
         func.__tool_requires_auth__ = requires_auth
 
