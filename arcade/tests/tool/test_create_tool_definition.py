@@ -291,12 +291,14 @@ def test_create_tool_with_annotated_output_value():
                 )
             },
             {
-                "requirements": ToolRequirements(**{
-                    "authorization": OAuth2AuthorizationRequirement(
-                        url="https://example.com/oauth2/auth",
-                        scope=["scope1", "scope2"],
-                    )
-                })
+                "requirements": ToolRequirements(
+                    **{
+                        "authorization": OAuth2AuthorizationRequirement(
+                            url="https://example.com/oauth2/auth",
+                            scope=["scope1", "scope2"],
+                        )
+                    }
+                )
             },
             id="test_with_oauth2_auth_requirement",
         ),

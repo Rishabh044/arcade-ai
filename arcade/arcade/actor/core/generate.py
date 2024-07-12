@@ -7,7 +7,7 @@ from pydantic import BaseModel, ValidationError
 from arcade.actor.common.response import response_base
 from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
-from arcade.tool.catalog import ToolSchema
+from arcade.tool.catalog import ToolDefinition
 
 
 def create_endpoint_function(name, description, func, input_model, output_model):
@@ -32,17 +32,19 @@ def create_endpoint_function(name, description, func, input_model, output_model)
     return run
 
 
-def generate_endpoint(schemas: list[ToolSchema]) -> APIRouter:
+def generate_endpoint(schemas: list[ToolDefinition]) -> APIRouter:
     routers = []
     top_level_router = APIRouter(prefix=settings.API_ACTION_STR)
 
     for schema in schemas:
         router = APIRouter(prefix="/" + schema.meta.module)
 
+        define = schema.definition
+
         # Create the endpoint function
         run = create_endpoint_function(
-            name=schema.name,
-            description=schema.description,
+            name=define.name,
+            description=define.description,
             func=schema.tool,
             input_model=schema.input_model,
             output_model=schema.output_model,
@@ -50,9 +52,9 @@ def generate_endpoint(schemas: list[ToolSchema]) -> APIRouter:
 
         # Add the endpoint to the FastAPI app
         router.post(
-            f"/{schema.name}",
-            name=schema.name,
-            summary=schema.description,
+            f"/{define.name}",
+            name=define.name,
+            summary=define.description,
             tags=[schema.meta.module],
             response_model=schema.output_model,
             response_model_exclude_unset=True,

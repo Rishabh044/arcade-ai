@@ -14,7 +14,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from typing import Dict, List, Annotated
-from arcade.sdk import tool, get_secret
+from arcade.sdk.tool import tool, get_secret
 
 
 @tool

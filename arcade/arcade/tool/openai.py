@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefined
 
-from arcade.tool.catalog import ToolSchema
+from arcade.tool.catalog import ToolDefinition
 
 PYTHON_TO_JSON_TYPES = {
     str: "string",
@@ -79,8 +79,8 @@ def model_to_json_schema(model: type[BaseModel]) -> dict[str, Any]:
     }
 
 
-def schema_to_openai_tool(tool_schema: "ToolSchema") -> str:
-    """Convert an ToolSchema object to a JSON schema string in the specified function format.
+def schema_to_openai_tool(tool_schema: "ToolDefinition") -> str:
+    """Convert an ToolDefinition object to a JSON schema string in the specified function format.
 
     Example output format:
     {
@@ -106,7 +106,7 @@ def schema_to_openai_tool(tool_schema: "ToolSchema") -> str:
     }
 
     Args:
-        tool_schema (ToolSchema): The tool schema to convert.
+        tool_schema (ToolDefinition): The tool schema to convert.
 
     Returns:
         str: A JSON schema string representing the tool in the specified format.

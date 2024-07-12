@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import sys
 from datetime import datetime
@@ -19,7 +20,6 @@ from arcade.actor.common.response import ResponseModel
 from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
-from arcade.sdk.annotations import Inferrable, Opaque
 from arcade.sdk.schemas import (
     InputParameter,
     ToolDefinition,
@@ -43,6 +43,10 @@ class MaterializedTool(BaseModel):
     definition: ToolDefinition
     meta: ToolMeta
 
+    # Thought (Sam): Should generate create these from ToolDefinition?
+    input_model: type[BaseModel]
+    output_model: type[BaseModel]
+
 
 class ToolCatalog:
     def __init__(self, tools_dir: str = settings.TOOLS_DIR):
@@ -61,10 +65,13 @@ class ToolCatalog:
 
             module = import_module(module_name)
             tool_func = getattr(module, func_name)
+            input_model, output_model = create_func_models(tool_func)
             tools[name] = MaterializedTool(
                 definition=ToolCatalog.create_tool_definition(tool_func, version),
                 tool=tool_func,
                 meta=ToolMeta(module=module_name, path=module.__file__),
+                input_model=input_model,
+                output_model=output_model,
             )
 
         return tools
@@ -221,7 +228,7 @@ def extract_field_info(param: inspect.Parameter) -> dict:
 
     wire_type = get_wire_type(str) if is_string_literal(field_type) else get_wire_type(field_type)
 
-    annotated_as_opaque = any(issubclass(arg, Opaque) for arg in get_args(annotation))
+    annotated_as_opaque = False  # = any(issubclass(arg, Opaque) for arg in get_args(annotation))
     # annotated_as_inferrable = any(issubclass(arg, Inferrable) for arg in get_args(annotation))
 
     field_params = {
@@ -240,18 +247,60 @@ def extract_field_info(param: inspect.Parameter) -> dict:
 def get_wire_type(
     _type: type,
 ) -> Literal["string", "integer", "decimal", "boolean", "json"]:
-    if issubclass(_type, str):
-        return "string"
-    elif issubclass(_type, bool):
-        return "boolean"
-    elif issubclass(_type, int):
-        return "integer"
-    elif issubclass(_type, float):
-        return "decimal"
-    elif issubclass(_type, dict):
+    type_mapping = {
+        str: "string",
+        bool: "boolean",
+        int: "integer",
+        float: "decimal",
+        dict: "json",
+        list: "json",
+        BaseModel: "json",
+    }
+
+    wire_type = type_mapping.get(_type, None)
+    if wire_type:
+        return wire_type
+    elif hasattr(_type, "__origin__"):
+        # account for "list[str]" and "dict[str, int]" and "Optional[str]" and other typing types
+        origin = _type.__origin__
+        if origin in [list, dict]:
+            return "json"
+    elif issubclass(_type, BaseModel):
         return "json"
     else:
         raise TypeError(f"Unsupported parameter type: {_type}")
+
+
+def create_func_models(func: Callable) -> tuple[type[BaseModel], type[BaseModel]]:
+    """
+    Analyze a function to create corresponding Pydantic models for its input and output.
+
+    Args:
+        func (Callable): The function to analyze.
+
+    Returns:
+        Tuple[Type[BaseModel], Type[BaseModel]]: A tuple containing the input and output Pydantic models.
+    """
+    input_fields = {}
+    # TODO figure this out (Sam)
+    if asyncio.iscoroutinefunction(func) and hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    for name, param in inspect.signature(func, follow_wrapped=True).parameters.items():
+        # TODO make this cleaner
+        field_info = extract_field_info(param)
+        field_data = field_info["field_params"]
+        param_fields = {
+            "default": field_data["default"],
+            "description": field_data["description"],
+            # TODO more here?
+        }
+        input_fields[name] = (field_info["type"], Field(**param_fields))
+
+    input_model = create_model(f"{snake_to_camel(func.__name__)}Input", **input_fields)
+
+    output_model = determine_output_model(func)
+
+    return input_model, output_model
 
 
 def determine_output_model(func: Callable) -> type[BaseModel]:
