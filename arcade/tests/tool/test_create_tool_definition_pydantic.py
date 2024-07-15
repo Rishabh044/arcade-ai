@@ -1,9 +1,11 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 import pytest
 from pydantic import BaseModel, Field
 
 from arcade.sdk.schemas import (
+    InputParameter,
+    ToolInputs,
     ToolOutput,
     ValueSchema,
 )
@@ -26,10 +28,51 @@ def func_returns_pydantic_model() -> Annotated[ProductOutput, "The product, pric
     )
 
 
+# TODO: Pydantic Field() properties: default, default_factory
+@tool(desc="A function that accepts a required Pydantic Field with a description")
+def func_takes_pydantic_field_with_description(
+    product_name: str = Field(..., description="The name of the product"),
+) -> str:
+    return product_name
+
+
+@tool(desc="A function that accepts an optional Pydantic Field")
+def func_takes_pydantic_field_optional(
+    product_name: str = Field(None, description="The name of the product"),
+) -> str:
+    return product_name
+
+
+@tool(desc="A function that accepts an Pydantic Field")
+def func_takes_pydantic_field_optional_annotation(
+    product_name: Optional[str] = Field(description="The name of the product"),
+) -> str:
+    return product_name
+
+
+# Annotated[] takes precedence over Field() properties
+@tool(desc="A function that accepts an annotated Pydantic Field")
+def func_takes_pydantic_field_annotated_description(
+    product_name: Annotated[str, "The name of the product"] = Field(
+        ..., description="The name of the product???"
+    ),
+) -> str:
+    return product_name
+
+
+# Annotated[] takes precedence over Field() properties
+@tool(desc="A function that accepts an annotated Pydantic Field")
+def func_takes_pydantic_field_annotated_name_and_description(
+    product_name: Annotated[str, "ProductName", "The name of the product"] = Field(
+        ..., title="The name of the product???"
+    ),
+) -> str:
+    return product_name
+
+
 # TODO: Function that takes a Pydantic model as an argument: break it down into components? Look at OpenAPI, do they represent nested arguments?
-# TODO: Function that takes a Pydantic Field as an argument
-# TODO: Pydantic Field() properties: description, default, title, default_factory, nullable
-# TODO: Pydantic Field() properties stretch goal: gt, ge, lt, le, multiple_of, range, regex, max_length, min_length, max_items, min_items, unique_items, exclusive_maximum, exclusive_minimum
+# TODO: Should title and default_value be added to JSON schema?
+# TODO: Pydantic Field() properties stretch goal: gt, ge, lt, le, multiple_of, range, regex, max_length, min_length, max_items, min_items, unique_items, exclusive_maximum, exclusive_minimum, title
 
 
 @pytest.mark.parametrize(
@@ -45,6 +88,86 @@ def func_returns_pydantic_model() -> Annotated[ProductOutput, "The product, pric
                 )
             },
             id="func_returns_pydantic_model",
+        ),
+        pytest.param(
+            func_takes_pydantic_field_with_description,
+            {
+                "inputs": ToolInputs(
+                    parameters=[
+                        InputParameter(
+                            name="product_name",
+                            description="The name of the product",
+                            required=True,
+                            inferrable=True,
+                            value_schema=ValueSchema(val_type="string", enum=None),
+                        )
+                    ]
+                )
+            },
+        ),
+        pytest.param(
+            func_takes_pydantic_field_optional,
+            {
+                "inputs": ToolInputs(
+                    parameters=[
+                        InputParameter(
+                            name="product_name",
+                            description="The name of the product",
+                            required=False,
+                            inferrable=True,
+                            value_schema=ValueSchema(val_type="string", enum=None),
+                        )
+                    ]
+                )
+            },
+        ),
+        pytest.param(
+            func_takes_pydantic_field_optional_annotation,
+            {
+                "inputs": ToolInputs(
+                    parameters=[
+                        InputParameter(
+                            name="product_name",
+                            description="The name of the product",
+                            required=False,
+                            inferrable=True,
+                            value_schema=ValueSchema(val_type="string", enum=None),
+                        )
+                    ]
+                )
+            },
+        ),
+        pytest.param(
+            func_takes_pydantic_field_annotated_description,
+            {
+                "inputs": ToolInputs(
+                    parameters=[
+                        InputParameter(
+                            name="product_name",
+                            description="The name of the product",  # Annotated[] takes precedence over Field() properties
+                            required=True,
+                            inferrable=True,
+                            value_schema=ValueSchema(val_type="string", enum=None),
+                        )
+                    ]
+                )
+            },
+        ),
+        pytest.param(
+            func_takes_pydantic_field_annotated_name_and_description,
+            {
+                "inputs": ToolInputs(
+                    parameters=[
+                        InputParameter(
+                            name="ProductName",
+                            description="The name of the product",  # Annotated[] takes precedence over Field() properties
+                            required=True,
+                            inferrable=True,
+                            value_schema=ValueSchema(val_type="string", enum=None),
+                        )
+                    ]
+                )
+            },
         ),
     ],
 )
