@@ -68,13 +68,6 @@
       }
     }
   },
-  "required": [
-    "run_id",
-    "invocation_id",
-    "created_at",
-    "tool",
-    "input",
-    "context"
-  ],
+  "required": ["run_id", "invocation_id", "created_at", "tool", "input", "context"],
   "additionalProperties": false
 }
