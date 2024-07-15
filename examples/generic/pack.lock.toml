@@ -9,9 +9,10 @@ email = "sam@partee.io"
 
 [tools]
 TextSearch = "BM25.text_search@0.0.1"
-ReadProducts = "products.read_products@0.0.1"
+ReadProducts = "products.read_products@latest"
 ReadSqlite = "read_sqlite.read_sqlite@0.0.1"
 SendEmail = "gmail.send_email@0.0.1"
 ReadEmail = "gmail.read_email@0.0.1"
 OauthReadEmail = "gmail.oauth_read_email@0.0.1"
 ListDriveFiles = "gmail.list_drive_files@0.0.1"
+SearchEmployee = "people.search_employee@0.1.0"

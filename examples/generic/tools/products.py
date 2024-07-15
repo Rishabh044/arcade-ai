@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Annotated, Literal
 from arcade.sdk.tool import tool, get_secret
 import pandas as pd
 from pydantic import BaseModel, Field
@@ -23,11 +23,18 @@ class FilterPriceLessThan(ProductFilter):
 
 
 class ProductSearch(BaseModel):
+    """The search action to perform"""
+
     column: str = Field("Product Name", description="The column to search in")
+    """the column to search in"""
+
     query: str = Field(..., description="The query to search for")
+    """the query to search for"""
+
     filter_operation: Union[
         FilterRating, FilterPriceGreaterThan, FilterPriceLessThan
     ] = None
+    """The filter operation to perform"""
 
 
 class ProductOutput(BaseModel):
@@ -38,13 +45,11 @@ class ProductOutput(BaseModel):
 
 @tool
 def read_products(
-    action: ProductSearch,
-    cols: list[str] = [
-        "Product Name",
-        "Price",
-        "Stock Quantity",
-    ],
-) -> list[ProductOutput]:
+    action: Annotated[ProductSearch, "The search action to perform"],
+    cols: Annotated[
+        Literal["Product Name", "Price", "Stock Quantity"], "The columns to return"
+    ] = ["Product Name", "Price", "Stock Quantity"],
+) -> Annotated[list[ProductOutput], "The list of products matching the search"]:
     """Used to search through products by name and filter by rating or price."""
 
     file_path = get_secret(

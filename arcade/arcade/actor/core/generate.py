@@ -4,9 +4,9 @@ from textwrap import dedent
 from fastapi import APIRouter
 from pydantic import BaseModel, ValidationError
 
-from arcade.actor.common.response import response_base
 from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
+from arcade.runtime.executor import ToolResponse, tool_response
 from arcade.tool.catalog import ToolDefinition
 from arcade.utils import snake_to_pascal_case
 
@@ -20,12 +20,12 @@ def create_endpoint_function(name, description, func, input_model, output_model)
         try:
             # Execute the action
             result = await func(**body.dict())
-            return await response_base.success(data={"result": result})
+            return await tool_response.success(data={"result": result})
         except ValidationError as e:
-            return await response_base.error(res=CustomResponseCode.HTTP_400, msg=str(e))
+            return await tool_response.error(res=CustomResponseCode.HTTP_400, msg=str(e))
         except Exception as e:
             print(traceback.format_exc())
-            return await response_base.error(res=CustomResponseCode.HTTP_500, msg=str(e))
+            return await tool_response.error(res=CustomResponseCode.HTTP_500, msg=str(e))
 
     run.__name__ = name
     run.__doc__ = description
@@ -57,7 +57,7 @@ def generate_endpoint(schemas: list[ToolDefinition]) -> APIRouter:
             name=snake_to_pascal_case(define.name),
             summary=define.description,
             tags=[schema.meta.module],
-            response_model=schema.output_model,
+            response_model=ToolResponse[schema.output_model],
             response_model_exclude_unset=True,
             response_model_exclude_none=True,
             response_description=create_output_description(schema.output_model),
