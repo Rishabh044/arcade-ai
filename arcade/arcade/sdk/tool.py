@@ -1,34 +1,28 @@
-import asyncio
-import functools
 import os
-from typing import Annotated, Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar, Union
+
+from arcade.sdk.schemas import ToolAuthorizationRequirement
+from arcade.utils import snake_to_pascal_case
 
 T = TypeVar("T")
 
 
-class Description:
-    def __init__(self, description: str):
-        self.description = description
+def tool(
+    func: Callable | None = None,
+    desc: str | None = None,
+    name: str | None = None,
+    requires_auth: Union[ToolAuthorizationRequirement, None] = None,
+) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        func.__tool_name__ = name or snake_to_pascal_case(getattr(func, "__name__", None))
+        func.__tool_description__ = desc or func.__doc__
+        func.__tool_requires_auth__ = requires_auth
 
-    def __str__(self):
-        return self.description
+        return func
 
-
-def Param(type_: type[T], description: str) -> Annotated[T, Description]:
-    return Annotated[type_, Description(description)]
-
-
-def tool(func: Callable) -> Callable:
-    @functools.wraps(func)
-    async def wrapper(*args, **kwargs) -> Any:
-        if asyncio.iscoroutinefunction(func):
-            return await func(*args, **kwargs)
-        else:
-            loop = asyncio.get_running_loop()
-            partial_func = functools.partial(func, *args, **kwargs)
-            return await loop.run_in_executor(None, partial_func)
-
-    return wrapper
+    if func:  # This means the decorator is used without parameters
+        return decorator(func)
+    return decorator
 
 
 def get_secret(name: str, default: Optional[Any] = None) -> str:

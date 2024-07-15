@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 from pydantic import ValidationError
 
 from arcade.actor.common.response import ResponseModel, response_base
@@ -33,6 +33,26 @@ async def get_oai_function(
         json_data = schema_to_openai_tool(tool)
 
         return await response_base.success(data=json_data)
+    except ValidationError as e:
+        return await response_base.fail(res=CustomResponseCode.HTTP_400, data=str(e))
+    except Exception as e:
+        return await response_base.fail(res=CustomResponseCode.HTTP_500, data=str(e))
+
+
+@router.post("/execute", summary="Execute a tool")
+async def execute_tool(
+    tool_name: str = Query(..., title="Tool Name", description="The name of the tool"),
+    data: dict[str, str] = Body(
+        ..., title="Tool Data", description="The data to execute the tool with"
+    ),
+    catalog=Depends(get_catalog),
+) -> ResponseModel:
+    """Execute a tool"""
+
+    try:
+        tool = catalog.get_tool(tool_name)
+        result = await tool(**data)
+        return await response_base.success(data=result)
     except ValidationError as e:
         return await response_base.fail(res=CustomResponseCode.HTTP_400, data=str(e))
     except Exception as e:

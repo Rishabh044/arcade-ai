@@ -19,15 +19,15 @@ check: ## Run code quality tools.
 .PHONY: test
 test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
-	@poetry run pytest --cov --cov-config=pyproject.toml --cov-report=xml
+	@poetry run pytest -v --cov --cov-config=pyproject.toml --cov-report=xml
 
 .PHONY: build
 build: clean-build ## Build wheel file using poetry
 	@echo "🚀 Creating wheel file"
 	@poetry build
 
-.PHONY: clean-build
-clean-build: ## clean build artifacts
+.PHONY: clean
+clean: ## clean build artifacts
 	@rm -rf dist
 
 .PHONY: publish
