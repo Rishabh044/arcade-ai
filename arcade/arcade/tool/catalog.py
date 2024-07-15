@@ -325,7 +325,9 @@ def extract_regular_field_info(param: inspect.Parameter) -> ToolFieldInfo:
 
 
 def extract_pydantic_field_info(param: inspect.Parameter) -> ToolFieldInfo:
-    is_required = param.default.default is PydanticUndefined
+    default_value = None if param.default.default is PydanticUndefined else param.default.default
+    has_default_value_factory = param.default.default_factory is not None
+    is_required = default_value is None and not has_default_value_factory
 
     # If the param is Annotated[], unwrap the annotation to get the "real" type
     # Otherwise, use the literal type
@@ -345,7 +347,7 @@ def extract_pydantic_field_info(param: inspect.Parameter) -> ToolFieldInfo:
     return ToolFieldInfo(
         name=param.name,
         description=param.default.description,
-        default=None if param.default.default is PydanticUndefined else param.default.default,
+        default=default_value,
         optional=is_optional or not is_required,
         inferrable=True,  # Default
         original_type=original_type,
