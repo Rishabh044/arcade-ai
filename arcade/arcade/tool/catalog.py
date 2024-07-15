@@ -1,11 +1,13 @@
 import asyncio
 import inspect
 import sys
+from dataclasses import dataclass
 from datetime import datetime
 from importlib import import_module
 from pathlib import Path
 from typing import (
     Annotated,
+    Any,
     Callable,
     Literal,
     Optional,
@@ -16,6 +18,8 @@ from typing import (
 )
 
 from pydantic import BaseModel, Field, create_model
+from pydantic.fields import FieldInfo
+from pydantic_core import PydanticUndefined
 
 from arcade.actor.common.response import ResponseModel
 from arcade.actor.common.response_code import CustomResponseCode
@@ -159,31 +163,28 @@ def create_input_definition(func: Callable) -> ToolInputs:
     """
     input_parameters = []
     for _, param in inspect.signature(func, follow_wrapped=True).parameters.items():
-        field_info = extract_field_info(param)
+        tool_field_info = extract_field_info(param)
 
         # Hard requirement: params must be described
-        if field_info["field_params"]["description"] is None:
-            raise ToolDefinitionError(
-                f"Parameter {field_info['field_params']['name']} is missing a description"
-            )
+        if tool_field_info.description is None:
+            raise ToolDefinitionError(f"Parameter {tool_field_info.name} is missing a description")
 
         is_enum = False
         enum_values: list[str] = []
 
         # Special case: Literal["string1", "string2"] can be enumerated on the wire
-        if is_string_literal(field_info["field_params"]["type"]):
+        if is_string_literal(tool_field_info.field_type):
             is_enum = True
-            enum_values = [str(e) for e in get_args(field_info["field_params"]["type"])]
+            enum_values = [str(e) for e in get_args(tool_field_info.field_type)]
 
         input_parameters.append(
             InputParameter(
-                name=field_info["field_params"]["name"],
-                description=field_info["field_params"]["description"],
-                required=field_info["field_params"]["default"] is None
-                and not field_info["field_params"]["optional"],
-                inferrable=field_info["field_params"]["inferrable"],
+                name=tool_field_info.name,
+                description=tool_field_info.description,
+                required=tool_field_info.default is None and not tool_field_info.optional,
+                inferrable=tool_field_info.inferrable,
                 value_schema=ValueSchema(
-                    val_type=field_info["field_params"]["wire_type"],
+                    val_type=tool_field_info.wire_type,
                     enum=enum_values if is_enum else None,
                 ),
             )
@@ -230,7 +231,19 @@ def create_output_definition(func: Callable) -> ToolOutput:
     )
 
 
-def extract_field_info(param: inspect.Parameter) -> dict:
+@dataclass
+class ToolFieldInfo:
+    name: str
+    description: str
+    default: Any
+    original_type: type
+    field_type: type
+    wire_type: Literal["string", "integer", "float", "boolean", "json"]
+    optional: bool
+    inferrable: bool
+
+
+def extract_field_info(param: inspect.Parameter) -> ToolFieldInfo:
     """
     Extract type and field parameters from a function parameter.
 
@@ -244,24 +257,52 @@ def extract_field_info(param: inspect.Parameter) -> dict:
     if annotation == inspect.Parameter.empty:
         raise TypeError(f"Parameter {param} has no type annotation.")
 
-    metadata = getattr(annotation, "__metadata__", [])
-
-    name = param.name
-    description = None
-
-    str_annotations = [m for m in metadata if isinstance(m, str)]
-    if len(str_annotations) == 1:
-        description = str_annotations[0]
-    elif len(str_annotations) == 2:
-        name = str_annotations[0]
-        description = str_annotations[1]
+    # Get the majority of the param info from either the Pydantic Field() or regular inspection
+    field_info: ToolFieldInfo = None
+    if isinstance(param.default, FieldInfo):
+        field_info = extract_pydantic_field_info(param)
     else:
-        raise ToolDefinitionError(f"Parameter {param} has multiple descriptions")
+        field_info = extract_regular_field_info(param)
 
-    default = param.default if param.default is not inspect.Parameter.empty else None
+    metadata = getattr(annotation, "__metadata__", [])
+    str_annotations = [m for m in metadata if isinstance(m, str)]
 
-    # If the param is Annotated[], unwrap the annotation
+    # Get the description from annotations, if present
+
+    if len(str_annotations) == 0:
+        pass
+    elif len(str_annotations) == 1:
+        field_info.description = str_annotations[0]
+    elif len(str_annotations) == 2:
+        field_info.name = str_annotations[0]
+        field_info.description = str_annotations[1]
+    else:
+        raise ToolDefinitionError(
+            f"Parameter {param} has too many string annotations. Expected 0, 1, or 2, got {len(str_annotations)}."
+        )
+
+    # Get the Inferrable annotation, if it exists
+    inferrable_annotation = first_or_none(Inferrable, get_args(annotation))
+
+    # Params are inferrable by default
+    # TODO don't like setting these dataclass fields after init
+    field_info.inferrable = inferrable_annotation.value if inferrable_annotation else True
+
+    # Get the wire type
+    # TODO don't like setting these dataclass fields after init
+    field_info.wire_type = (
+        get_wire_type(str)
+        if is_string_literal(field_info.field_type)
+        else get_wire_type(field_info.field_type)
+    )
+
+    return field_info
+
+
+def extract_regular_field_info(param: inspect.Parameter) -> ToolFieldInfo:
+    # If the param is Annotated[], unwrap the annotation to get the "real" type
     # Otherwise, use the literal type
+    annotation = param.annotation
     original_type = annotation.__args__[0] if get_origin(annotation) is Annotated else annotation
     field_type = original_type
 
@@ -271,25 +312,48 @@ def extract_field_info(param: inspect.Parameter) -> dict:
         field_type = next(arg for arg in get_args(field_type) if arg is not type(None))
         is_optional = True
 
-    wire_type = get_wire_type(str) if is_string_literal(field_type) else get_wire_type(field_type)
+    return ToolFieldInfo(
+        name=param.name,
+        description=None,  # TODO stub
+        default=param.default if param.default is not inspect.Parameter.empty else None,
+        optional=is_optional,
+        inferrable=True,  # Default
+        original_type=original_type,
+        field_type=field_type,
+        wire_type=None,  # TODO Will be set later
+    )
 
-    # Get the Inferrable annotation, if it exists
-    inferrable_annotation = first_or_none(Inferrable, get_args(annotation))
 
-    field_params = {
-        "name": name,
-        "description": str(description) if description else None,
-        "default": default,
-        "optional": is_optional,
-        "inferrable": inferrable_annotation.value
-        if inferrable_annotation
-        else True,  # Params are inferrable by default
-        "type": field_type,
-        "wire_type": wire_type,
-        "original_type": original_type,
-    }
+def extract_pydantic_field_info(param: inspect.Parameter) -> ToolFieldInfo:
+    default_value = None if param.default.default is PydanticUndefined else param.default.default
+    has_default_value_factory = param.default.default_factory is not None
+    is_required = default_value is None and not has_default_value_factory
 
-    return {"type": field_type, "field_params": field_params}
+    # If the param is Annotated[], unwrap the annotation to get the "real" type
+    # Otherwise, use the literal type
+    original_type = (
+        param.annotation.__args__[0]
+        if get_origin(param.annotation) is Annotated
+        else param.annotation
+    )
+    field_type = original_type
+
+    # Unwrap Optional types
+    is_optional = False
+    if get_origin(field_type) is Union and type(None) in get_args(field_type):
+        field_type = next(arg for arg in get_args(field_type) if arg is not type(None))
+        is_optional = True
+
+    return ToolFieldInfo(
+        name=param.name,
+        description=param.default.description,
+        default=default_value,
+        optional=is_optional or not is_required,
+        inferrable=True,  # Default
+        original_type=original_type,
+        field_type=field_type,
+        wire_type=None,  # TODO Will be set later
+    )
 
 
 def get_wire_type(
@@ -316,7 +380,7 @@ def get_wire_type(
     elif issubclass(_type, BaseModel):
         return "json"
     else:
-        raise TypeError(f"Unsupported parameter type: {_type}")
+        raise ToolDefinitionError from TypeError(f"Unsupported parameter type: {_type}")
 
 
 def create_func_models(func: Callable) -> tuple[type[BaseModel], type[BaseModel]]:
@@ -335,14 +399,13 @@ def create_func_models(func: Callable) -> tuple[type[BaseModel], type[BaseModel]
         func = func.__wrapped__
     for name, param in inspect.signature(func, follow_wrapped=True).parameters.items():
         # TODO make this cleaner
-        field_info = extract_field_info(param)
-        field_data = field_info["field_params"]
+        tool_field_info = extract_field_info(param)
         param_fields = {
-            "default": field_data["default"],
-            "description": field_data["description"],
+            "default": tool_field_info.default,
+            "description": tool_field_info.description,
             # TODO more here?
         }
-        input_fields[name] = (field_info["type"], Field(**param_fields))
+        input_fields[name] = (tool_field_info.field_type, Field(**param_fields))
 
     input_model = create_model(f"{snake_to_pascal_case(func.__name__)}Input", **input_fields)
 
