@@ -1,28 +1,27 @@
-#!/usr/bin/env python3
 import dataclasses
 from enum import Enum
 
 
 class CustomCodeBase(Enum):
-    """自定义状态码基类"""
+    """Custom status code base class"""
 
     @property
     def code(self):
         """
-        获取状态码
+        Get status code
         """
         return self.value[0]
 
     @property
     def msg(self):
         """
-        获取状态码信息
+        Get status code information
         """
         return self.value[1]
 
 
 class CustomResponseCode(CustomCodeBase):
-    """自定义响应状态码"""
+    """Custom response status codes"""
 
     HTTP_200 = (200, "Request Successful")
     HTTP_201 = (201, "Created Successfully")
@@ -40,12 +39,6 @@ class CustomResponseCode(CustomCodeBase):
     HTTP_502 = (502, "Gateway Error")
     HTTP_503 = (503, "Server Temporarily Unable to Process Request")
     HTTP_504 = (504, "Gateway Timeout")
-
-
-class CustomErrorCode(CustomCodeBase):
-    """自定义错误状态码"""
-
-    CAPTCHA_ERROR = (40001, "CAPTCHA Error")
 
 
 @dataclasses.dataclass

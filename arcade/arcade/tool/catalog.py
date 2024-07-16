@@ -26,8 +26,8 @@ from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
 from arcade.apm.base import ToolPack
 from arcade.sdk.annotations import Inferrable
-from arcade.sdk.errors import ToolDefinitionError
-from arcade.sdk.schemas import (
+from arcade.tool.errors import ToolDefinitionError
+from arcade.tool.schemas import (
     InputParameter,
     ToolDefinition,
     ToolInputs,

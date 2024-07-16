@@ -1,31 +1,42 @@
 import traceback
 from textwrap import dedent
+from typing import Callable
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Body, Depends, Request
 from pydantic import BaseModel, ValidationError
 
-from arcade.actor.common.response_code import CustomResponseCode
 from arcade.actor.core.conf import settings
-from arcade.runtime.executor import ToolResponse, tool_response
 from arcade.tool.catalog import ToolDefinition
+from arcade.tool.executor import ToolExecutor
+from arcade.tool.response import ToolResponse, tool_response
 from arcade.utils import snake_to_pascal_case
 
 
-def create_endpoint_function(name, description, func, input_model, output_model):
+def create_endpoint_function(
+    name, description, func, input_model, output_model
+) -> Callable[..., ToolResponse]:
     """
     Factory function to create endpoint functions with 'frozen' schema and input_model values.
     """
 
-    async def run(body: input_model):
+    def get_input_model(inputs: input_model = Body(...)):
+        return inputs
+
+    async def run(request: Request, inputs: input_model = Depends(get_input_model)):
         try:
-            # Execute the action
-            result = await func(**body.dict())
-            return await tool_response.success(data={"result": result})
+            # Execute the tool
+            body = await request.json()
+            response = await ToolExecutor.run(func, input_model, output_model, **body)
+
         except ValidationError as e:
-            return await tool_response.error(res=CustomResponseCode.HTTP_400, msg=str(e))
+            return await tool_response.fail(msg=str(e))
+
         except Exception as e:
-            print(traceback.format_exc())
-            return await tool_response.error(res=CustomResponseCode.HTTP_500, msg=str(e))
+            return await tool_response.fail(
+                msg=str(e),
+                data=traceback.format_exc(),
+            )
+        return response
 
     run.__name__ = name
     run.__doc__ = description
