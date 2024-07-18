@@ -27,6 +27,15 @@ def func_with_docstring_description():
     pass
 
 
+@tool
+def func_with_multiline_docstring_description():
+    """
+    Docstring description
+    on multiple lines
+    """
+    pass
+
+
 @tool(name="MyCustomTool", desc="A function with a very cool description")
 def func_with_name_and_description():
     pass
@@ -162,6 +171,11 @@ def func_with_complex_return() -> list[dict[str, str]]:
             func_with_docstring_description,
             {"description": "Docstring description"},
             id="func_with_docstring_description",
+        ),
+        pytest.param(
+            func_with_multiline_docstring_description,
+            {"description": "Docstring description\non multiple lines"},
+            id="func_with_multiline_docstring_description",
         ),
         pytest.param(
             func_with_name_and_description,
