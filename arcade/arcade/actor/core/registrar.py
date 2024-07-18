@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 
 from arcade.actor.common.serializers import MsgSpecJSONResponse
 from arcade.actor.core.conf import settings
 from arcade.actor.core.generate import generate_endpoint
 from arcade.actor.routes import v1
+from arcade.actor.routes.actor import router as actor_router
 from arcade.tool.catalog import ToolCatalog
 
 
@@ -76,6 +77,11 @@ def register_router(app: FastAPI) -> None:
 
     # API
     app.include_router(v1, dependencies=dependencies)
+
+    # New API
+    actor = APIRouter(prefix="/actor")
+    actor.include_router(actor_router, tags=["Actor"])
+    app.include_router(actor)
 
 
 def generate_tool_routes(app: FastAPI) -> None:
