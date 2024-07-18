@@ -1,0 +1,12 @@
+[pack]
+name = "Routines for Jarvis"
+description = "Jarvis Chatbot routines"
+version = "0.1.0"
+author = "Sam Partee"
+email = "sam@partee.io"
+
+[depends]
+
+[tools]
+TextSearch = "BM25.text_search@0.0.1"
+ReadProducts = "products.read_products@latest"
