@@ -1,12 +1,11 @@
 
 
 [pack]
-name = "Routines for Jarvis"
-description = "Jarvis Chatbot routines"
+name = "Nate's pack"
+description = "Nate's example tools"
 version = "0.1.0"
-author = "Sam Partee"
-email = "sam@partee.io"
+author = "Nate"
+email = "nate@arcade-ai.com"
 
 [modules]
-BM25 = "0.0.1"
-people = "0.1.0"
+arithmetic = "0.0.1"

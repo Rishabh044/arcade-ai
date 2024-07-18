@@ -1,12 +1,13 @@
 [pack]
-name = "Routines for Jarvis"
-description = "Jarvis Chatbot routines"
+name = "Nate's pack"
+description = "Nate's example tools"
 version = "0.1.0"
-author = "Sam Partee"
-email = "sam@partee.io"
+author = "Nate"
+email = "nate@arcade-ai.com"
 
 [depends]
 
 [tools]
-TextSearch = "BM25.text_search@0.0.1"
-ReadProducts = "products.read_products@latest"
+Add = "arithmetic.add@0.0.1"
+Divide = "arithmetic.divide@0.0.1"
+Sqrt = "arithmetic.sqrt@0.0.1"

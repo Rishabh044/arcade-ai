@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
@@ -28,7 +29,10 @@ class ToolExecutor:
             inputs = await ToolExecutor._serialize_input(input_model, **kwargs)
 
             # execute the tool function
-            results = await func(**inputs.dict())
+            if asyncio.iscoroutinefunction(func):
+                results = await func(**inputs.model_dump())
+            else:
+                results = func(**inputs.model_dump())
 
             # serialize the output model
             output = await ToolExecutor._serialize_output(output_model, results)

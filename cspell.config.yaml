@@ -5,6 +5,7 @@ dictionaryDefinitions: []
 dictionaries: []
 words:
   - conlist
+  - fastapi
   - pydantic
   - pyproject
   - toolpack

@@ -2,7 +2,6 @@ from fastapi import APIRouter, FastAPI
 
 from arcade.actor.common.serializers import MsgSpecJSONResponse
 from arcade.actor.core.conf import settings
-from arcade.actor.core.generate import generate_endpoint
 from arcade.actor.routes import v1
 from arcade.actor.routes.actor import router as actor_router
 from arcade.tool.catalog import ToolCatalog
@@ -91,6 +90,6 @@ def generate_tool_routes(app: FastAPI) -> None:
     definitions to the catalog
     """
     catalog = ToolCatalog()
-    router = generate_endpoint(list(catalog.tools.values()))
-    app.include_router(router)
+    # router = generate_endpoint(list(catalog.tools.values()))
+    # app.include_router(router)
     app.state.catalog = catalog

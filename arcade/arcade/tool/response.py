@@ -79,7 +79,7 @@ class ToolResponseFactory:
         msg: str = CustomResponseCode.HTTP_400.msg,
         data: Any = None,
     ) -> ToolResponse:
-        return await self.__response(res=res, data=data)
+        return await self.__response(res=res, msg=msg, data=data)
 
 
 tool_response = ToolResponseFactory()
