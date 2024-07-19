@@ -1,11 +1,9 @@
 import asyncio
 import inspect
-import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from importlib import import_module
-from pathlib import Path
 from typing import (
     Annotated,
     Any,
@@ -22,11 +20,8 @@ from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
-from arcade.actor.core.conf import settings
-from arcade.apm.base import ToolPack
-from arcade.sdk.annotations import Inferrable
-from arcade.tool.errors import ToolDefinitionError
-from arcade.tool.schemas import (
+from arcade.core.errors import ToolDefinitionError
+from arcade.core.tool import (
     InputParameter,
     ToolDefinition,
     ToolInputs,
@@ -34,12 +29,14 @@ from arcade.tool.schemas import (
     ToolRequirements,
     ValueSchema,
 )
-from arcade.utils import (
+from arcade.core.toolkit import Toolkit
+from arcade.core.utils import (
     does_function_return_value,
     first_or_none,
     is_string_literal,
     snake_to_pascal_case,
 )
+from arcade.sdk.annotations import Inferrable
 
 WireType = Literal["string", "integer", "float", "boolean", "json"]
 
@@ -50,6 +47,8 @@ class ToolMeta(BaseModel):
     """
 
     module: str
+    toolkit: str
+    package: str
     path: Optional[str] = None
     date_added: datetime = Field(default_factory=datetime.now)
     date_updated: datetime = Field(default_factory=datetime.now)
@@ -81,47 +80,57 @@ class MaterializedTool(BaseModel):
         return self.definition.description
 
 
-# TODO make a generate for catalog type
-
-
-class ToolCatalog:
+class ToolCatalog(BaseModel):
     """Singleton class that holds all tools for a given actor"""
 
-    def __init__(self, tools_dir: Path = settings.TOOLS_DIR):
-        self.tools: dict[str, MaterializedTool] = self.read_tools(tools_dir)
+    tools: dict[str, MaterializedTool] = {}
 
-    @staticmethod
-    def read_tools(directory: Path) -> dict[str, MaterializedTool]:
+    def add_toolkit(self, toolkit: Toolkit) -> dict[str, MaterializedTool]:
         """
-        Create tool definitions from a directory of python files
+        Add the tools from a loaded toolkit to the catalog.
         """
-
-        toolpack = ToolPack.from_lock_file(directory)
-        sys.path.append(str(Path(directory).resolve() / "tools"))
 
         tools: dict[str, MaterializedTool] = {}
-        for name, tool_spec in toolpack.tools.items():
-            module_name, versioned_tool = tool_spec.split(".", 1)
-            func_name, version = versioned_tool.split("@")
+        for module_name, tool_names in toolkit.tools.items():
+            for tool_name in tool_names:
+                module = import_module(module_name)
+                tool_func = getattr(module, tool_name)
+                input_model, output_model = create_func_models(tool_func)
+                tools[tool_name] = MaterializedTool(
+                    definition=ToolCatalog.create_tool_definition(tool_func, toolkit.version),
+                    tool=tool_func,
+                    meta=ToolMeta(
+                        module=module_name,
+                        toolkit=toolkit.name,
+                        package=toolkit.package_name,
+                        path=module.__file__,
+                    ),
+                    input_model=input_model,
+                    output_model=output_model,
+                )
 
-            module = import_module(module_name)
-            tool_func = getattr(module, func_name)
-            input_model, output_model = create_func_models(tool_func)
-            tool_name = name
-            tools[tool_name] = MaterializedTool(
-                definition=ToolCatalog.create_tool_definition(tool_func, version),
-                tool=tool_func,
-                meta=ToolMeta(module=module_name, path=module.__file__),
-                input_model=input_model,
-                output_model=output_model,
-            )
+        self.tools.update(tools)
 
-        return tools
+    def __getitem__(self, name: str) -> MaterializedTool:
+        for tool_name, tool in self.tools.items():
+            if tool_name == name:
+                return tool
+        raise KeyError(f"Tool {name} not found.")
+
+    def __iter__(self) -> Iterator[MaterializedTool]:
+        yield from self.tools.values()
+
+    def get_tool(self, name: str) -> Optional[Callable]:
+        for tool in self.tools.values():
+            if tool.definition.name == name:
+                return tool.tool
+        raise ValueError(f"Tool {name} not found.")
 
     @staticmethod
     def create_tool_definition(tool: Callable, version: str) -> ToolDefinition:
         """
         Given a tool function, create a ToolDefinition
+        # TODO: (sam) Make this a function?
         """
 
         tool_name = getattr(tool, "__tool_name__", tool.__name__)
@@ -145,36 +154,6 @@ class ToolCatalog:
                 authorization=getattr(tool, "__tool_requires_auth__", None),
             ),
         )
-
-    def __getitem__(self, name: str) -> MaterializedTool:
-        # TODO error handling
-        for tool_name, tool in self.tools.items():
-            if tool_name == name:
-                return tool
-        raise KeyError(f"Tool {name} not found.")
-
-    def __iter__(self) -> Iterator[MaterializedTool]:
-        yield from self.tools.values()
-
-    def get_tool(self, name: str) -> Optional[Callable]:
-        for tool in self.tools.values():
-            if tool.definition.name == name:
-                return tool.tool
-        raise ValueError(f"Tool {name} not found.")
-
-    def list_tools(self) -> list[dict[str, str]]:
-        def get_tool_endpoint(t: MaterializedTool) -> str:
-            return f"/tool/{t.meta.module}/{t.definition.name}"
-
-        return [
-            {
-                "name": t.definition.name,
-                "description": t.definition.description,
-                "version": t.version,
-                "endpoint": get_tool_endpoint(t),
-            }
-            for t in self.tools.values()
-        ]
 
 
 def create_input_definition(func: Callable) -> ToolInputs:

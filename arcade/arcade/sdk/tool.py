@@ -1,8 +1,8 @@
 import os
 from typing import Any, Callable, Optional, TypeVar, Union
 
-from arcade.tool.schemas import ToolAuthorizationRequirement
-from arcade.utils import snake_to_pascal_case
+from arcade.core.tool import ToolAuthorizationRequirement
+from arcade.core.utils import snake_to_pascal_case
 
 T = TypeVar("T")
 

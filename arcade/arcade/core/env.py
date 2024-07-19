@@ -33,31 +33,6 @@ class Settings(BaseSettings):
     #            values['OPENAPI_URL'] = None
     #        return values
 
-    # Uvicorn
-    UVICORN_HOST: str = "127.0.0.1"
-    UVICORN_PORT: int = 8000
-    UVICORN_RELOAD: bool = True
-
-    # Static Server
-    STATIC_FILES: bool = False
-
-    # Logs
-    LOG_STDOUT_FILENAME: str = "actor.log"
-    LOG_STDERR_FILENAME: str = "actor.err"
-
-    # DateTime
-    DATETIME_TIMEZONE: str = "US/Pacific"
-    DATETIME_FORMAT: str = "%Y-%m-%d %H:%M:%S"
-
-    # Middleware
-    MIDDLEWARE_CORS: bool = True
-    MIDDLEWARE_GZIP: bool = True
-    MIDDLEWARE_ACCESS: bool = False
-
-    # these should be set in .env
-    TOKEN_SECRET_KEY: str = "secret"
-    OPERA_LOG_ENCRYPT_SECRET_KEY: str = "secret"
-
 
 @lru_cache
 def get_settings() -> Settings:
