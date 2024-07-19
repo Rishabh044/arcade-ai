@@ -13,7 +13,7 @@ console = Console()
 DEFAULT_VERSIONS = {
     "python": "^3.10",
     "arcade-ai": f"^{VERSION}",
-    "pytest": "^6.2.4",
+    "pytest": "^7.4.0",
 }
 
 
@@ -63,18 +63,18 @@ description = "{description}"
 authors = ["{author}"]
 
 [tool.poetry.dependencies]
-python = "{DEFAULT_VERSIONS['python']}"
-arcade-ai = "{DEFAULT_VERSIONS['arcade-ai']}"
+python = "{DEFAULT_VERSIONS["python"]}"
+arcade-ai = "{DEFAULT_VERSIONS["arcade-ai"]}"
 
 [tool.poetry.dev-dependencies]
-pytest = "{DEFAULT_VERSIONS['pytest']}"
+pytest = "{DEFAULT_VERSIONS["pytest"]}"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.arcade]
-tools = ["{toolkit_name}.tools.hello"]
+modules = ["{toolkit_name}.tools.hello"]
 """
     create_file(os.path.join(directory, toolkit_name, "pyproject.toml"), content.strip())
 
@@ -112,14 +112,17 @@ def create_new_toolkit(directory: str) -> None:
     create_file(os.path.join(directory, toolkit_name, "tools", "__init__.py"), "")
 
     # Create the hello.py file in the tools directory
+    docstring = '"""Say a greeting!"""'
     create_file(
         os.path.join(directory, toolkit_name, "tools", "hello.py"),
         dedent(
-            """
+            f"""
         from arcade.sdk.tool import tool
 
         @tool
-        def hello():
+        def hello() -> str:
+            {docstring}
+
             return "Hello, World!"
         """
         ).strip(),
