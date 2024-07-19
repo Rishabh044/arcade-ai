@@ -1,12 +1,9 @@
-import json
 import os
 
-import requests
 import typer
 import uvicorn
 from rich.console import Console
 from rich.markup import escape
-from rich.table import Table
 
 from arcade.actor.core.conf import settings
 

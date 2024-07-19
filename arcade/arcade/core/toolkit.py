@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Union
 
 import toml
-from pydantic import BaseModel, Field, root_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, root_validator
 
 from arcade.core.parse import get_tools_from_file
 
