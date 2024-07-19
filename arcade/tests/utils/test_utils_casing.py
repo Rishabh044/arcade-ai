@@ -1,6 +1,6 @@
 import pytest
 
-from arcade.utils import pascal_to_snake_case, snake_to_pascal_case
+from arcade.core.utils import pascal_to_snake_case, snake_to_pascal_case
 
 
 @pytest.mark.parametrize(

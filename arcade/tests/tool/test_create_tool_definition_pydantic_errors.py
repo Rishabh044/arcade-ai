@@ -3,9 +3,9 @@ from typing import Annotated
 import pytest
 from pydantic import Field
 
+from arcade.core.catalog import ToolCatalog
+from arcade.core.errors import ToolDefinitionError
 from arcade.sdk.tool import tool
-from arcade.tool.catalog import ToolCatalog
-from arcade.tool.errors import ToolDefinitionError
 
 
 @tool

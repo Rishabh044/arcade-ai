@@ -1,8 +1,8 @@
 import pytest
 
+from arcade.core.catalog import ToolCatalog
+from arcade.core.errors import ToolDefinitionError
 from arcade.sdk.tool import tool
-from arcade.tool.catalog import ToolCatalog
-from arcade.tool.errors import ToolDefinitionError
 
 
 @tool

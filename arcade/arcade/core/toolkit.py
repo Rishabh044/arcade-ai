@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Union
 
 import toml
-from pydantic import BaseModel, ConfigDict, Field, root_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from arcade.core.parse import get_tools_from_file
 
@@ -19,7 +19,7 @@ class Toolkit(BaseModel):
     dependencies: dict[str, str] = Field(alias="tool.poetry.dependencies")
     tools: dict[str, list[str]] = defaultdict(list)
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
     def strip_arcade_prefix(cls, values: dict[str, Any]) -> dict[str, Any]:
         name = values.get("tool", {}).get("poetry", {}).get("name")
         if name and name.startswith("arcade_"):

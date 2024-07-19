@@ -2,10 +2,8 @@ from typing import Annotated, Literal, Optional
 
 import pytest
 
-from arcade.sdk.annotations import Inferrable
-from arcade.sdk.tool import tool
-from arcade.tool.catalog import ToolCatalog
-from arcade.tool.schemas import (
+from arcade.core.catalog import ToolCatalog
+from arcade.core.tool import (
     InputParameter,
     OAuth2AuthorizationRequirement,
     ToolInputs,
@@ -13,6 +11,8 @@ from arcade.tool.schemas import (
     ToolRequirements,
     ValueSchema,
 )
+from arcade.sdk.annotations import Inferrable
+from arcade.sdk.tool import tool
 
 
 ### Tests on @tool decorator
