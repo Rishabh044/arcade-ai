@@ -70,7 +70,3 @@ class Toolkit(BaseModel):
             toolkit.tools[module] = get_tools_from_file(module_path)
 
         return toolkit
-
-    @classmethod
-    def from_json(cls, json_str: str) -> "Toolkit":
-        return cls.parse_raw(json_str)
