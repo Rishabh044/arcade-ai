@@ -4,7 +4,7 @@ from arcade.core.catalog import ToolCatalog
 from arcade.core.executor import ToolExecutor
 from arcade.core.tool import ToolDefinition
 from arcade.core.toolkit import Toolkit
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from openai import AsyncOpenAI
 
