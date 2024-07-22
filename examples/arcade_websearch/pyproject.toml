@@ -1,18 +1,13 @@
 [tool.poetry]
-name = "arcade_gmail"
+name = "arcade_websearch"
 version = "0.1.0"
-description = "LLM tools for interating with gmail"
+description = "Tools for searching the web"
 authors = ["Sam Partee <sam@arcade-ai.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 arcade-ai = "^0.1.0"
-google-api-core = "2.19.1"
-google-api-python-client = "2.137.0"
-google-auth = "2.32.0"
-google-auth-httplib2 = "0.2.0"
-google-auth-oauthlib = "1.2.1"
-googleapis-common-protos = "1.63.2"
+serpapi = "^0.1.5"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.4.0"
@@ -22,4 +17,4 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.arcade]
-modules = ["arcade_gmail.tools.gmail"]
+modules = ["arcade_websearch.tools.google"]

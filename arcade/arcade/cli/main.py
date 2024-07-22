@@ -1,4 +1,6 @@
+import asyncio
 import os
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -86,7 +88,7 @@ def show(
 
     except Exception as e:
         # better error message here
-        error_message = f"❌ Failed to List tools: {escape(e)}"
+        error_message = f"❌ Failed to List tools: {escape(str(e))}"
         console.print(error_message, style="bold red")
         raise typer.Exit(code=1)
 
@@ -96,11 +98,65 @@ def run(
     prompt: str = typer.Argument(..., help="The prompt to use for context"),
     model: str = typer.Option("gpt-3.5-turbo", "-m", help="The model to use for prediction."),
     tool: str = typer.Option(None, "-t", "--tool", help="The name of the tool to run."),
+    choice: str = typer.Option(
+        "required", "-c", "--choice", help="The value of the tool choice argument"
+    ),
+    directory: str = typer.Option(os.getcwd(), "--dir", help="toolkit directory path"),
+    actor: Optional[str] = typer.Option(
+        None, "-a", "--actor", help="The actor to use for prediction."
+    ),
 ):
     """
     Run a tool using an LLM to predict the arguments.
     """
-    pass
+    from arcade.core.catalog import ToolCatalog
+    from arcade.core.client import EngineClient
+    from arcade.core.executor import ToolExecutor
+    from arcade.core.toolkit import Toolkit
+
+    if directory:
+        # Initialize ToolCatalog with the specified directory
+        toolkit = Toolkit.from_directory(directory)
+        catalog = ToolCatalog()
+        catalog.add_toolkit(toolkit)
+    else:
+        # handle this better
+        # Call the /v1/tool/list_tools route
+        typer.exit("❌ Directory not specified")
+
+    try:
+        # Get the tool from the catalog
+        # TODO: handle tool not found
+        tool = catalog[tool]
+
+        # TODO put in the engine url from config
+        client = EngineClient()
+        params = client.infer_tool_args(tool, tool_choice=choice, prompt=prompt, model=model)
+
+        print(params)
+        output = asyncio.run(
+            ToolExecutor.run(tool.tool, tool.input_model, tool.output_model, **params)
+        )
+        if output.code != 200:
+            console.print(output.msg, style="bold red")
+            print(output)
+            if output.data:
+                console.print(output.data.result, style="bold red")
+        else:
+            # Generate a response to the prompt with the tool results
+            messages = [
+                {"role": "user", "content": prompt},
+                {
+                    "role": "system",
+                    "content": f"Called tool: {tool.name}\nResults: {output.data.result!s}",
+                },
+            ]
+            response = client.chat.completions.create(model=model, messages=messages)
+            console.print(response.choices[0].message.content, style="bold green")
+    except Exception as e:
+        error_message = f"❌ Failed to run tool: {escape(str(e))}"
+        console.print(error_message, style="bold red")
+        raise typer.Exit(code=1)
 
 
 @cli.command(help="Execute eval suite wthin /evals")

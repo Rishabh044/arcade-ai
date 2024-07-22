@@ -13,7 +13,7 @@ class InvokeToolRequest(BaseModel):
     invocation_id: str
     created_at: str
     tool: ToolVersion
-    inputs: dict | None  # input changed to inputs
+    inputs: dict | None
     context: dict | None
 
 
