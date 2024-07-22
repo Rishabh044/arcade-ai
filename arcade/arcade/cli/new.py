@@ -76,13 +76,13 @@ build-backend = "poetry.core.masonry.api"
 [tool.arcade]
 modules = ["{toolkit_name}.tools.hello"]
 """
-    create_file(os.path.join(directory, toolkit_name, "pyproject.toml"), content.strip())
+    create_file(os.path.join(directory, "pyproject.toml"), content.strip())
 
 
 def create_new_toolkit(directory: str) -> None:
     """Generate a new Toolkit package based on user input."""
-    toolkit_name = ask_question("Name of the new toolkit?")
-    toolkit_name = f"arcade_{toolkit_name}"
+    name = ask_question("Name of the new toolkit?")
+    toolkit_name = f"arcade_{name}"
 
     # Check for illegal characters in the toolkit name
     if not re.match(r"^[\w_]+$", toolkit_name):
@@ -102,19 +102,24 @@ def create_new_toolkit(directory: str) -> None:
     generate_test_dir = ask_question("Generate test directory? (yes/no)", "yes") == "yes"
     generate_eval_dir = ask_question("Generate eval directory? (yes/no)", "yes") == "yes"
 
+    top_level_dir = os.path.join(directory, name)
+    toolkit_dir = os.path.join(directory, name, toolkit_name)
+
+    # Create the top level toolkit directory
+    create_directory(top_level_dir)
     # Create the toolkit directory
-    create_directory(os.path.join(directory, toolkit_name))
+    create_directory(toolkit_dir)
 
     # Create the tools directory
-    create_directory(os.path.join(directory, toolkit_name, "tools"))
+    create_directory(os.path.join(toolkit_dir, "tools"))
 
     # Create the __init__.py file in the tools directory
-    create_file(os.path.join(directory, toolkit_name, "tools", "__init__.py"), "")
+    create_file(os.path.join(toolkit_dir, "tools", "__init__.py"), "")
 
     # Create the hello.py file in the tools directory
     docstring = '"""Say a greeting!"""'
     create_file(
-        os.path.join(directory, toolkit_name, "tools", "hello.py"),
+        os.path.join(toolkit_dir, "tools", "hello.py"),
         dedent(
             f"""
         from arcade.sdk.tool import tool
@@ -129,14 +134,14 @@ def create_new_toolkit(directory: str) -> None:
     )
 
     # Create the pyproject.toml file
-    create_pyproject_toml(directory, toolkit_name, author, description)
+    create_pyproject_toml(top_level_dir, toolkit_name, author, description)
 
     # If the user wants to generate a test directory
     if generate_test_dir:
-        create_directory(os.path.join(directory, toolkit_name, "tests"))
+        create_directory(os.path.join(top_level_dir, "tests"))
 
     # If the user wants to generate an eval directory
     if generate_eval_dir:
-        create_directory(os.path.join(directory, toolkit_name, "evals"))
+        create_directory(os.path.join(top_level_dir, "evals"))
 
     console.print(f"[green]Toolkit {toolkit_name} has been created.[/green]")

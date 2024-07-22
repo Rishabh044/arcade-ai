@@ -93,8 +93,17 @@ class ToolCatalog(BaseModel):
         tools: dict[str, MaterializedTool] = {}
         for module_name, tool_names in toolkit.tools.items():
             for tool_name in tool_names:
-                module = import_module(module_name)
-                tool_func = getattr(module, tool_name)
+                try:
+                    module = import_module(module_name)
+                    tool_func = getattr(module, tool_name)
+
+                except AttributeError:
+                    raise ToolDefinitionError(
+                        f"Could not find tool {tool_name} in module {module_name}"
+                    )
+                except ImportError:
+                    raise ToolDefinitionError(f"Could not import module {module_name}")
+
                 input_model, output_model = create_func_models(tool_func)
                 tools[tool_name] = MaterializedTool(
                     definition=ToolCatalog.create_tool_definition(tool_func, toolkit.version),

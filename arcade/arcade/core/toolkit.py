@@ -11,12 +11,13 @@ from arcade.core.parse import get_tools_from_file
 class Toolkit(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    name: str = Field(alias="tool.poetry.name")
-    package_name: str = Field(alias="tool.poetry.name")
-    version: str = Field(alias="tool.poetry.version")
-    description: str = Field(alias="tool.poetry.description")
-    author: list[str] = Field(alias="tool.poetry.authors")
-    dependencies: dict[str, str] = Field(alias="tool.poetry.dependencies")
+    name: str
+    package_name: str
+    # TODO validator for semantic versioning
+    version: str
+    description: str
+    author: list[str]
+    dependencies: dict[str, str]
     tools: dict[str, list[str]] = defaultdict(list)
 
     @model_validator(mode="before")

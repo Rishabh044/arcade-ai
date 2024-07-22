@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 from typing import Optional
 
 import typer
@@ -67,6 +68,11 @@ def show(
         if directory:
             # Initialize ToolCatalog with the specified directory
             toolkit = Toolkit.from_directory(directory)
+
+            # add directory path to sys.path
+            sys.path.append(directory)
+
+            # create a tool catalog and add the toolkit
             catalog = ToolCatalog()
             catalog.add_toolkit(toolkit)
         else:
