@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
+import time
 from typing import Any, Callable
 
 from arcade.actor.schema import (
@@ -67,6 +68,9 @@ class BaseActor:
             raise ValueError(f"Tool {tool_name} not found in catalog.")
 
         materialized_tool = self.catalog[tool_name]
+
+        start_time = time.time()
+
         response = await ToolExecutor.run(
             func=materialized_tool.tool,
             input_model=materialized_tool.input_model,
@@ -78,8 +82,12 @@ class BaseActor:
         else:
             output = ToolOutput(error=ToolOutputError(message=response.msg))
 
+        end_time = time.time()  # End time in seconds
+        duration_ms = (end_time - start_time) * 1000  # Convert to milliseconds
+
         return InvokeToolResponse(
             invocation_id=tool_request.invocation_id,
+            duration=duration_ms,
             finished_at=datetime.now().isoformat(),
             success=response.code == 200,
             output=output,

@@ -40,5 +40,6 @@ class ToolOutput(BaseModel):
 class InvokeToolResponse(BaseModel):
     invocation_id: str
     finished_at: str
+    duration: float
     success: bool
     output: ToolOutput | None = None

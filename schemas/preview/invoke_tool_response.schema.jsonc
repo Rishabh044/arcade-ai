@@ -11,6 +11,10 @@
       "type": "string",
       "description": "ID of this specific tool call"
     },
+    "duration": {
+      "type": "number",
+      "description": "The duration of the tool call, in milliseconds"
+    },
     "finished_at": {
       "type": "string",
       "format": "date-time"
