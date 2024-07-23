@@ -44,9 +44,9 @@ class FastAPIRouter:  # TODO create an interface for this
         """
 
         async def wrapped_handler(request: Request):
-            if asyncio.iscoroutinefunction(handler):
-                return await handler(request)
-            elif hasattr(handler, "__call__") and asyncio.iscoroutinefunction(handler.__call__):
+            if asyncio.iscoroutinefunction(handler) or (
+                callable(handler) and asyncio.iscoroutinefunction(handler.__call__)
+            ):
                 return await handler(request)
             else:
                 return handler(request)

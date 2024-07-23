@@ -1,11 +1,5 @@
-from datetime import datetime
-from typing import ClassVar, Union
 from arcade.actor.fastapi.actor import FastAPIActor
-from arcade.core.catalog import ToolCatalog
-from arcade.core.executor import ToolExecutor
-from arcade.core.tool import ToolDefinition
-from arcade.core.toolkit import Toolkit
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from openai import AsyncOpenAI
 from arcade_example_nate.tools import arithmetic

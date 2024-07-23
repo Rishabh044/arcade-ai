@@ -1,6 +1,6 @@
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
-import time
 from typing import Any, Callable
 
 from arcade.actor.schema import (
@@ -11,7 +11,6 @@ from arcade.actor.schema import (
 )
 from arcade.core.catalog import ToolCatalog, Toolkit
 from arcade.core.executor import ToolExecutor
-from arcade.core.response import ToolResponse
 from arcade.core.tool import ToolDefinition
 
 
@@ -75,7 +74,7 @@ class BaseActor:
             func=materialized_tool.tool,
             input_model=materialized_tool.input_model,
             output_model=materialized_tool.output_model,
-            **tool_request.inputs,
+            **tool_request.inputs or {},
         )
         if response.code == 200:
             output = ToolOutput(value=response.data.result)
@@ -93,7 +92,7 @@ class BaseActor:
             output=output,
         )
 
-    def health_check(self) -> dict[str, str]:
+    def health_check(self) -> dict[str, Any]:
         """
         Provide a health check that serves as a heartbeat of actor health.
         """
@@ -139,7 +138,7 @@ class InvokeToolComponent(ActorComponent):
         """
         router.add_route(f"{self.actor.base_path}/tools/invoke", self, methods=["POST"])
 
-    async def __call__(self, request: Any) -> ToolResponse:
+    async def __call__(self, request: Any) -> InvokeToolResponse:
         """
         Handle the request to invoke a tool.
         """
@@ -158,7 +157,7 @@ class HealthCheckComponent(ActorComponent):
         """
         router.add_route(f"{self.actor.base_path}/health", self, methods=["GET"])
 
-    async def __call__(self, request: Any) -> dict[str, str]:
+    async def __call__(self, request: Any) -> dict[str, Any]:
         """
         Handle the request for a health check.
         """
