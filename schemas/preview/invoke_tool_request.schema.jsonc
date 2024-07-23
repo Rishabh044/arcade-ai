@@ -34,7 +34,7 @@
       "required": ["name", "version"],
       "additionalProperties": false
     },
-    "input": {
+    "inputs": {
       "type": "object",
       "additionalProperties": true
     },

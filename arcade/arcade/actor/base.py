@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 from arcade.actor.schema import (
     InvokeToolRequest,
@@ -31,6 +31,8 @@ class ActorComponent(ABC):
 
 
 class BaseActor:
+    base_path = "/actor"  # By default, prefix all our routes with /actor
+
     def __init__(self) -> None:
         """
         Initialize the BaseActor with an empty ToolCatalog.
@@ -42,6 +44,12 @@ class BaseActor:
         Get the catalog as a list of ToolDefinitions.
         """
         return [tool.definition for tool in self.catalog]
+
+    def register_tool(self, tool: Callable) -> None:
+        """
+        Register a tool to the catalog.
+        """
+        self.catalog.add_tool(tool)
 
     def register_toolkit(self, toolkit: Toolkit) -> None:
         """
@@ -81,7 +89,7 @@ class BaseActor:
         """
         Provide a health check that serves as a heartbeat of actor health.
         """
-        return {"status": "healthy"}
+        return {"status": "ok", "tool_count": len(self.catalog.tools.keys())}
 
     def register_routes(self, router: Any) -> None:
         """
@@ -104,7 +112,7 @@ class CatalogComponent(ActorComponent):
         """
         Register the catalog route with the router.
         """
-        router.add_route("/catalog", self, methods=["GET"])
+        router.add_route(f"{self.actor.base_path}/tools", self, methods=["GET"])
 
     async def __call__(self, request: Any) -> list[ToolDefinition]:
         """
@@ -121,15 +129,15 @@ class InvokeToolComponent(ActorComponent):
         """
         Register the invoke tool route with the router.
         """
-        router.add_route("/invoke/<tool_name>", self, methods=["POST"])
+        router.add_route(f"{self.actor.base_path}/tools/invoke", self, methods=["POST"])
 
     async def __call__(self, request: Any) -> ToolResponse:
         """
         Handle the request to invoke a tool.
         """
-        tool_name = request.path_params["tool_name"]
-        input_data = await request.json()
-        return await self.actor.invoke_tool(tool_name, input_data)
+        invoke_tool_request_data = await request.json()
+        invoke_tool_request = InvokeToolRequest.model_validate(invoke_tool_request_data)
+        return await self.actor.invoke_tool(invoke_tool_request)
 
 
 class HealthCheckComponent(ActorComponent):
@@ -140,7 +148,7 @@ class HealthCheckComponent(ActorComponent):
         """
         Register the health check route with the router.
         """
-        router.add_route("/health", self, methods=["GET"])
+        router.add_route(f"{self.actor.base_path}/health", self, methods=["GET"])
 
     async def __call__(self, request: Any) -> dict[str, str]:
         """

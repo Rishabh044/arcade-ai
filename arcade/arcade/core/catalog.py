@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from importlib import import_module
+from types import ModuleType
 from typing import (
     Annotated,
     Any,
@@ -85,12 +86,39 @@ class ToolCatalog(BaseModel):
 
     tools: dict[str, MaterializedTool] = {}
 
+    def add_tool(
+        self,
+        tool_func: Callable,
+        module: ModuleType | None = None,
+        toolkit: Toolkit | None = None,
+    ) -> None:
+        """
+        Add a function to the catalog as a tool.
+        """
+
+        input_model, output_model = create_func_models(tool_func)
+        definition = ToolCatalog.create_tool_definition(
+            tool_func, toolkit.version if toolkit else "latest"
+        )
+
+        self.tools[definition.name] = MaterializedTool(
+            definition=definition,
+            tool=tool_func,
+            meta=ToolMeta(
+                module=module.name if module else tool_func.__module__,
+                toolkit=toolkit.name if toolkit else tool_func.__module__,
+                package=toolkit.package_name if toolkit else tool_func.__module__,
+                path=module.__file__ if module else None,
+            ),
+            input_model=input_model,
+            output_model=output_model,
+        )
+
     def add_toolkit(self, toolkit: Toolkit) -> dict[str, MaterializedTool]:
         """
         Add the tools from a loaded toolkit to the catalog.
         """
 
-        tools: dict[str, MaterializedTool] = {}
         for module_name, tool_names in toolkit.tools.items():
             for tool_name in tool_names:
                 try:
@@ -104,21 +132,7 @@ class ToolCatalog(BaseModel):
                 except ImportError:
                     raise ToolDefinitionError(f"Could not import module {module_name}")
 
-                input_model, output_model = create_func_models(tool_func)
-                tools[tool_name] = MaterializedTool(
-                    definition=ToolCatalog.create_tool_definition(tool_func, toolkit.version),
-                    tool=tool_func,
-                    meta=ToolMeta(
-                        module=module_name,
-                        toolkit=toolkit.name,
-                        package=toolkit.package_name,
-                        path=module.__file__,
-                    ),
-                    input_model=input_model,
-                    output_model=output_model,
-                )
-
-        self.tools.update(tools)
+                self.add_tool(tool_func, module, toolkit)
 
     def __getitem__(self, name: str) -> MaterializedTool:
         for tool_name, tool in self.tools.items():

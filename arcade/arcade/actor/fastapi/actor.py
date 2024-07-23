@@ -15,10 +15,10 @@ class FastAPIActor(BaseActor):
         super().__init__()
         self.app = app
         self.router = FastAPIRouter(app)
-        self.register_routes()
+        self.register_routes(self.router)
 
 
-class FastAPIRouter:
+class FastAPIRouter:  # TODO create an interface for this
     def __init__(self, app: FastAPI) -> None:
         self.app = app
 
@@ -45,6 +45,8 @@ class FastAPIRouter:
 
         async def wrapped_handler(request: Request):
             if asyncio.iscoroutinefunction(handler):
+                return await handler(request)
+            elif hasattr(handler, "__call__") and asyncio.iscoroutinefunction(handler.__call__):
                 return await handler(request)
             else:
                 return handler(request)
