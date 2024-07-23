@@ -160,7 +160,7 @@ class ToolCatalog(BaseModel):
 
         # Hard requirement: tools must have descriptions
         tool_description = getattr(tool, "__tool_description__", None)
-        if tool_description is None:
+        if not tool_description:
             raise ToolDefinitionError(f"Tool {tool_name} is missing a description")
 
         # If the function returns a value, it must have a type annotation
