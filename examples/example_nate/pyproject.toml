@@ -4,6 +4,14 @@ version = "0.1.0"
 description = "Nate's testing package for Arcade"
 authors = ["Nate <nate@arcade-ai.com>"]
 
+
+[tool.poetry.metadata]
+license = "MIT"
+repository = "https://github.com/nate/arcade_example_nate"
+homepage = "https://arcade-ai.com"
+tools = ["arcade", "example", "nate"]
+
+
 [tool.poetry.dependencies]
 python = "^3.10"
 fastapi = "^0.110.3"

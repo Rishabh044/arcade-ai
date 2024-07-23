@@ -8,17 +8,18 @@ from arcade.core.toolkit import Toolkit
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from openai import AsyncOpenAI
+from arcade_example_nate.tools import arithmetic
 
 
 client = AsyncOpenAI(base_url="http://localhost:6901")
 
 app = FastAPI()
 
-# Import toolkit
-my_toolkit = Toolkit.from_directory(".")
-
 actor = FastAPIActor(app)
-actor.register_toolkit(arithmetic_toolkit)
+actor.register_tool(arithmetic.add)
+actor.register_tool(arithmetic.multiply)
+actor.register_tool(arithmetic.divide)
+actor.register_tool(arithmetic.sqrt)
 
 
 class ChatRequest(BaseModel):
