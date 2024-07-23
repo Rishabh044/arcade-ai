@@ -29,7 +29,7 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 async def chat(request: ChatRequest):
     try:
-        chat_completion = await client.chat.completions.create(
+        raw_response = await client.chat.completions.with_raw_response.create(
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": request.message},
@@ -38,6 +38,12 @@ async def chat(request: ChatRequest):
             max_tokens=150,
             tool_choice="execute",
         )
-        return {"response": chat_completion.choices[0].message.content.strip()}
+        chat_completion = raw_response.parse()
+
+        return {
+            "response": chat_completion.choices[0].message.content.strip(),
+            "tool_call_count": raw_response.headers["arcade-tool-calls"],
+            "tool_call_duration_ms": raw_response.headers["arcade-total-tool-duration"],
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
