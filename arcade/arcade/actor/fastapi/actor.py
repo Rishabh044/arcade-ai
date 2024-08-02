@@ -1,9 +1,11 @@
 import asyncio
 from typing import Any, Callable
+import functools
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 
 from arcade.actor.core.base import BaseActor
+from pydantic import BaseModel
 
 
 class FastAPIActor(BaseActor):
@@ -23,27 +25,52 @@ class FastAPIRouter:  # TODO create an interface for this
         self.app = app
         self.actor = actor
 
-    def add_route(self, path: str, handler: Callable, methods: str) -> None:
+    def add_route(
+        self,
+        path: str,
+        handler: Callable,
+        methods: str,
+        description: str,
+        response_model: Any,
+        name: str,
+        input_model: BaseModel = None,
+    ) -> None:
         """
         Add a route to the FastAPI application.
         """
-        for method in methods:
-            if method == "GET":
-                self.app.get(path)(self.wrap_handler(handler))
-            elif method == "POST":
-                self.app.post(path)(self.wrap_handler(handler))
-            elif method == "PUT":
-                self.app.put(path)(self.wrap_handler(handler))
-            elif method == "DELETE":
-                self.app.delete(path)(self.wrap_handler(handler))
-            else:
-                raise ValueError(f"Unsupported HTTP method: {method}")
+
+        dependencies = []
+        if input_model:
+            dependencies.append(Depends(input_model))
+
+        self.app.add_api_route(
+            path,
+            self.wrap_handler(handler),
+            methods=methods,
+            description=description,
+            response_model=response_model,
+            name=name,
+            dependencies=dependencies,
+        )
+        # for method in methods:
+        #     if method == "GET":
+        #         self.app.add_api_route(path,
+        #         #self.app.get(path)(self.wrap_handler(handler))
+        #     elif method == "POST":
+        #         self.app.post(path)(self.wrap_handler(handler))
+        #     elif method == "PUT":
+        #         self.app.put(path)(self.wrap_handler(handler))
+        #     elif method == "DELETE":
+        #         self.app.delete(path)(self.wrap_handler(handler))
+        #     else:
+        #         raise ValueError(f"Unsupported HTTP method: {method}")
 
     def wrap_handler(self, handler: Callable) -> Callable:
         """
         Wrap the handler to handle FastAPI-specific request and response.
         """
 
+        # @functools.wraps(handler)
         async def wrapped_handler(
             request: Request,
             # api_key: str = Depends(get_api_key), # TODO re-enable when Engine supports auth
