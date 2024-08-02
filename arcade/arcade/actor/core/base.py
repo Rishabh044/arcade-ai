@@ -33,6 +33,12 @@ class ActorComponent(ABC):
 class BaseActor:
     base_path = "/actor"  # By default, prefix all our routes with /actor
 
+    default_components: list[ActorComponent] = [
+        CatalogComponent,
+        InvokeToolComponent,
+        HealthCheckComponent,
+    ]
+
     def __init__(self) -> None:
         """
         Initialize the BaseActor with an empty ToolCatalog.
@@ -120,7 +126,14 @@ class CatalogComponent(ActorComponent):
         """
         Register the catalog route with the router.
         """
-        router.add_route(f"{self.actor.base_path}/tools", self, methods=["GET"])
+        router.add_route(
+            f"{self.actor.base_path}/tools",
+            self,
+            methods=["GET"],
+            description="Get the actor's tool catalog",
+            response_model=list[ToolDefinition],
+            name="GetCatalog",
+        )
 
     async def __call__(self, request: Any) -> list[ToolDefinition]:
         """
@@ -137,9 +150,17 @@ class InvokeToolComponent(ActorComponent):
         """
         Register the invoke tool route with the router.
         """
-        router.add_route(f"{self.actor.base_path}/tools/invoke", self, methods=["POST"])
+        router.add_route(
+            f"{self.actor.base_path}/tools/invoke",
+            self,
+            methods=["POST"],
+            description="Invoke a tool",
+            response_model=InvokeToolResponse,
+            name="InvokeTool",
+            input_model=InvokeToolRequest,
+        )
 
-    async def __call__(self, request: Any) -> InvokeToolResponse:
+    async def __call__(self, request: InvokeToolRequest) -> InvokeToolResponse:
         """
         Handle the request to invoke a tool.
         """
@@ -156,7 +177,14 @@ class HealthCheckComponent(ActorComponent):
         """
         Register the health check route with the router.
         """
-        router.add_route(f"{self.actor.base_path}/health", self, methods=["GET"])
+        router.add_route(
+            f"{self.actor.base_path}/health",
+            self,
+            methods=["GET"],
+            description="Health check for the actor",
+            response_model=dict[str, Any],
+            name="HealthCheck",
+        )
 
     async def __call__(self, request: Any) -> dict[str, Any]:
         """
