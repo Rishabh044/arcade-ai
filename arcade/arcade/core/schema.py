@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Literal, Optional, Union
 
 from pydantic import AnyUrl, BaseModel, Field
@@ -127,7 +128,7 @@ class InvokeToolRequest(BaseModel):
     """The globally-unique run ID provided by the Engine."""
     invocation_id: str
     """The globally-unique ID for this tool invocation in the run."""
-    created_at: str
+    created_at: str = Field(default_factory=lambda: str(datetime.now()))
     """The timestamp when the tool invocation was created."""
     tool: ToolVersion
     """The name and version of the tool."""
@@ -171,7 +172,7 @@ class InvokeToolResponse(BaseModel):
 
     invocation_id: str
     """The globally-unique ID for this tool invocation."""
-    finished_at: str
+    finished_at: str = Field(default_factory=lambda: str(datetime.now()))
     """The timestamp when the tool invocation finished."""
     duration: float
     """The duration of the tool invocation in milliseconds (ms)."""
