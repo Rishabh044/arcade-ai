@@ -50,6 +50,14 @@ class EngineConfig(BaseModel):
     Whether to use TLS for the connection to Arcade Engine.
     """
 
+    @property
+    def url(self) -> str:
+        """
+        Get the URL of the Arcade Engine.
+        """
+        protocol = "https" if self.tls else "http"
+        return f"{protocol}://{self.host}:{self.port}/v1"
+
 
 class Config(BaseModel):
     """
