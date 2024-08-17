@@ -170,13 +170,14 @@ def run(
 
             if choice == "execute":
                 console.print(output.data.result, style="green")  # type: ignore[union-attr]
-
-        if stream:
-            stream_response = client.stream_complete(model=model, messages=messages)
-            display_streamed_markdown(stream_response)
-        else:
-            response = client.complete(model=model, messages=messages)
-            console.print(response.choices[0].message.content, style="bold green")
+                raise typer.Exit(0)
+            else:
+                if stream:
+                    stream_response = client.stream_complete(model=model, messages=messages)
+                    display_streamed_markdown(stream_response)
+                else:
+                    response = client.complete(model=model, messages=messages)
+                    console.print(Markdown(response.choices[0].message.content))
 
     except RuntimeError as e:
         error_message = f"❌ Failed to run tool{': ' + escape(str(e)) if str(e) else ''}"
@@ -185,7 +186,7 @@ def run(
 
 @cli.command(help="Chat with a language model")
 def chat(
-    model: str = typer.Option("gpt-4o-mini", "-m", help="The model to use for prediction."),
+    model: str = typer.Option("gpt-4o", "-m", help="The model to use for prediction."),
     stream: bool = typer.Option(
         False, "-s", "--stream", is_flag=True, help="Stream the tool output."
     ),
@@ -230,7 +231,7 @@ def chat(
                 role = response.choices[0].message.role
 
                 if role == "assistant":
-                    console.print(f"\n[bold blue]Assistant:[/bold blue] {message_content}")
+                    console.print("\n[bold blue]Assistant:[/bold blue] ", Markdown(message_content))
                 else:
                     console.print(f"\n[bold magenta]{role}:[/bold magenta] {message_content}")
 
