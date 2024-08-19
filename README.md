@@ -1,5 +1,5 @@
 [![Release](https://img.shields.io/github/v/release/arcadeai/arcade-ai)](https://img.shields.io/github/v/release/arcadeai/arcade-ai)
-[![Build status](https://img.shields.io/github/actions/workflow/status/arcadeai/arcade-ai/main.yml?branch=main)](https://github.com/arcadeai/arcade-ai/actions/workflows/main.yml?query=branch%3Amain)
+[![Build](https://github.com/ArcadeAI/Engine/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/ArcadeAI/Engine/actions/workflows/build.yml)
 [![codecov](https://codecov.io/gh/arcadeai/arcade-ai/branch/main/graph/badge.svg)](https://codecov.io/gh/arcadeai/arcade-ai)
 [![Commit activity](https://img.shields.io/github/commit-activity/m/arcadeai/arcade-ai)](https://img.shields.io/github/commit-activity/m/arcadeai/arcade-ai)
 [![License](https://img.shields.io/github/license/arcadeai/arcade-ai)](https://img.shields.io/github/license/arcadeai/arcade-ai)
