@@ -14,9 +14,16 @@ Arcade AI is the developer platform for building tools designed to be used with 
 <!-- Fix these directories -->
 
 The `arcade-ai` package contains:
- - `arcade` CLI
- - `arcade.sdk` Tool SDK
- - `arcade.actor` serving tools with FastAPI, Flask, or Django
+ - `arcade.arcade.actor` Serving tools with FastAPI, Flask, or Django
+ - `arcade.arcade.sdk` Tool SDK
+ - `arcade.arcade.cli` CLI
+ - `arcade.arcade.core` Arcade Core Library
+ - `arcade.docs` Client Documentation
+ - `arcade.tests` Client Tests
+ - `assets` Documentation Assets
+ - `examples` Actor examples with FastAPI and Flask
+ - `schemas` ToolRequest Schemas
+ - `toolkits` Toolkits
 
 ## Installation
 
@@ -51,7 +58,7 @@ This will show an output that looks like
 
 ![Arcade Show Example](./assets/show_arcade_websearch.png)
 
-Export your OPENAI API key to the `OPENAI_API_KEY` environment variable and SerpAPI key to `SERP_API_KEY`.
+Export your OPENAI API key to the `OPENAI_API_KEY` environment variable and Serp API key to `SERP_API_KEY`.
 ```bash
 export OPENAI_API_KEY="sk-..."
 export SERP_API_KEY="..."
