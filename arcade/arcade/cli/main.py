@@ -139,7 +139,8 @@ def run(
         messages = [
             {"role": "user", "content": prompt},
         ]
-        for tool_name, parameters in calls.items():
+
+        for tool_name, parameters in calls:
             called_tool = catalog[tool_name]
             console.print(f"Calling tool: {tool_name} with params: {parameters}", style="bold blue")
 
@@ -168,16 +169,19 @@ def run(
                     },
                 ]
 
-            if choice == "execute":
-                console.print(output.data.result, style="green")  # type: ignore[union-attr]
-                raise typer.Exit(0)
+        if choice == "execute":
+            console.print(output.data.result, style="green")  # type: ignore[union-attr]
+            raise typer.Exit(0)
+        else:
+            if stream:
+                stream_response = client.stream_complete(model=model, messages=messages)
+                display_streamed_markdown(stream_response)
             else:
-                if stream:
-                    stream_response = client.stream_complete(model=model, messages=messages)
-                    display_streamed_markdown(stream_response)
+                response = client.complete(model=model, messages=messages)
+                if not len(response.choices) and not response.choices[0].message.content:
+                    console.print("No response from the tool.", style="bold red")
                 else:
-                    response = client.complete(model=model, messages=messages)
-                    console.print(Markdown(response.choices[0].message.content))
+                    console.print(Markdown(response.choices[0].message.content or ""))
 
     except RuntimeError as e:
         error_message = f"❌ Failed to run tool{': ' + escape(str(e)) if str(e) else ''}"
@@ -227,7 +231,7 @@ def chat(
                 display_streamed_markdown(stream_response)
             else:
                 response = client.complete(model=model, messages=messages, tool_choice="generate")
-                message_content = response.choices[0].message.content
+                message_content = response.choices[0].message.content or ""
                 role = response.choices[0].message.role
 
                 if role == "assistant":
@@ -235,7 +239,7 @@ def chat(
                 else:
                     console.print(f"\n[bold magenta]{role}:[/bold magenta] {message_content}")
 
-                messages.append({"role": role, "content": message_content or ""})
+                messages.append({"role": role, "content": message_content})
 
     except KeyboardInterrupt:
         console.print("Chat stopped by user.", style="bold blue")
