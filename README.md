@@ -11,6 +11,8 @@ Arcade AI is the developer platform for building tools designed to be used with 
 
 ## `arcade-ai`
 
+<!-- Fix these directories -->
+
 The `arcade-ai` package contains:
  - `arcade` CLI
  - `arcade.sdk` Tool SDK
@@ -26,9 +28,11 @@ pip install arcade-ai
 
 or install from source:
 
+<!-- Add somewhere that we have arcade-ai/arcade/arcade as a directory which is really strange -->
+
 ```bash
 git clone https://github.com/arcadeai/arcade-ai.git
-cd arcade-ai
+cd arcade-ai/arcade
 pip install poetry
 poetry install
 ```
@@ -38,24 +42,25 @@ poetry install
 Follow these steps if you've cloned the repo and installed the package from source:
 
 ```bash
-cd examples/websearch
+cd ../toolkits/websearch
 poetry install
 
-arcade show arcade_websearch
+arcade show
 ```
 This will show an output that looks like
 
-┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┓
-┃ Name         ┃ Description                                                    ┃ Toolkit   ┃ Version ┃
-┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━┩
-│ SearchGoogle │ Search Google using SerpAPI and return organic search results. │ websearch │ 0.1.0   │
-└──────────────┴────────────────────────────────────────────────────────────────┴───────────┴─────────┘
+![Arcade Show Example](./assets/show_arcade_websearch.png)
 
+Export your OPENAI API key to the `OPENAI_API_KEY` environment variable and SerpAPI key to `SERP_API_KEY`.
+```bash
+export OPENAI_API_KEY="sk-..."
+export SERP_API_KEY="..."
+```
 
 Predict the parameters with a model and run the tool with the predicted parameters. Arcade adds the `execute` choice to the tool, which allows you to run the tool with the predicted parameters in a single request.
 
 ```bash
-> arcade run arcade_websearch "who is Sam Partee?" --choice "execute"
+> arcade run -t arcade_websearch "who is Sam Partee?" --choice "execute"
 Running tool: SearchGoogle with params: {'query': 'Sam Partee'}
 
 [{"position": 1, "title": "Sam Partee (@SamPartee) / X", "link": "https://twitter.com/sampartee", "redirect_link":
@@ -65,12 +70,12 @@ Running tool: SearchGoogle with params: {'query': 'Sam Partee'}
 .. (truncated)
 ```
 
-Arcade also adds the `predict` choice to the tool, which allows you to predict the parameters with a model.
+Arcade also adds the `generate` choice to the tool, which allows you to interpret the results with a model.
 
 ```bash
-> arcade run arcade_websearch "who is Sam Partee?" --choice "predict" # also the default
+> arcade run -t arcade_websearch "who is Sam Partee?" --choice "generate" # also the default
 Running tool: SearchGoogle with params: {'query': 'Sam Partee'}
 
-Sam Partee is a CTO, Co-founder of Arcade AI and former Machine Learning Engineer at companies like RedisInc and HPE_Cray. They have
-expertise in AI/ML, vector search, Python, HPC, and are a sports fan.
+Sam Partee is associated with Arcade AI and has a professional profile on LinkedIn. He is based in San Francisco, California, and has over 500 connections. He attended Haverford College. For more detailed
+information about his professional background, you can view his LinkedIn profile.
 ```
