@@ -3,6 +3,7 @@ from base64 import urlsafe_b64decode
 from typing import Annotated
 
 from bs4 import BeautifulSoup
+from google.auth.credentials import Credentials
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 
