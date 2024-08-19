@@ -46,23 +46,33 @@ poetry install
 
 ## First steps
 
+### 1. Add a tool
+
 Follow these steps if you've cloned the repo and installed the package from source:
 
 ```bash
 cd ../toolkits/websearch
 poetry install
+```
 
+### 2. Check that the tool is loaded
+```bash
 arcade show
 ```
+
 This will show an output that looks like
 
 ![Arcade Show Example](./assets/show_arcade_websearch.png)
+
+### 3. Export your API keys
 
 Export your OPENAI API key to the `OPENAI_API_KEY` environment variable and Serp API key to `SERP_API_KEY`.
 ```bash
 export OPENAI_API_KEY="sk-..."
 export SERP_API_KEY="..."
 ```
+
+### 4. Run Execute
 
 Predict the parameters with a model and run the tool with the predicted parameters. Arcade adds the `execute` choice to the tool, which allows you to run the tool with the predicted parameters in a single request.
 
@@ -77,6 +87,8 @@ Running tool: SearchGoogle with params: {'query': 'Sam Partee'}
 .. (truncated)
 ```
 
+### 5. Run Generate
+
 Arcade also adds the `generate` choice to the tool, which allows you to interpret the results with a model.
 
 ```bash
@@ -86,3 +98,5 @@ Running tool: SearchGoogle with params: {'query': 'Sam Partee'}
 Sam Partee is associated with Arcade AI and has a professional profile on LinkedIn. He is based in San Francisco, California, and has over 500 connections. He attended Haverford College. For more detailed
 information about his professional background, you can view his LinkedIn profile.
 ```
+### 6. Use Chat
+Arcade also offers the ability to live chat with a model.
