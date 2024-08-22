@@ -387,6 +387,7 @@ def display_streamed_markdown(stream: Stream[ChatCompletionChunk]) -> tuple[str,
                 full_message += chunk_message
                 markdown_chunk = Markdown(full_message)
                 live.update(markdown_chunk)
+        return role, full_message
 
 
 def create_cli_catalog(
