@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import typer
 from openai.resources.chat.completions import ChatCompletionChunk, Stream
@@ -228,7 +228,8 @@ def chat(
                 stream_response = client.stream_complete(
                     model=model, messages=messages, tool_choice="generate"
                 )
-                display_streamed_markdown(stream_response)
+                role, message = display_streamed_markdown(stream_response)
+                messages.append({"role": role, "content": message})
             else:
                 response = client.complete(model=model, messages=messages, tool_choice="generate")
                 message_content = response.choices[0].message.content or ""
@@ -366,17 +367,22 @@ def display_config_as_table(config: Config) -> None:
     console.print(table)
 
 
-def display_streamed_markdown(stream: Stream[ChatCompletionChunk]) -> None:
+def display_streamed_markdown(stream: Stream[ChatCompletionChunk]) -> tuple[str, dict[str, Any]]:
     """
     Display the streamed markdown chunks as a single line.
     """
     from rich.live import Live
 
     full_message = ""
+    role = ""
     with Live(console=console, refresh_per_second=10) as live:
         for chunk in stream:
             choice = chunk.choices[0]
             chunk_message = choice.delta.content
+            if role == "":
+                role = choice.delta.role
+                if role == "assistant":
+                    console.print("\n[bold blue]Assistant:[/bold blue] ")
             if chunk_message:
                 full_message += chunk_message
                 markdown_chunk = Markdown(full_message)
