@@ -1,16 +1,16 @@
 from typing import Annotated
-from arcade.core.errors import ToolExecutionError, RetryableToolError
+
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
+
+from arcade.core.errors import RetryableToolError, ToolExecutionError
 from arcade.core.schema import ToolContext
 from arcade.sdk import tool
 from arcade.sdk.auth import SlackUser
-from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError
 
 
 @tool(
     requires_auth=SlackUser(
-        # TODO reduce this to chat:write, im:write, users.profile:read, users:read
-        # when incremental auth works
         scope=[
             "chat:write",
             "im:write",
@@ -74,8 +74,6 @@ def format_users(userListResponse: dict) -> str:
 
 @tool(
     requires_auth=SlackUser(
-        # TODO reduce this to chat:write, channels:read, groups:read
-        # when incremental auth works
         scope=[
             "chat:write",
             "im:write",

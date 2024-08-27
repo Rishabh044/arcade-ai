@@ -147,11 +147,11 @@ class ToolContext(BaseModel):
 class ToolCallRequest(BaseModel):
     """The request to call (invoke) a tool."""
 
-    run_id: str
+    run_id: str | None = None
     """The globally-unique run ID provided by the Engine."""
-    invocation_id: str
+    invocation_id: str | None = None
     """The globally-unique ID for this tool invocation in the run."""
-    created_at: str
+    created_at: str | None = None
     """The timestamp when the tool invocation was created."""
     tool: ToolVersion
     """The name and version of the tool."""

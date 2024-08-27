@@ -86,6 +86,10 @@ class MaterializedTool(BaseModel):
     def description(self) -> str:
         return self.definition.description
 
+    @property
+    def requires_auth(self) -> bool:
+        return self.definition.requirements.authorization is not None
+
 
 class ToolCatalog(BaseModel):
     """Singleton class that holds all tools for a given actor"""
