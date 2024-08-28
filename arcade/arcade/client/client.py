@@ -2,7 +2,7 @@ from typing import Any, Generic, TypeVar
 
 import httpx
 from openai import AsyncOpenAI, OpenAI
-from openai.types.chat import ChatCompletion, ChatCompletionChunk
+from openai.resources.chat import AsyncChat, Chat
 
 from arcade.client.base import AsyncArcadeClient, BaseResource, SyncArcadeClient
 from arcade.client.errors import (
@@ -23,29 +23,6 @@ from arcade.core.schema import ToolDefinition
 
 T = TypeVar("T")
 ClientT = TypeVar("ClientT", SyncArcadeClient, AsyncArcadeClient)
-
-
-class ChatCompletionsMixin:
-    """Mixin for chat completions functionality."""
-
-    def __init__(self, openai_client: OpenAI | AsyncOpenAI):
-        self._openai_client = openai_client
-
-    def create(self, *args: Any, **kwargs: Any) -> ChatCompletion | ChatCompletionChunk:
-        """Create a chat completion."""
-        return self._openai_client.chat.completions.create(*args, **kwargs)
-
-
-class SyncChatCompletions(ChatCompletionsMixin):
-    """Synchronous chat completions."""
-
-
-class AsyncChatCompletions(ChatCompletionsMixin):
-    """Asynchronous chat completions."""
-
-    async def create(self, *args: Any, **kwargs: Any) -> ChatCompletion | ChatCompletionChunk:
-        """Create an asynchronous chat completion."""
-        return await self._openai_client.chat.completions.create(*args, **kwargs)
 
 
 class AuthResource(BaseResource[ClientT]):
@@ -158,9 +135,9 @@ class ArcadeClientMixin(Generic[ClientT]):
     def __init__(self, base_url: str, *args: Any, **kwargs: Any):
         super().__init__(base_url, *args, **kwargs)
         self._openai_client: OpenAI | AsyncOpenAI | None = None
-        self.auth = AuthResource(self)  # type: ignore[type-var, var-annotated]
-        self.tool = ToolResource(self)  # type: ignore[type-var, var-annotated]
-        self.chat: SyncChatCompletions | AsyncChatCompletions | None = None
+        self.auth: AuthResource = AuthResource(self)
+        self.tool: ToolResource = ToolResource(self)
+        self.chat: Chat | AsyncChat | None = None
 
     def _handle_http_error(
         self,
@@ -172,13 +149,13 @@ class ArcadeClientMixin(Generic[ClientT]):
         raise error_class(str(e), response=e.response)
 
 
-class SyncArcade(ArcadeClientMixin[SyncArcadeClient], SyncArcadeClient):
+class Arcade(ArcadeClientMixin[SyncArcadeClient], SyncArcadeClient):
     """Synchronous Arcade client."""
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._openai_client = OpenAI(base_url=self._base_url)
-        self.chat = SyncChatCompletions(self._openai_client)
+        self._openai_client = OpenAI(base_url=self._base_url + "/v1")
+        self.chat = self._openai_client.chat
 
     def _execute_request(self, method: str, url: str, **kwargs: Any) -> Any:
         """
@@ -210,8 +187,8 @@ class AsyncArcade(ArcadeClientMixin[AsyncArcadeClient], AsyncArcadeClient):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._openai_client = AsyncOpenAI(base_url=self._base_url)
-        self.chat = AsyncChatCompletions(self._openai_client)
+        self._openai_client = AsyncOpenAI(base_url=self._base_url + "/v1")
+        self.chat = self._openai_client.chat
 
     async def _execute_request(self, method: str, url: str, **kwargs: Any) -> Any:
         """

@@ -25,6 +25,7 @@ class FastAPIActor(BaseActor):
         self.app = app
         self.router = FastAPIRouter(app, self)
         self.register_routes(self.router)
+        self.logger.info("FastAPIActor initialized")
 
 
 class FastAPIRouter(Router):
@@ -48,7 +49,7 @@ class FastAPIRouter(Router):
                 method=request.method,
                 body_json=body_json,
             )
-
+            self.logger.debug(f"Received request: {request_data}")
             if is_async_callable(handler):
                 return await handler(request_data)
             else:

@@ -25,11 +25,10 @@ from langgraph.prebuilt import create_react_agent
 #    client_secrets_file="credentials.json",
 # )
 # alternative way to authenticate with arcade
-from arcade.client import AuthProvider, SyncArcade
+from arcade.client import Arcade, AuthProvider
 
-client = SyncArcade(
-    base_url="http://localhost:9099", api_key=os.environ["ARCADE_API_KEY"]
-)
+client = Arcade(base_url="http://localhost:9099", api_key=os.environ["ARCADE_API_KEY"])
+
 challenge = client.auth.authorize(
     provider=AuthProvider.google,
     scopes=["https://www.googleapis.com/auth/gmail.readonly"],

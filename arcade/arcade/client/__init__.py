@@ -1,8 +1,8 @@
-from arcade.client.client import AsyncArcade, SyncArcade
+from arcade.client.client import Arcade, AsyncArcade
 from arcade.client.schema import AuthProvider
 
 __all__ = [
     "AuthProvider",
     "AsyncArcade",
-    "SyncArcade",
+    "Arcade",
 ]

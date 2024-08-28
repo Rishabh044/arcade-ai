@@ -1,9 +1,22 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Callable
 
 from pydantic import BaseModel
 
 from arcade.core.schema import ToolCallRequest, ToolCallResponse, ToolDefinition
+
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+
+class LoggingMixin:
+    @property
+    def logger(self):
+        if not hasattr(self, "_logger"):
+            self._logger = logging.getLogger(self.__class__.__name__)
+        return self._logger
 
 
 class RequestData(BaseModel):
@@ -21,7 +34,7 @@ class RequestData(BaseModel):
     """The deserialized body of the request (e.g. JSON)"""
 
 
-class Router(ABC):
+class Router(ABC, LoggingMixin):
     """
     A router is responsible for adding routes to the underlying framework hosting the actor.
     """
@@ -31,10 +44,11 @@ class Router(ABC):
         """
         Add a route to the router.
         """
+        self.logger.debug(f"Adding route: {method} {endpoint_path}")
         pass
 
 
-class Actor(ABC):
+class Actor(ABC, LoggingMixin):
     """
     An Actor represents a collection of tools that is hosted inside a web framework
     and can be called by an Engine.
@@ -42,15 +56,15 @@ class Actor(ABC):
 
     @abstractmethod
     def get_catalog(self) -> list[ToolDefinition]:
-        pass
+        self.logger.debug("Getting catalog")
 
     @abstractmethod
     async def call_tool(self, request: ToolCallRequest) -> ToolCallResponse:
-        pass
+        self.logger.debug(f"Calling tool: {request.tool_name}")
 
     @abstractmethod
     def health_check(self) -> dict[str, Any]:
-        pass
+        self.logger.debug("Performing health check")
 
 
 class ActorComponent(ABC):
