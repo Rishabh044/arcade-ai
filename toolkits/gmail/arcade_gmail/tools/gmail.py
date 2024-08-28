@@ -1,7 +1,7 @@
 import base64
-from email.mime.text import MIMEText
 import re
 from base64 import urlsafe_b64decode
+from email.mime.text import MIMEText
 from typing import Annotated
 
 from bs4 import BeautifulSoup
