@@ -85,7 +85,7 @@ class SyncArcadeClient(BaseArcadeClient):
                 print(method, url, kwargs)
                 response = self._client.request(method, url, **kwargs)
                 response.raise_for_status()
-                return response
+                return response  # noqa: TRY300
             except httpx.HTTPStatusError:
                 if attempt == self._retries - 1:
                     raise
@@ -132,7 +132,7 @@ class AsyncArcadeClient(BaseArcadeClient):
             try:
                 response = await client.request(method, url, **kwargs)
                 response.raise_for_status()
-                return response
+                return response  # noqa: TRY300
             except httpx.HTTPStatusError:
                 if attempt == self._retries - 1:
                     raise

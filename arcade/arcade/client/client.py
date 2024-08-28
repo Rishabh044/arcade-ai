@@ -1,4 +1,4 @@
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import httpx
 from openai import AsyncOpenAI, OpenAI
@@ -17,7 +17,6 @@ from arcade.client.schema import (
     AuthProvider,
     AuthRequest,
     AuthResponse,
-    AuthStatus,
     ExecuteToolResponse,
 )
 from arcade.core.schema import ToolDefinition
@@ -82,14 +81,14 @@ class AuthResource(BaseResource[ClientT]):
             "user_id": user_id,
         }
 
-        data = self._client._execute_request(
+        data = self._client._execute_request(  # type: ignore[attr-defined]
             "POST",
-            f"{self._base_path}/initiate",
+            f"{self._base_path}/authorize",
             json=body,
         )
         return AuthResponse(**data)
 
-    def poll_authorization(self, auth_id: str) -> AuthStatus:
+    def poll_authorization(self, auth_id: str) -> AuthResponse:
         """
         Poll for the status of an authorization request.
 
@@ -99,10 +98,10 @@ class AuthResource(BaseResource[ClientT]):
         Example:
             auth_status = client.auth.poll_authorization("auth_123")
         """
-        data = self._client._execute_request(
+        data = self._client._execute_request(  # type: ignore[attr-defined]
             "GET", f"{self._base_path}/status", params={"authorizationID": auth_id}
         )
-        return AuthStatus(**data)
+        return AuthResponse(**data)
 
 
 class ToolResource(BaseResource[ClientT]):
@@ -132,7 +131,7 @@ class ToolResource(BaseResource[ClientT]):
             "tool_version": tool_version,
             "inputs": inputs,
         }
-        data = self._client._execute_request(
+        data = self._client._execute_request(  # type: ignore[attr-defined]
             "POST", f"{self._base_path}/execute", json=request_data
         )
         return ExecuteToolResponse(**data)
@@ -145,8 +144,10 @@ class ToolResource(BaseResource[ClientT]):
             director_id: The director ID.
             tool_id: The tool ID.
         """
-        data = self._client._execute_request(
-            "POST", f"{self._base_path}/spec", json={"director_id": director_id, "tool_id": tool_id}
+        data = self._client._execute_request(  # type: ignore[attr-defined]
+            "GET",
+            f"{self._base_path}/definition",
+            params={"director_id": director_id, "tool_id": tool_id},
         )
         return ToolDefinition(**data)
 
@@ -157,14 +158,14 @@ class ArcadeClientMixin(Generic[ClientT]):
     def __init__(self, base_url: str, *args: Any, **kwargs: Any):
         super().__init__(base_url, *args, **kwargs)
         self._openai_client: OpenAI | AsyncOpenAI | None = None
-        self.auth = AuthResource(self)
-        self.tool = ToolResource(self)
+        self.auth = AuthResource(self)  # type: ignore[type-var, var-annotated]
+        self.tool = ToolResource(self)  # type: ignore[type-var, var-annotated]
         self.chat: SyncChatCompletions | AsyncChatCompletions | None = None
 
     def _handle_http_error(
         self,
         e: httpx.HTTPStatusError,
-        error_map: dict[int, Callable[[httpx.Response], APIStatusError]],
+        error_map: dict[int, type[APIStatusError]],
     ) -> None:
         status_code = e.response.status_code
         error_class = error_map.get(status_code, InternalServerError)

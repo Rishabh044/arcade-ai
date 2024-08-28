@@ -33,24 +33,28 @@ class AuthRequest(BaseModel):
     """The scope(s) needed for authorization."""
 
 
+class AuthState(str, Enum):
+    """The state of an authorization request."""
+
+    pending = "pending"
+    failed = "failed"
+    completed = "completed"
+
+
 class AuthResponse(BaseModel):
     """Response from an authorization request."""
 
     auth_id: str = Field(alias="authorizationID")
     """The ID of the authorization request"""
 
-    auth_url: str = Field(alias="authorizationURL")
+    # TODO: Use AnyUrl?
+    auth_url: str | None = Field(None, alias="authorizationURL")
     """The URL for the authorization"""
 
+    state: AuthState
+    """Only completed implies presence of a token"""
 
-class AuthStatus(BaseModel):
-    """Status of an authorization request."""
-
-    state: str
-    """The state of the authorization request"""
-
-    value: ToolContext | None = None
-    """The value of the authorization request with token and user ID"""
+    context: ToolContext | None = None
 
 
 class ExecuteToolResponse(BaseModel):

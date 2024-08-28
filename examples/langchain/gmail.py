@@ -30,19 +30,22 @@ from arcade.client import AuthProvider, SyncArcade
 client = SyncArcade(
     base_url="http://localhost:9099", api_key=os.environ["ARCADE_API_KEY"]
 )
-auth = client.auth.authorize(
+challenge = client.auth.authorize(
     provider=AuthProvider.google,
     scopes=["https://www.googleapis.com/auth/gmail.readonly"],
     user_id="example_user_id",
 )
-print(f"Please visit this URL to authorize: {auth.auth_url}")
-input("Press Enter after you've completed the authorization...")
-status = client.auth.poll_authorization(auth.auth_id)
-if status.state != "completed":
-    print("Authorization not completed. Please try again.")
-    exit(1)
 
-creds = Credentials(status.value.authorization.token)
+if challenge.state != "completed":
+    print(f"Please visit this URL to authorize: {challenge.auth_url}")
+    input("Press Enter after you've completed the authorization...")
+    challenge = client.auth.poll_authorization(challenge.auth_id)
+    if challenge.state != "completed":
+        print("Authorization not completed. Please try again.")
+        exit(1)
+
+
+creds = Credentials(challenge.context.authorization.token)
 api_resource = build_resource_service(credentials=creds)
 toolkit = GmailToolkit(api_resource=api_resource)
 
@@ -54,7 +57,7 @@ llm = ChatOpenAI(model="gpt-4o")
 agent_executor = create_react_agent(llm, tools)
 
 # Step 6: Draft an email using the agent
-example_query = "Draft an email to fake@fake.com thanking them for coffee."
+example_query = "Read my latest emails to me and summarize them."
 events = agent_executor.stream(
     {"messages": [("user", example_query)]},
     stream_mode="values",
