@@ -82,7 +82,7 @@ class BaseActor(Actor):
         duration_ms = (end_time - start_time) * 1000  # Convert to milliseconds
 
         return ToolCallResponse(
-            invocation_id=tool_request.invocation_id,
+            invocation_id=tool_request.invocation_id or "",
             duration=duration_ms,
             finished_at=datetime.now().isoformat(),
             success=not output.error,
