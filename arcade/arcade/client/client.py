@@ -133,7 +133,7 @@ class ArcadeClientMixin(Generic[ClientT]):
     """Mixin for Arcade clients."""
 
     def __init__(self, base_url: str, *args: Any, **kwargs: Any):
-        super().__init__(base_url, *args, **kwargs)
+        super().__init__(base_url, *args, **kwargs)  # type: ignore[call-arg]
         self._openai_client: OpenAI | AsyncOpenAI | None = None
         self.auth: AuthResource = AuthResource(self)
         self.tool: ToolResource = ToolResource(self)

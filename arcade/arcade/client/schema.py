@@ -24,9 +24,10 @@ class AuthProvider(str, Enum):
 class AuthRequest(BaseModel):
     """
     The requirements for authorization for a tool
+    # TODO (Nate): Make a validator here
     """
 
-    authority: AnyUrl | None = None
+    authority: AnyUrl | str | None = None
     """The URL of the OAuth 2.0 authorization server."""
 
     scope: list[str]

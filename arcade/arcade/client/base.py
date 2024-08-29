@@ -26,7 +26,6 @@ class BaseArcadeClient:
         base_url: str,
         api_key: str | None = None,
         headers: dict[str, str] | None = None,
-        proxies: str | dict[str, str] | None = None,
         timeout: float | Timeout = 10.0,
         retries: int = 3,
     ):
@@ -37,7 +36,6 @@ class BaseArcadeClient:
             base_url: The base URL for the Arcade API.
             api_key: The API key for authentication.
             headers: Additional headers to include in requests.
-            proxies: Proxy configuration for requests.
             timeout: Request timeout in seconds.
             retries: Number of retries for failed requests.
         """
@@ -46,7 +44,6 @@ class BaseArcadeClient:
         self._headers = headers or {}
         self._headers.setdefault("Authorization", f"Bearer {self._api_key}")
         self._headers.setdefault("Content-Type", "application/json")
-        self._proxies = proxies
         self._timeout = timeout
         self._retries = retries
 
@@ -71,7 +68,6 @@ class SyncArcadeClient(BaseArcadeClient):
         self._client = httpx.Client(
             base_url=self._base_url,
             headers=self._headers,
-            proxies=self._proxies,
             timeout=self._timeout,
         )
 
@@ -116,7 +112,6 @@ class AsyncArcadeClient(BaseArcadeClient):
             self._client = httpx.AsyncClient(
                 base_url=self._base_url,
                 headers=self._headers,
-                proxies=self._proxies,
                 timeout=self._timeout,
             )
         return self._client
