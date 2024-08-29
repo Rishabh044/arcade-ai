@@ -7,11 +7,11 @@ from openai.resources.chat import AsyncChat, Chat
 from arcade.client.base import AsyncArcadeClient, BaseResource, SyncArcadeClient
 from arcade.client.errors import (
     APIStatusError,
-    AuthenticationError,
     BadRequestError,
     InternalServerError,
     NotFoundError,
     PermissionDeniedError,
+    UnauthorizedError,
 )
 from arcade.client.schema import (
     AuthProvider,
@@ -174,7 +174,7 @@ class Arcade(ArcadeClientMixin[SyncArcadeClient], SyncArcadeClient):
                 e,
                 {
                     400: BadRequestError,
-                    401: AuthenticationError,
+                    401: UnauthorizedError,
                     403: PermissionDeniedError,
                     404: NotFoundError,
                     500: InternalServerError,
@@ -207,7 +207,7 @@ class AsyncArcade(ArcadeClientMixin[AsyncArcadeClient], AsyncArcadeClient):
                 e,
                 {
                     400: BadRequestError,
-                    401: AuthenticationError,
+                    401: UnauthorizedError,
                     403: PermissionDeniedError,
                     404: NotFoundError,
                     500: InternalServerError,

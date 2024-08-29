@@ -34,7 +34,7 @@ class BadRequestError(APIStatusError):
     status_code = 400
 
 
-class AuthenticationError(APIStatusError):
+class UnauthorizedError(APIStatusError):
     """401 Unauthorized"""
 
     status_code = 401

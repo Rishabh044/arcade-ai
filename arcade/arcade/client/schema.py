@@ -33,8 +33,8 @@ class AuthRequest(BaseModel):
     """The scope(s) needed for authorization."""
 
 
-class AuthState(str, Enum):
-    """The state of an authorization request."""
+class AuthStatus(str, Enum):
+    """The status of an authorization request."""
 
     pending = "pending"
     failed = "failed"
@@ -51,7 +51,7 @@ class AuthResponse(BaseModel):
     auth_url: str | None = Field(None, alias="authorizationURL")
     """The URL for the authorization"""
 
-    state: AuthState
+    status: AuthStatus
     """Only completed implies presence of a token"""
 
     context: ToolContext | None = None
