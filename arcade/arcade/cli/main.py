@@ -1,13 +1,12 @@
 import asyncio
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
 import threading
-from typing import Any, Optional
-from urllib.parse import parse_qs, urlencode
 import uuid
 import webbrowser
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any, Optional
+from urllib.parse import parse_qs, urlencode
 
-from arcade.cli.page_content import LOGIN_FAILED_HTML, LOGIN_SUCCESS_HTML
 import toml
 import typer
 from openai.resources.chat.completions import ChatCompletionChunk, Stream
@@ -19,6 +18,7 @@ from rich.text import Text
 from typer.core import TyperGroup
 from typer.models import Context
 
+from arcade.cli.page_content import LOGIN_FAILED_HTML, LOGIN_SUCCESS_HTML
 from arcade.core.catalog import ToolCatalog
 from arcade.core.client import EngineClient
 from arcade.core.schema import ToolCallOutput, ToolContext
@@ -36,13 +36,15 @@ cli = typer.Typer(
     cls=OrderCommands,
 )
 
+httpd: HTTPServer | None = None
+
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, state: str, **kwargs):
+    def __init__(self, *args, state: str, **kwargs):  # type: ignore[no-untyped-def]
         self.state = state  # Simple CSRF protection
         super().__init__(*args, **kwargs)
 
-    def log_message(self, format: str, *args: Any) -> None:
+    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 Argument `format` is shadowing a Python builtin
         # Override to suppress logging to stdout
         pass
 
@@ -58,9 +60,9 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             )
             return None
 
-        api_key = params.get("api_key", [None])[0]
-        email = params.get("email", [None])[0]
-        warning = params.get("warning", [None])[0]
+        api_key = params.get("api_key", [None])[0] or ""
+        email = params.get("email", [None])[0] or ""
+        warning = params.get("warning", [None])[0] or ""
 
         return api_key, email, warning
 
@@ -94,9 +96,9 @@ Your Arcade API key is: {api_key}
 Stored in: {config_file_path}""",
             style="bold green",
         )
-        return True, ""
+        return True
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         success = self._handle_login_response()
         if success:
             self.send_response(200)
@@ -111,14 +113,14 @@ Stored in: {config_file_path}""",
         threading.Thread(target=shutdown_server).start()
 
 
-def shutdown_server():
+def shutdown_server() -> None:
     # Shut down the server gracefully
     global httpd
-    if "httpd" in globals():
+    if "httpd" in globals() and httpd:
         httpd.shutdown()
 
 
-def run_server(state: str):
+def run_server(state: str) -> None:
     # Initialize and run the server
     global httpd
     server_address = ("", 9905)
@@ -154,7 +156,7 @@ def login() -> None:
         # Open the browser for user login
         callback_uri = "http://localhost:9905/callback"
         params = urlencode({"callback_uri": callback_uri, "state": state})
-        login_url = f"http://localhost:8001/api/v1/auth/cli_login?{params}"  # TODO make it the cloud address
+        login_url = f"https://cloud.arcade-ai.com/api/v1/auth/cli_login?{params}"
         console.print("Opening a browser to log you in...")
         webbrowser.open(login_url)
 
@@ -484,30 +486,6 @@ def config(
     # TODO: make the Config singleton not load immediately?
     from arcade.core.config import Config
 
-    def display_config_as_table(config: Config) -> None:
-        """
-        Display the configuration details as a table using Rich library.
-        """
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("Section")
-        table.add_column("Name")
-        table.add_column("Value")
-
-        for section_name in config.model_dump():
-            section = getattr(config, section_name)
-            if section:
-                section = section.dict()
-                first = True
-                for name, value in section.items():
-                    if first:
-                        table.add_row(section_name, name, str(value))
-                        first = False
-                    else:
-                        table.add_row("", name, str(value))
-                table.add_row("", "", "")
-
-        console.print(table)
-
     config = Config.load_from_file()
 
     if action == "show":
@@ -536,6 +514,31 @@ def config(
     else:
         console.print(f"❌ Invalid action: {action}", style="bold red")
         raise typer.Exit(code=1)
+
+
+def display_config_as_table(config) -> None:  # type: ignore[no-untyped-def]
+    """
+    Display the configuration details as a table using Rich library.
+    """
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Section")
+    table.add_column("Name")
+    table.add_column("Value")
+
+    for section_name in config.model_dump():
+        section = getattr(config, section_name)
+        if section:
+            section = section.dict()
+            first = True
+            for name, value in section.items():
+                if first:
+                    table.add_row(section_name, name, str(value))
+                    first = False
+                else:
+                    table.add_row("", name, str(value))
+            table.add_row("", "", "")
+
+    console.print(table)
 
 
 def display_streamed_markdown(stream: Stream[ChatCompletionChunk]) -> tuple[str, str]:
