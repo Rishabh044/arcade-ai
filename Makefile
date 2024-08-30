@@ -26,8 +26,8 @@ build: clean-build ## Build wheel file using poetry
 	@echo "🚀 Creating wheel file"
 	@cd arcade && poetry build
 
-.PHONY: clean
-clean: ## clean build artifacts
+.PHONY: clean-build
+clean-build: ## clean build artifacts
 	@cd arcade && rm -rf dist
 
 .PHONY: publish
