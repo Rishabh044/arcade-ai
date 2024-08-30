@@ -13,7 +13,7 @@ console = Console()
 DEFAULT_VERSIONS = {
     "python": "^3.10",
     "arcade-ai": f"^{VERSION}",
-    "pytest": "^7.4.0",
+    "pytest": "^8.3.0",
 }
 
 

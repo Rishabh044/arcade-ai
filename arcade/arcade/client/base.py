@@ -5,8 +5,6 @@ from urllib.parse import urljoin
 import httpx
 from httpx import Timeout
 
-from arcade.core.config import config
-
 T = TypeVar("T")
 ResponseT = TypeVar("ResponseT")
 
@@ -40,7 +38,7 @@ class BaseArcadeClient:
             retries: Number of retries for failed requests.
         """
         self._base_url = base_url
-        self._api_key = api_key or os.environ.get("ARCADE_API_KEY") or config.api.key
+        self._api_key = api_key or os.environ.get("ARCADE_API_KEY")
         self._headers = headers or {}
         self._headers.setdefault("Authorization", f"Bearer {self._api_key}")
         self._headers.setdefault("Content-Type", "application/json")
@@ -50,12 +48,6 @@ class BaseArcadeClient:
     def _build_url(self, path: str) -> str:
         """
         Build the full URL for a given path.
-
-        Args:
-            path: The path to append to the base URL.
-
-        Returns:
-            The full URL.
         """
         return urljoin(self._base_url, path)
 

@@ -30,7 +30,7 @@ from langgraph.prebuilt import create_react_agent
 # Step 3 (Option 2) Use the Arcade SDK to authenticate with Gmail
 from arcade.client import Arcade, AuthProvider
 
-client = Arcade(base_url="http://localhost:9099", api_key=os.environ["ARCADE_API_KEY"])
+client = Arcade(api_key=os.environ["ARCADE_API_KEY"])
 
 challenge = client.auth.authorize(
     provider=AuthProvider.google,

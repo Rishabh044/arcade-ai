@@ -1,21 +1,17 @@
+from arcade_github.tools import repo, user
+from arcade_gmail.tools import gmail
+from arcade_slack.tools import chat
 from fastapi import FastAPI, HTTPException
-from openai import AsyncOpenAI
 from pydantic import BaseModel
 
-from arcade_gmail.tools import gmail
-from arcade_github.tools import repo, user
-from arcade_slack.tools import chat
-from arcade.core.config import config
-
 from arcade.actor.fastapi.actor import FastAPIActor
+from arcade.client import AsyncArcade
+from arcade.core.config import config
 
 if not config.api or not config.api.key:
     raise ValueError("Arcade API key not set. Please run `arcade login`.")
 
-client = AsyncOpenAI(
-    api_key=config.api.key,
-    base_url="http://localhost:9099/v1",
-)
+client = AsyncArcade(api_key=config.api.key)
 
 app = FastAPI()
 

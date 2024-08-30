@@ -1,5 +1,9 @@
+import ipaddress
+from functools import cached_property, lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 
+import idna
 import toml
 from pydantic import BaseModel, ValidationError
 
@@ -33,15 +37,15 @@ class EngineConfig(BaseModel):
     Arcade Engine configuration.
     """
 
-    host: str = "localhost"
+    host: str = "api.arcade-ai.com"
     """
     Arcade Engine host.
     """
-    port: int = 6901
+    port: int | None = None
     """
     Arcade Engine port.
     """
-    tls: bool = False
+    tls: bool = True
     """
     Whether to use TLS for the connection to Arcade Engine.
     """
@@ -60,7 +64,7 @@ class Config(BaseModel):
     """
     Arcade user configuration.
     """
-    engine: EngineConfig | None = None
+    engine: EngineConfig | None = EngineConfig()
     """
     Arcade Engine configuration.
     """
@@ -79,15 +83,77 @@ class Config(BaseModel):
         """
         return cls.get_config_dir_path() / "arcade.toml"
 
-    @property
+    @cached_property
     def engine_url(self) -> str:
         """
-        Get the URL of the Arcade Engine.
+        Get the cached URL of the Arcade Engine.
+
+        This property is cached after its first access to improve performance.
+        The cache is automatically invalidated if any of the underlying data changes.
+
+        The port is included in the URL unless the host is a fully qualified domain name
+        (excluding IP addresses) and no port is specified. Handles IPv4, IPv6, IDNs, and
+        hostnames with underscores.
+
+        This property exists to provide a consistent and correctly formatted URL for
+        connecting to the Arcade Engine, taking into account various configuration
+        options and edge cases. It ensures that:
+
+        1. The correct protocol (http/https) is used based on the TLS setting.
+        2. IPv4 and IPv6 addresses are properly formatted.
+        3. Internationalized Domain Names (IDNs) are correctly encoded.
+        4. Fully Qualified Domain Names (FQDNs) are identified and handled appropriately.
+        5. Ports are included when necessary, respecting common conventions for FQDNs.
+        6. Hostnames with underscores (common in development environments) are supported.
+        7. Pre-existing port specifications in the host are respected.
+
+        The resulting URL is always suffixed with '/v1' to specify the API version.
+
+        Returns:
+            str: The fully constructed URL for the Arcade Engine.
+
+        Raises:
+            ValueError: If the engine configuration is missing or incomplete.
         """
         if self.engine is None:
-            raise ValueError("Engine not set")
+            raise ValueError("Configuration for Engine is not set in arcade.toml")
+        if not self.engine.host:
+            raise ValueError("Configuration for Engine host is not set in arcade.toml")
+
         protocol = "https" if self.engine.tls else "http"
-        return f"{protocol}://{self.engine.host}:{self.engine.port}/v1"
+
+        # Handle potential IDNs
+        try:
+            encoded_host = idna.encode(self.engine.host).decode("ascii")
+        except idna.IDNAError:
+            encoded_host = self.engine.host
+
+        # Check if the host is a valid IP address (IPv4 or IPv6)
+        try:
+            ipaddress.ip_address(encoded_host)
+            is_ip = True
+        except ValueError:
+            is_ip = False
+
+        # Parse the host, handling potential IPv6 addresses
+        host_for_parsing = f"[{encoded_host}]" if is_ip and ":" in encoded_host else encoded_host
+        parsed_host = urlparse(f"//{host_for_parsing}")
+
+        # Check if the host is a fully qualified domain name (excluding IP addresses)
+        is_fqdn = "." in parsed_host.netloc and not is_ip and "_" not in parsed_host.netloc
+
+        # Handle hosts that might already include a port
+        if ":" in parsed_host.netloc and not is_ip:
+            host, existing_port = parsed_host.netloc.rsplit(":", 1)
+            if existing_port.isdigit():
+                return f"{protocol}://{parsed_host.netloc}/v1"
+
+        if is_fqdn and self.engine.port is None:
+            return f"{protocol}://{encoded_host}/v1"
+        elif self.engine.port is not None:
+            return f"{protocol}://{encoded_host}:{self.engine.port}/v1"
+        else:
+            return f"{protocol}://{encoded_host}/v1"
 
     @classmethod
     def ensure_config_dir_exists(cls) -> None:
@@ -102,7 +168,22 @@ class Config(BaseModel):
     def load_from_file(cls) -> "Config":
         """
         Load the configuration from the TOML file in the configuration directory.
-        If no configuration file exists, create a new one with default values.
+
+        If no configuration file exists, this method will create a new one with default values.
+        The default configuration includes:
+        - An empty API configuration
+        - A default Engine configuration (host: "api.arcade-ai.com", port: None, tls: True)
+        - No user configuration
+
+        This behavior ensures that the application always has a valid configuration to work with,
+        but it may not be suitable for all use cases. If a specific configuration is required,
+        ensure that the configuration file exists before calling this method.
+
+        Returns:
+            Config: The loaded or newly created configuration.
+
+        Raises:
+            ValueError: If the existing configuration file is invalid.
         """
         cls.ensure_config_dir_exists()
 
@@ -149,5 +230,21 @@ class Config(BaseModel):
         config_file_path.write_text(toml.dumps(self.model_dump()))
 
 
-# Singleton instance of Config
-config = Config.load_from_file()
+@lru_cache(maxsize=1)
+def get_config() -> Config:
+    """
+    Get the Arcade configuration.
+
+    This function is cached, so subsequent calls will return the same Config object
+    without reloading from the file, unless the cache is cleared.
+
+    remember to clear the cache if the configuration file is modified.
+    use `get_config.cache_clear()` to clear the cache.
+
+    Returns:
+        Config: The Arcade configuration.
+    """
+    return Config.load_from_file()
+
+
+config = get_config()

@@ -24,11 +24,14 @@ from arcade.core.schema import ToolDefinition
 T = TypeVar("T")
 ClientT = TypeVar("ClientT", SyncArcadeClient, AsyncArcadeClient)
 
+API_VERSION = "v1"
+BASE_URL = "https://api.arcade-ai.com"
+
 
 class AuthResource(BaseResource[ClientT]):
     """Authentication resource."""
 
-    _base_path = "/v1/auth"
+    _base_path = f"/{API_VERSION}/auth"
 
     def authorize(
         self,
@@ -66,11 +69,9 @@ class AuthResource(BaseResource[ClientT]):
         return AuthResponse(**data)
 
     def poll_authorization(self, auth_id: str) -> AuthResponse:
-        """
-        Poll for the status of an authorization request.
+        """Poll for the status of an authorization
 
-        Args:
-            auth_id: The authorization ID.
+        Polls using the authorization ID returned from the authorize method.
 
         Example:
             auth_status = client.auth.poll_authorization("auth_123")
@@ -84,7 +85,7 @@ class AuthResource(BaseResource[ClientT]):
 class ToolResource(BaseResource[ClientT]):
     """Tool resource."""
 
-    _base_path = "/v1/tools"
+    _base_path = f"/{API_VERSION}/tool"
 
     def run(
         self,
@@ -116,10 +117,6 @@ class ToolResource(BaseResource[ClientT]):
     def get(self, director_id: str, tool_id: str) -> ToolDefinition:
         """
         Get the specification for a tool.
-
-        Args:
-            director_id: The director ID.
-            tool_id: The tool ID.
         """
         data = self._client._execute_request(  # type: ignore[attr-defined]
             "GET",
@@ -132,12 +129,10 @@ class ToolResource(BaseResource[ClientT]):
 class ArcadeClientMixin(Generic[ClientT]):
     """Mixin for Arcade clients."""
 
-    def __init__(self, base_url: str, *args: Any, **kwargs: Any):
+    def __init__(self, base_url: str = BASE_URL, *args: Any, **kwargs: Any):
         super().__init__(base_url, *args, **kwargs)  # type: ignore[call-arg]
-        self._openai_client: OpenAI | AsyncOpenAI | None = None
         self.auth: AuthResource = AuthResource(self)
         self.tool: ToolResource = ToolResource(self)
-        self.chat: Chat | AsyncChat | None = None
 
     def _handle_http_error(
         self,
@@ -148,25 +143,39 @@ class ArcadeClientMixin(Generic[ClientT]):
         error_class = error_map.get(status_code, InternalServerError)
         raise error_class(str(e), response=e.response)
 
+    def _chat_url(self, base_url: str) -> str:
+        # TODO (sam): make chat a Resource like others but maintain
+        # the ability to call chat directly like the openai clients
+        chat_url = str(base_url)
+        if not base_url.endswith(API_VERSION):
+            chat_url = f"{base_url}/{API_VERSION}"
+        return chat_url
+
 
 class Arcade(ArcadeClientMixin[SyncArcadeClient], SyncArcadeClient):
-    """Synchronous Arcade client."""
+    """Synchronous Arcade client.
+
+    Example:
+        from arcade.client import Arcade
+
+        client = Arcade(api_key="your-api-key")
+        client.auth.authorize(...)
+        client.tool.run(...)
+    """
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
 
-        # Assume we are using the LLM API of the Engine for now
-        self._openai_client = OpenAI(base_url=self._base_url + "/v1", api_key=self._api_key)
-        self.chat = self._openai_client.chat
+        chat_url = self._chat_url(self._base_url)
+        self._openai_client = OpenAI(base_url=chat_url, api_key=self._api_key)
+
+    @property
+    def chat(self) -> Chat:
+        return self._openai_client.chat
 
     def _execute_request(self, method: str, url: str, **kwargs: Any) -> Any:
         """
         Execute a synchronous request.
-
-        Args:
-            method: The HTTP method.
-            url: The URL to request.
-            **kwargs: Additional arguments for the request.
         """
         try:
             response = self._request(method, url, **kwargs)
@@ -189,17 +198,17 @@ class AsyncArcade(ArcadeClientMixin[AsyncArcadeClient], AsyncArcadeClient):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._openai_client = AsyncOpenAI(base_url=self._base_url + "/v1")
-        self.chat = self._openai_client.chat
+
+        chat_url = self._chat_url(self._base_url)
+        self._openai_client = AsyncOpenAI(base_url=chat_url, api_key=self._api_key)
+
+    @property
+    def chat(self) -> AsyncChat:
+        return self._openai_client.chat
 
     async def _execute_request(self, method: str, url: str, **kwargs: Any) -> Any:
         """
         Execute an asynchronous request.
-
-        Args:
-            method: The HTTP method.
-            url: The URL to request.
-            **kwargs: Additional arguments for the request.
         """
         try:
             response = await self._request(method, url, **kwargs)
