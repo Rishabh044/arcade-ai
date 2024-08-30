@@ -1,7 +1,14 @@
 import asyncio
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
+import threading
 from typing import Any, Optional
+from urllib.parse import parse_qs, urlencode
+import uuid
+import webbrowser
 
+from arcade.cli.page_content import LOGIN_FAILED_HTML, LOGIN_SUCCESS_HTML
+import toml
 import typer
 from openai.resources.chat.completions import ChatCompletionChunk, Stream
 from rich.console import Console
@@ -14,7 +21,6 @@ from typer.models import Context
 
 from arcade.core.catalog import ToolCatalog
 from arcade.core.client import EngineClient
-from arcade.core.config import Config
 from arcade.core.schema import ToolCallOutput, ToolContext
 from arcade.core.toolkit import Toolkit
 
@@ -31,16 +37,133 @@ cli = typer.Typer(
 )
 
 
+class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+    def __init__(self, *args, state: str, **kwargs):
+        self.state = state  # Simple CSRF protection
+        super().__init__(*args, **kwargs)
+
+    def log_message(self, format: str, *args: Any) -> None:
+        # Override to suppress logging to stdout
+        pass
+
+    def _parse_login_response(self) -> tuple[str, str, str] | None:
+        # Parse the query string from the URL
+        query_string = self.path.split("?", 1)[-1]
+        params = parse_qs(query_string)
+        returned_state = params.get("state", [None])[0]
+
+        if returned_state != self.state:
+            console.print(
+                "❌ Login failed: Invalid login attempt. Please try again.", style="bold red"
+            )
+            return None
+
+        api_key = params.get("api_key", [None])[0]
+        email = params.get("email", [None])[0]
+        warning = params.get("warning", [None])[0]
+
+        return api_key, email, warning
+
+    def _handle_login_response(self) -> bool:
+        result = self._parse_login_response()
+        if result is None:
+            return False
+        api_key, email, warning = result
+
+        if warning:
+            console.print(warning, style="bold yellow")
+
+        # If API key and email are received, store them in a file
+        if not api_key or not email:
+            console.print(
+                "❌ Login failed: No credentials received. Please try again.", style="bold red"
+            )
+            return False
+
+        # TODO don't overwrite existing config
+        config_file_path = os.path.expanduser("~/.arcade/arcade.toml")
+        new_config = {"api": {"key": api_key}, "user": {"email": email}}
+        with open(config_file_path, "w") as f:
+            toml.dump(new_config, f)
+
+        # Send a success response to the browser
+        console.print(
+            f"""✅ Hi there, {email}!
+
+Your Arcade API key is: {api_key}
+Stored in: {config_file_path}""",
+            style="bold green",
+        )
+        return True, ""
+
+    def do_GET(self):
+        success = self._handle_login_response()
+        if success:
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(LOGIN_SUCCESS_HTML)
+        else:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(LOGIN_FAILED_HTML)
+
+        # Always shut down the server so it doesn't keep running
+        threading.Thread(target=shutdown_server).start()
+
+
+def shutdown_server():
+    # Shut down the server gracefully
+    global httpd
+    if "httpd" in globals():
+        httpd.shutdown()
+
+
+def run_server(state: str):
+    # Initialize and run the server
+    global httpd
+    server_address = ("", 9905)
+    handler = lambda *args, **kwargs: SimpleHTTPRequestHandler(*args, state=state, **kwargs)
+    httpd = HTTPServer(server_address, handler)
+    httpd.serve_forever()
+
+
 @cli.command(help="Log in to Arcade Cloud")
-def login(
-    username: str = typer.Option(..., prompt="Username", help="Your Arcade Cloud username"),
-    api_key: str = typer.Option(None, prompt="API Key", help="Your Arcade Cloud API Key"),
-) -> None:
+def login() -> None:
     """
     Logs the user into Arcade Cloud.
     """
-    # Here you would add the logic to authenticate the user with Arcade Cloud
-    raise NotImplementedError("This feature is not yet implemented.")
+
+    # If ~/.arcade/arcade.toml exists, load the API key and email
+    config_file_path = os.path.expanduser("~/.arcade/arcade.toml")
+    if os.path.exists(config_file_path):
+        config = toml.load(config_file_path)
+        api_key = config.get("api", {}).get("key")
+        email = config.get("user", {}).get("email")
+        if api_key and email:
+            console.print(
+                f"You're already logged in as {email}. Delete {config_file_path} to log in as a different user."
+            )
+            return
+
+    # Start the HTTP server in a new thread
+    state = str(uuid.uuid4())
+    server_thread = threading.Thread(target=run_server, args=(state,))
+    server_thread.start()
+
+    try:
+        # Open the browser for user login
+        callback_uri = "http://localhost:9905/callback"
+        params = urlencode({"callback_uri": callback_uri, "state": state})
+        login_url = f"http://localhost:8001/api/v1/auth/cli_login?{params}"  # TODO make it the cloud address
+        console.print("Opening a browser to log you in...")
+        webbrowser.open(login_url)
+
+        # Wait for the server thread to finish
+        server_thread.join()
+    except KeyboardInterrupt:
+        shutdown_server()
+        if server_thread.is_alive():
+            server_thread.join()  # Ensure the server thread completes and cleans up
 
 
 @cli.command(help="Log out of Arcade Cloud")
@@ -48,8 +171,14 @@ def logout() -> None:
     """
     Logs the user out of Arcade Cloud.
     """
-    # Here you would add the logic to log the user out of Arcade Cloud
-    raise NotImplementedError("This feature is not yet implemented.")
+
+    # If ~/.arcade/arcade.toml exists, delete it
+    config_file_path = os.path.expanduser("~/.arcade/arcade.toml")
+    if os.path.exists(config_file_path):
+        os.remove(config_file_path)
+        console.print("You're now logged out.", style="bold")
+    else:
+        console.print("You're not logged in.", style="bold red")
 
 
 @cli.command(help="Create a new toolkit package directory")
@@ -122,6 +251,9 @@ def run(
     from arcade.core.executor import ToolExecutor
 
     try:
+        # TODO: make the Config singleton not load immediately?
+        from arcade.core.config import Config
+
         catalog = create_cli_catalog(toolkit=toolkit)
 
         tools = [catalog[tool]] if tool else list(catalog)
@@ -206,6 +338,9 @@ def chat(
     """
     Chat with a language model.
     """
+
+    # TODO: make the Config singleton not load immediately?
+    from arcade.core.config import Config
 
     config = Config.load_from_file()
     if not config.engine or not config.engine_url:
@@ -346,6 +481,33 @@ def config(
     Show/edit configuration details of the Arcade Engine
     """
 
+    # TODO: make the Config singleton not load immediately?
+    from arcade.core.config import Config
+
+    def display_config_as_table(config: Config) -> None:
+        """
+        Display the configuration details as a table using Rich library.
+        """
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Section")
+        table.add_column("Name")
+        table.add_column("Value")
+
+        for section_name in config.model_dump():
+            section = getattr(config, section_name)
+            if section:
+                section = section.dict()
+                first = True
+                for name, value in section.items():
+                    if first:
+                        table.add_row(section_name, name, str(value))
+                        first = False
+                    else:
+                        table.add_row("", name, str(value))
+                table.add_row("", "", "")
+
+        console.print(table)
+
     config = Config.load_from_file()
 
     if action == "show":
@@ -374,31 +536,6 @@ def config(
     else:
         console.print(f"❌ Invalid action: {action}", style="bold red")
         raise typer.Exit(code=1)
-
-
-def display_config_as_table(config: Config) -> None:
-    """
-    Display the configuration details as a table using Rich library.
-    """
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Section")
-    table.add_column("Name")
-    table.add_column("Value")
-
-    for section_name in config.model_dump():
-        section = getattr(config, section_name)
-        if section:
-            section = section.dict()
-            first = True
-            for name, value in section.items():
-                if first:
-                    table.add_row(section_name, name, str(value))
-                    first = False
-                else:
-                    table.add_row("", name, str(value))
-            table.add_row("", "", "")
-
-    console.print(table)
 
 
 def display_streamed_markdown(stream: Stream[ChatCompletionChunk]) -> tuple[str, str]:
