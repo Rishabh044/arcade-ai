@@ -16,13 +16,12 @@ from arcade.sdk.eval import (
 
 # Evaluation rubric
 rubric = EvalRubric(
-    name="Gmail Tools Rubric",
     fail_threshold=0.7,
     warn_threshold=0.9,
 )
 
 
-@tool_eval("gpt-3.5-turbo", "gpt-4o")
+@tool_eval("gpt-3.5-turbo")
 def gmail_eval_suite():
     suite = EvalSuite(
         name="Gmail Tools Evaluation",
@@ -36,6 +35,7 @@ def gmail_eval_suite():
 
     # Write Draft Scenarios
     suite.add_case(
+        name="Write Draft with specified recipient, subject, and body",
         user_message="Draft and email to john@example.com asking if we can meet tomorrow at 2 PM",
         expected_tool="WriteDraft",
         expected_tool_args={
@@ -53,11 +53,12 @@ def gmail_eval_suite():
 
     # Search Emails by Header Scenarios
     suite.add_case(
+        name="Search for emails from a specific sender and time period",
         user_message="Find emails from alice@example.com sent last week",
         expected_tool="SearchEmailsByHeader",
         expected_tool_args={
             "sender": "alice@example.com",
-            "date_range": DateRange.LAST_7_DAYS,
+            "date_range": DateRange.LAST_7_DAYS.value,
             "limit": 25,
         },
         rubric=rubric,
@@ -69,11 +70,12 @@ def gmail_eval_suite():
     )
 
     suite.add_case(
+        name="Search by subject and date range",
         user_message="Search for emails with 'Urgent' in the subject from the last 30 days",
         expected_tool="SearchEmailsByHeader",
         expected_tool_args={
             "subject": "Urgent",
-            "date_range": DateRange.LAST_30_DAYS,
+            "date_range": DateRange.LAST_30_DAYS.value,
             "limit": 25,
         },
         rubric=rubric,
@@ -85,15 +87,17 @@ def gmail_eval_suite():
     )
 
     suite.extend_case(
+        name="Followup search by subject and date range",
         user_message="show me more of those",
         expected_tool_args={
             "subject": "Urgent",
-            "date_range": DateRange.LAST_30_DAYS,
+            "date_range": DateRange.LAST_30_DAYS.value,
             "limit": 50,
         },
     )
 
     suite.add_case(
+        name="Retrieve specific number of emails",
         user_message="Retrieve the last 10 emails in my inbox",
         expected_tool="GetEmails",
         expected_tool_args={"n_emails": 10},

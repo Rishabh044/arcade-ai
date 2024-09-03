@@ -450,7 +450,7 @@ def display_eval_results(results: list[dict[str, Any]], show_details: bool = Fal
                 status = "⚠️"
 
             table.add_row(
-                case["input"][:30] + "..." if len(case["input"]) > 30 else case["input"],
+                case["name"][:30] + "..." if len(case["name"]) > 30 else case["name"],
                 case["expected_tool"],
                 case["predicted_tool"],
                 f"{case['evaluation']['score']:.2f}",
@@ -459,20 +459,26 @@ def display_eval_results(results: list[dict[str, Any]], show_details: bool = Fal
 
         console.print(table)
 
-        if not show_details:
-            continue
-
         # Display detailed results in a panel
         for case in cases:
-            detailed_results = (
-                f"[bold]Case:[/bold] {case['input']}\n\n"
-                f"[bold]Expected Tool:[/bold] {case['expected_tool']}\n"
-                f"[bold]Predicted Tool:[/bold] {case['predicted_tool']}\n\n"
-                f"[bold]Expected Args:[/bold]\n{format_args(case['expected_args'])}\n"
-                f"[bold]Predicted Args:[/bold]\n{format_args(case['predicted_args'])}\n\n"
-                f"[bold]Evaluation:[/bold]\n{format_evaluation(case['evaluation'])}\n"
-            )
-            console.print(Panel(detailed_results, title="Detailed Results", expand=False))
+            if not show_details:
+                eval_results = (
+                    f"[bold]Case:[/bold] {case['name']}\n"
+                    f"[bold]Evaluation:[/bold]\t{format_evaluation(case['evaluation'])}"
+                )
+                console.print(eval_results)
+            else:
+                detailed_results = (
+                    f"[bold]Case:[/bold] {case['name']}\n\n"
+                    f"[bold]User Input:[/bold] {case['user_input']}\n"
+                    f"[bold]Expected Tool:[/bold] {case['expected_tool']}\n"
+                    f"[bold]Predicted Tool:[/bold] {case['predicted_tool']}\n\n"
+                    f"[bold]Expected Args:[/bold]\n{format_args(case['expected_args'])}\n"
+                    f"[bold]Predicted Args:[/bold]\n{format_args(case['predicted_args'])}\n\n"
+                    f"[bold]Evaluation:[/bold]\n{format_evaluation(case['evaluation'])}\n"
+                )
+                console.print(Panel(detailed_results, title="Case Results", expand=False))
+            console.print("-" * 80)
 
 
 def format_args(args: dict[str, Any]) -> str:
@@ -498,13 +504,16 @@ def format_evaluation(evaluation: dict[str, Any]) -> str:
         result.append("  [green]Result: Pass[/green]")
         # Early return if passed, skipping detailed results
         # TODO: Make this optional
-        return "\n".join(result)
+        return "\t".join(result)
     elif evaluation.get("warning"):
         result.append("  [yellow]Result: Warning[/yellow]")
     elif evaluation.get("fail"):
         result.append("  [red]Result: Fail[/red]")
     else:
         result.append("  [bold red]Result: Unknown[/bold red]")
+
+    # make consistent with shorter return
+    result = ["\t".join(result)]
 
     # Add critic results header if we didn't pass
     result.append("\n[bold]Critic Results:[/bold]")
