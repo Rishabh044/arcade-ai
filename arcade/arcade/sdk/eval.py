@@ -28,6 +28,16 @@ class Critic(ABC):
 
 @dataclass
 class BinaryCritic(Critic):
+    """A critic for performing exact equality comparisons between expected and actual values.
+
+    This critic evaluates whether the expected and actual values are exactly equal.
+    It's useful for scenarios where only an exact match is acceptable.
+
+    Returns a dict with:
+        - "match": True if expected == actual, otherwise False.
+        - "score": The full weight if there's a match, otherwise 0.0.
+    """
+
     def evaluate(self, expected: Any, actual: Any) -> dict[str, float | bool]:
         match = expected == actual
         return {"match": match, "score": self.weight if match else 0.0}
@@ -35,6 +45,28 @@ class BinaryCritic(Critic):
 
 @dataclass
 class NumericCritic(Critic):
+    """A critic for evaluating numeric values within a specified range.
+
+    This critic performs a "fuzzy" comparison of numeric values, where values closer
+    to each other (relative to the specified range) result in higher scores. It's
+    useful for scenarios where exact matches aren't necessary, but closeness within
+    a certain tolerance is rewarded.
+
+    Attributes:
+        value_range (tuple[float, float]): The min and max values of the expected range.
+        match_threshold (float): The threshold for considering a match (default 0.8).
+
+    The evaluation process:
+    1. Normalizes both expected and actual values to a 0-1 scale based on value_range.
+    2. Calculates the absolute difference between these normalized values.
+    3. Subtracts this difference from 1 to get a similarity score (closer to 1 is more similar).
+    4. Multiplies the similarity by the critic's weight for the final score.
+
+    Returns a dict with:
+        - "match": True if the score >= match_threshold, otherwise False.
+        - "score": The calculated score (similarity * weight).
+    """
+
     value_range: tuple[float, float]
     match_threshold: float = 0.8
 
@@ -49,6 +81,30 @@ class NumericCritic(Critic):
 
 @dataclass
 class SimilarityCritic(Critic):
+    """A critic for evaluating the similarity between two strings.
+
+    This critic uses a specified similarity metric to compare the expected and actual
+    string values. Currently, it supports cosine similarity using TF-IDF vectorization.
+
+    Args:
+        metric: The similarity metric to use (default is "cosine").
+        similarity_threshold: The threshold for considering a match (default 0.8).
+
+    The evaluation process:
+    1. Converts both expected and actual values to strings.
+    2. Calculates the similarity score using the specified metric.
+    3. Determines a match based on the similarity_threshold.
+    4. Calculates the final score by multiplying the similarity by the critic's weight.
+
+    Returns a dict with:
+        - "match": True if similarity >= similarity_threshold, otherwise False.
+        - "score": The calculated score (similarity * weight).
+
+    Raises:
+        ImportError: If scikit-learn is not installed (required for cosine similarity).
+        ValueError: If an unsupported similarity metric is specified.
+    """
+
     metric: str = "cosine"
     similarity_threshold: float = 0.8
 
@@ -74,13 +130,44 @@ class SimilarityCritic(Critic):
 
 @dataclass
 class EvalRubric:
-    name: str
     fail_threshold: float
+    """The threshold for failing the evaluation (0.0-1.0)."""
     warn_threshold: float
+    """The threshold for issuing a warning (0.0-1.0)."""
 
 
 @dataclass
 class EvalCase:
+    """
+    Represents a single evaluation case within an EvalSuite.
+
+    An EvalCase defines a specific scenario to test, including the user input,
+    expected tool usage, and criteria for evaluation.
+
+    Example:
+        case = EvalCase(
+            name="Check stock price",
+            user_message="What's the current stock price of Apple?",
+            expected_tool="get_stock_price",
+            expected_tool_args={"symbol": "AAPL"},
+            rubric=EvalRubric(fail_threshold=0.6, warn_threshold=0.9),
+            critics=[
+                BinaryCritic(critic_field="symbol", weight=1.0),
+                NumericCritic(critic_field="price", weight=1.0, value_range=(0, 1000))
+            ]
+        )
+
+    Attributes:
+        name: A descriptive name for this evaluation case.
+        user_message: The user input to be sent to the AI model.
+        expected_tool: The name of the tool expected to be called by the model.
+        expected_tool_args: A dictionary of expected arguments for the tool call.
+        rubric: An EvalRubric object defining pass/fail criteria.
+        critics: A list of Critic objects used to evaluate tool arguments.
+        additional_messages: Optional list of additional context messages.
+    """
+
+    name: str
     user_message: str
     expected_tool: str
     expected_tool_args: dict[str, Any]
@@ -101,12 +188,14 @@ class EvalCase:
         tool_match = actual_tool == self.expected_tool
         total_score += 1.0 if tool_match else 0.0
         total_weight += 1.0
-        results.append({
-            "field": "tool_selection",
-            "match": tool_match,
-            "score": 1.0 if tool_match else 0.0,
-            "weight": 1.0,  # weight is always 1.0 for tool selection
-        })
+        results.append(
+            {
+                "field": "tool_selection",
+                "match": tool_match,
+                "score": 1.0 if tool_match else 0.0,
+                "weight": 1.0,  # weight is always 1.0 for tool selection
+            }
+        )
 
         # Evaluate arguments using critics
         for critic in self.critics:
@@ -116,12 +205,14 @@ class EvalCase:
                 result = critic.evaluate(expected_value, actual_value)
                 total_score += result["score"]
                 total_weight += critic.weight
-                results.append({
-                    "field": critic.critic_field,
-                    **result,
-                    "weight": critic.weight,
-                    "max_score": critic.max_score,
-                })
+                results.append(
+                    {
+                        "field": critic.critic_field,
+                        **result,
+                        "weight": critic.weight,
+                        "max_score": critic.max_score,
+                    }
+                )
 
         normalized_score = total_score / total_weight if total_weight > 0 else 0.0
         return {
@@ -135,6 +226,43 @@ class EvalCase:
 
 @dataclass
 class EvalSuite:
+    """
+    A suite for evaluating AI model performance on specific tasks or scenarios.
+
+    EvalSuite manages a collection of EvalCases, each representing a specific test scenario.
+    It provides methods to add cases, register tools, and run evaluations against specified models.
+
+    Example usage:
+        suite = EvalSuite(
+            name="Weather Inquiry Suite",
+            system="You are a helpful weather assistant.",
+            exact_tool_selection=True,
+            tool_choice="auto"
+        )
+        suite.add_case(
+            name="Simple temperature query",
+            user_message="What's the temperature in New York?",
+            expected_tool="get_temperature",
+            expected_tool_args={"city": "New York"},
+            rubric=EvalRubric(fail_threshold=0.5, warn_threshold=0.8),
+            critics=[
+                BinaryCritic(critic_field="city", weight=1.0),
+                NumericCritic(critic_field="temperature", weight=1.0, value_range=(0, 100))
+            ]
+        )
+        suite.register_tool(get_temperature)
+        results = suite.run("gpt-3.5-turbo", arcade_client)
+
+    Attributes:
+        name: The name of the evaluation suite.
+        system: The system message to be used for all cases in this suite.
+        cases: A list of EvalCase objects representing individual test scenarios.
+        exact_tool_selection: Whether to require exact tool name matches (default True).
+        exact_tool_args: Whether to require exact argument matches (default False).
+        tool_choice: The tool choice mode for the AI model ("auto" or "function").
+        catalog: A ToolCatalog object containing registered tools.
+    """
+
     name: str
     system: str
     cases: list[EvalCase] = field(default_factory=list)
@@ -145,6 +273,7 @@ class EvalSuite:
 
     def add_case(
         self,
+        name: str,
         user_message: str,
         expected_tool: str,
         expected_tool_args: dict[str, Any],
@@ -156,6 +285,7 @@ class EvalSuite:
         Add a new evaluation case to the suite.
 
         Args:
+            name: The name of the evaluation case.
             user_message: The user's input message.
             expected_tool: The name of the expected tool to be called.
             expected_tool_args: The expected arguments for the tool.
@@ -164,6 +294,7 @@ class EvalSuite:
             additional_messages: Optional list of additional messages for context.
         """
         case = EvalCase(
+            name=name,
             user_message=user_message,
             expected_tool=expected_tool,
             expected_tool_args=expected_tool_args,
@@ -175,6 +306,7 @@ class EvalSuite:
 
     def extend_case(
         self,
+        name: str,
         user_message: str,
         expected_tool: str | None = None,
         expected_tool_args: dict[str, Any] | None = None,
@@ -185,6 +317,7 @@ class EvalSuite:
         Extend the last added case with new information.
 
         Args:
+            name: The name of the extended case.
             user_message: The new user message for this extended case.
             expected_tool: The new expected tool (if different from the last case).
             expected_tool_args: New or updated expected tool arguments.
@@ -204,6 +337,7 @@ class EvalSuite:
 
         # Create a new case, copying from the last one and updating fields
         new_case = EvalCase(
+            name=name,
             user_message=user_message,
             expected_tool=expected_tool or last_case.expected_tool,
             expected_tool_args=last_case.expected_tool_args.copy(),
@@ -269,6 +403,7 @@ class EvalSuite:
                     )
 
                 result = {
+                    "name": case.name,
                     "input": case.user_message,
                     "expected_tool": case.expected_tool,
                     "expected_args": case.expected_tool_args,
@@ -290,10 +425,12 @@ def get_tool_args(chat_completion: ChatCompletion) -> list[tuple[str, dict[str, 
     message = chat_completion.choices[0].message
     if message.tool_calls:
         for tool_call in message.tool_calls:
-            tool_args_list.append((
-                tool_call.function.name,
-                json.loads(tool_call.function.arguments),
-            ))
+            tool_args_list.append(
+                (
+                    tool_call.function.name,
+                    json.loads(tool_call.function.arguments),
+                )
+            )
     return tool_args_list
 
 
