@@ -1,3 +1,4 @@
+import importlib.util
 import os
 import readline
 import threading
@@ -10,6 +11,7 @@ import typer
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.markup import escape
+from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
@@ -380,3 +382,84 @@ def display_config_as_table(config) -> None:  # type: ignore[no-untyped-def]
             table.add_row("", "", "")
 
     console.print(table)
+
+
+@cli.command(help="Run evaluation suites in a directory")
+def evals(
+    directory: str = typer.Argument(".", help="Directory containing evaluation files"),
+):
+    """
+    Finds all files starting with 'eval_' in the given directory,
+    executes any functions decorated with @tool_eval, and displays the results.
+    """
+    eval_files = [f for f in os.listdir(directory) if f.startswith("eval_") and f.endswith(".py")]
+
+    if not eval_files:
+        console.print("No evaluation files found.", style="bold yellow")
+        return
+
+    for file in eval_files:
+        file_path = os.path.join(directory, file)
+        module_name = file[:-3]  # Remove .py extension
+
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        eval_functions = [
+            obj
+            for name, obj in module.__dict__.items()
+            if callable(obj) and hasattr(obj, "__tool_eval__")
+        ]
+
+        if not eval_functions:
+            console.print(f"No @tool_eval functions found in {file}", style="bold yellow")
+            continue
+
+        for func in eval_functions:
+            console.print(f"\nRunning evaluation from {file}: {func.__name__}", style="bold blue")
+            results = func()
+            display_eval_results(results)
+
+
+def display_eval_results(results: list[dict[str, Any]]):
+    for model_results in results:
+        model = model_results.get("model", "Unknown Model")
+        cases = model_results.get("cases", [])
+
+        table = Table(
+            title=f"Evaluation Results for {model}", show_header=True, header_style="bold magenta"
+        )
+        table.add_column("Case", style="cyan", no_wrap=True)
+        table.add_column("Expected Tool", style="green")
+        table.add_column("Predicted Tool", style="yellow")
+        table.add_column("Score", justify="right")
+        table.add_column("Status", justify="center")
+
+        for case in cases:
+            status = "✅" if case["evaluation"]["pass"] else "❌"
+            if case["evaluation"].get("warning"):
+                status = "⚠️"
+
+            table.add_row(
+                case["input"][:30] + "..." if len(case["input"]) > 30 else case["input"],
+                case["expected_tool"],
+                case["predicted_tool"],
+                f"{case['evaluation']['score']:.2f}",
+                status,
+            )
+
+        console.print(table)
+
+        # Display detailed results in a panel
+        detailed_results = "\n".join([
+            f"Case: {case['input']}\n"
+            f"Expected Tool: {case['expected_tool']}\n"
+            f"Predicted Tool: {case['predicted_tool']}\n"
+            f"Expected Args: {case['expected_args']}\n"
+            f"Predicted Args: {case['predicted_args']}\n"
+            f"Evaluation: {case['evaluation']}\n"
+            f"Critic Results: {case['evaluation']['critic_results']}\n"
+            for case in cases
+        ])
+        console.print(Panel(detailed_results, title="Detailed Results", expand=False))
