@@ -387,6 +387,7 @@ def display_config_as_table(config) -> None:  # type: ignore[no-untyped-def]
 @cli.command(help="Run evaluation suites in a directory")
 def evals(
     directory: str = typer.Argument(".", help="Directory containing evaluation files"),
+    show_details: bool = typer.Option(False, "--details", "-d", help="Show detailed results"),
 ):
     """
     Finds all files starting with 'eval_' in the given directory,
@@ -419,10 +420,17 @@ def evals(
         for func in eval_functions:
             console.print(f"\nRunning evaluation from {file}: {func.__name__}", style="bold blue")
             results = func()
-            display_eval_results(results)
+            display_eval_results(results, show_details=show_details)
 
 
-def display_eval_results(results: list[dict[str, Any]]):
+def display_eval_results(results: list[dict[str, Any]], show_details: bool = False) -> None:
+    """
+    Display evaluation results in a more readable format with color-coded matches.
+
+    Args:
+        results: List of dictionaries containing evaluation results for each model.
+        show_details: Whether to show detailed results for each case.
+    """
     for model_results in results:
         model = model_results.get("model", "Unknown Model")
         cases = model_results.get("cases", [])
@@ -451,15 +459,71 @@ def display_eval_results(results: list[dict[str, Any]]):
 
         console.print(table)
 
+        if not show_details:
+            continue
+
         # Display detailed results in a panel
-        detailed_results = "\n".join([
-            f"Case: {case['input']}\n"
-            f"Expected Tool: {case['expected_tool']}\n"
-            f"Predicted Tool: {case['predicted_tool']}\n"
-            f"Expected Args: {case['expected_args']}\n"
-            f"Predicted Args: {case['predicted_args']}\n"
-            f"Evaluation: {case['evaluation']}\n"
-            f"Critic Results: {case['evaluation']['critic_results']}\n"
-            for case in cases
-        ])
-        console.print(Panel(detailed_results, title="Detailed Results", expand=False))
+        for case in cases:
+            detailed_results = (
+                f"[bold]Case:[/bold] {case['input']}\n\n"
+                f"[bold]Expected Tool:[/bold] {case['expected_tool']}\n"
+                f"[bold]Predicted Tool:[/bold] {case['predicted_tool']}\n\n"
+                f"[bold]Expected Args:[/bold]\n{format_args(case['expected_args'])}\n"
+                f"[bold]Predicted Args:[/bold]\n{format_args(case['predicted_args'])}\n\n"
+                f"[bold]Evaluation:[/bold]\n{format_evaluation(case['evaluation'])}\n"
+            )
+            console.print(Panel(detailed_results, title="Detailed Results", expand=False))
+
+
+def format_args(args: dict[str, Any]) -> str:
+    """Format argument dictionary for display."""
+    return "\n".join(f"  {k}: {v}" for k, v in args.items())
+
+
+def format_evaluation(evaluation: dict[str, Any]) -> str:
+    """
+    Format evaluation results with color-coded matches and accurate score ranges.
+
+    Args:
+        evaluation: A dictionary containing evaluation results.
+
+    Returns:
+        A formatted string representation of the evaluation results.
+    """
+    result = []
+    result.append(f"  Overall Score: {evaluation['score']:.2f}")
+
+    # Determine and add the overall result status
+    if evaluation["pass"]:
+        result.append("  [green]Result: Pass[/green]")
+        # Early return if passed, skipping detailed results
+        # TODO: Make this optional
+        return "\n".join(result)
+    elif evaluation.get("warning"):
+        result.append("  [yellow]Result: Warning[/yellow]")
+    elif evaluation.get("fail"):
+        result.append("  [red]Result: Fail[/red]")
+    else:
+        result.append("  [bold red]Result: Unknown[/bold red]")
+
+    # Add critic results header if we didn't pass
+    result.append("\n[bold]Critic Results:[/bold]")
+
+    # Process each critic result
+    for critic in evaluation.get("critic_results", []):
+        match_color = "green" if critic.get("match") else "red"
+        weight = critic.get("weight", 1.0)
+        max_score = critic.get("max_score", 1.0)
+        field = critic.get("field", "Unknown")
+
+        critic_result = (
+            f"  [bold]{field}:[/bold] "
+            f"[{match_color}]"
+            f"Match: {critic.get('match', False)}, "
+            f"Score: {critic.get('score', 0):.2f}/{max_score:.2f} "
+            f"(Weight: {weight:.2f})"
+            f"[/{match_color}]"
+        )
+        result.append(critic_result)
+
+    return "\n".join(result)
