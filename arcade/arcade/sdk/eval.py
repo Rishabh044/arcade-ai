@@ -4,8 +4,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+import numpy as np
 from openai.resources.chat.completions import ChatCompletion
-from pydantic import ValidationError
+from scipy.optimize import linear_sum_assignment
 
 from arcade.client import Arcade
 from arcade.core.catalog import ToolCatalog
@@ -70,7 +71,6 @@ class NumericCritic(Critic):
     value_range: tuple[float, float]
     match_threshold: float = 0.8
 
-    # a little bit much on the casts, but it's fine
     def evaluate(self, expected: Any, actual: Any) -> dict[str, Any]:
         min_val, max_val = self.value_range
         normalized_expected = float((float(expected) - min_val) / (max_val - min_val))
@@ -137,6 +137,12 @@ class EvalRubric:
 
 
 @dataclass
+class ExpectedToolCall:
+    name: str
+    args: dict[str, Any]
+
+
+@dataclass
 class EvalCase:
     """
     Represents a single evaluation case within an EvalSuite.
@@ -144,24 +150,10 @@ class EvalCase:
     An EvalCase defines a specific scenario to test, including the user input,
     expected tool usage, and criteria for evaluation.
 
-    Example:
-        case = EvalCase(
-            name="Check stock price",
-            user_message="What's the current stock price of Apple?",
-            expected_tool="get_stock_price",
-            expected_tool_args={"symbol": "AAPL"},
-            rubric=EvalRubric(fail_threshold=0.6, warn_threshold=0.9),
-            critics=[
-                BinaryCritic(critic_field="symbol", weight=1.0),
-                NumericCritic(critic_field="price", weight=1.0, value_range=(0, 1000))
-            ]
-        )
-
     Attributes:
         name: A descriptive name for this evaluation case.
         user_message: The user input to be sent to the AI model.
-        expected_tool: The name of the tool expected to be called by the model.
-        expected_tool_args: A dictionary of expected arguments for the tool call.
+        expected_tool_calls: A list of ExpectedToolCall objects representing the expected tool calls.
         rubric: An EvalRubric object defining pass/fail criteria.
         critics: A list of Critic objects used to evaluate tool arguments.
         additional_messages: Optional list of additional context messages.
@@ -169,50 +161,84 @@ class EvalCase:
 
     name: str
     user_message: str
-    expected_tool: str
-    expected_tool_args: dict[str, Any]
+    expected_tool_calls: list[ExpectedToolCall]
     rubric: EvalRubric
-    critics: list[Critic] = field(default_factory=list)
+    critics: list[Critic]
     additional_messages: list[dict[str, str]] = field(default_factory=list)
 
     def evaluate(
         self,
-        actual_tool: str,
-        actual_tool_args: dict[str, Any],
+        actual_tool_calls: list[tuple[str, dict[str, Any]]],
     ) -> dict[str, Any]:
+        # Create a cost matrix for the assignment problem
+        cost_matrix = self._create_cost_matrix(actual_tool_calls)
+
+        # Use the Hungarian algorithm to find the optimal assignment
+        row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize=True)
+
         total_score = 0.0
         total_weight = 0.0
         results = []
 
-        # Evaluate tool selection
-        tool_match = actual_tool == self.expected_tool
-        total_score += 1.0 if tool_match else 0.0
-        total_weight += 1.0
-        results.append(
-            {
-                "field": "tool_selection",
-                "match": tool_match,
-                "score": 1.0 if tool_match else 0.0,
-                "weight": 1.0,  # weight is always 1.0 for tool selection
-            }
-        )
+        for i, j in zip(row_ind, col_ind):
+            if i < len(self.expected_tool_calls) and j < len(actual_tool_calls):
+                expected = self.expected_tool_calls[i]
+                actual_tool, actual_args = actual_tool_calls[j]
 
-        # Evaluate arguments using critics
-        for critic in self.critics:
-            expected_value = self.expected_tool_args.get(critic.critic_field)
-            actual_value = actual_tool_args.get(critic.critic_field)
-            if expected_value is not None and actual_value is not None:
-                result = critic.evaluate(expected_value, actual_value)
-                total_score += result["score"]
-                total_weight += critic.weight
-                results.append(
-                    {
-                        "field": critic.critic_field,
-                        **result,
-                        "weight": critic.weight,
-                        "max_score": critic.max_score,
-                    }
-                )
+                # Evaluate tool selection
+                tool_match = actual_tool == expected.name
+                tool_score = 1.0 if tool_match else 0.0
+                total_score += tool_score
+                total_weight += 1.0
+                results.append({
+                    "field": "tool_selection",
+                    "match": tool_match,
+                    "score": tool_score,
+                    "weight": 1.0,
+                    "expected": expected.name,
+                    "actual": actual_tool,
+                })
+
+                # Evaluate arguments using critics
+                for critic in self.critics:
+                    expected_value = expected.args.get(critic.critic_field)
+                    actual_value = actual_args.get(critic.critic_field)
+                    if expected_value is not None and actual_value is not None:
+                        result = critic.evaluate(expected_value, actual_value)
+                        total_score += result["score"]
+                        total_weight += critic.weight
+                        results.append({
+                            "field": critic.critic_field,
+                            **result,
+                            "weight": critic.weight,
+                            "max_score": critic.max_score,
+                            "expected": expected_value,
+                            "actual": actual_value,
+                        })
+
+        # Penalize for missing or extra tool calls
+        missing_calls = len(self.expected_tool_calls) - len(actual_tool_calls)
+        if missing_calls > 0:
+            total_weight += missing_calls
+            results.append({
+                "field": "missing_tool_calls",
+                "match": False,
+                "score": 0.0,
+                "weight": missing_calls,
+                "expected": len(self.expected_tool_calls),
+                "actual": len(actual_tool_calls),
+            })
+        elif missing_calls < 0:
+            extra_calls = abs(missing_calls)
+            total_weight += extra_calls
+            results.append({
+                "field": "extra_tool_calls",
+                "match": False,
+                "score": 0.0,
+                "weight": extra_calls,
+                "expected": len(self.expected_tool_calls),
+                "actual": len(actual_tool_calls),
+            })
 
         normalized_score = total_score / total_weight if total_weight > 0 else 0.0
         return {
@@ -223,6 +249,37 @@ class EvalCase:
             "critic_results": results,
         }
 
+    def _create_cost_matrix(
+        self, actual_tool_calls: list[tuple[str, dict[str, Any]]]
+    ) -> np.ndarray:
+        """
+        Create a cost matrix for the Hungarian algorithm.
+
+        This method computes the score for each possible pairing of expected and actual tool calls.
+        The resulting matrix is used by the Hungarian algorithm to find the optimal assignment.
+
+        Args:
+            actual_tool_calls: A list of tuples containing the actual tool calls and their arguments.
+
+        Returns:
+            A numpy array representing the cost matrix.
+        """
+        n = max(len(self.expected_tool_calls), len(actual_tool_calls))
+        cost_matrix = np.zeros((n, n))
+
+        for i, expected in enumerate(self.expected_tool_calls):
+            for j, (actual_tool, actual_args) in enumerate(actual_tool_calls):
+                score = 1.0 if expected.name == actual_tool else 0.0
+                for critic in self.critics:
+                    expected_value = expected.args.get(critic.critic_field)
+                    actual_value = actual_args.get(critic.critic_field)
+                    if expected_value is not None and actual_value is not None:
+                        result = critic.evaluate(expected_value, actual_value)
+                        score += result["score"]
+                cost_matrix[i, j] = score
+
+        return cost_matrix
+
 
 @dataclass
 class EvalSuite:
@@ -231,27 +288,6 @@ class EvalSuite:
 
     EvalSuite manages a collection of EvalCases, each representing a specific test scenario.
     It provides methods to add cases, register tools, and run evaluations against specified models.
-
-    Example usage:
-        suite = EvalSuite(
-            name="Weather Inquiry Suite",
-            system="You are a helpful weather assistant.",
-            exact_tool_selection=True,
-            tool_choice="auto"
-        )
-        suite.add_case(
-            name="Simple temperature query",
-            user_message="What's the temperature in New York?",
-            expected_tool="get_temperature",
-            expected_tool_args={"city": "New York"},
-            rubric=EvalRubric(fail_threshold=0.5, warn_threshold=0.8),
-            critics=[
-                BinaryCritic(critic_field="city", weight=1.0),
-                NumericCritic(critic_field="temperature", weight=1.0, value_range=(0, 100))
-            ]
-        )
-        suite.register_tool(get_temperature)
-        results = suite.run("gpt-3.5-turbo", arcade_client)
 
     Attributes:
         name: The name of the evaluation suite.
@@ -275,8 +311,7 @@ class EvalSuite:
         self,
         name: str,
         user_message: str,
-        expected_tool: str,
-        expected_tool_args: dict[str, Any],
+        expected_tool_calls: list[ExpectedToolCall],
         rubric: EvalRubric,
         critics: list[Critic],
         additional_messages: list[dict[str, str]] | None = None,
@@ -287,17 +322,15 @@ class EvalSuite:
         Args:
             name: The name of the evaluation case.
             user_message: The user's input message.
-            expected_tool: The name of the expected tool to be called.
-            expected_tool_args: The expected arguments for the tool.
+            expected_tool_calls: A list of expected tool calls.
             rubric: The evaluation rubric for this case.
-            critics: List of critics to evaluate the tool arguments.
+            critics: list of critics to evaluate the tool arguments.
             additional_messages: Optional list of additional messages for context.
         """
         case = EvalCase(
             name=name,
             user_message=user_message,
-            expected_tool=expected_tool,
-            expected_tool_args=expected_tool_args,
+            expected_tool_calls=expected_tool_calls,
             rubric=rubric,
             critics=critics,
             additional_messages=additional_messages or [],
@@ -308,8 +341,7 @@ class EvalSuite:
         self,
         name: str,
         user_message: str,
-        expected_tool: str | None = None,
-        expected_tool_args: dict[str, Any] | None = None,
+        expected_tool_calls: list[ExpectedToolCall] | None = None,
         rubric: EvalRubric | None = None,
         critics: list[Critic] | None = None,
     ) -> None:
@@ -319,8 +351,7 @@ class EvalSuite:
         Args:
             name: The name of the extended case.
             user_message: The new user message for this extended case.
-            expected_tool: The new expected tool (if different from the last case).
-            expected_tool_args: New or updated expected tool arguments.
+            expected_tool_calls: New or updated expected tool calls.
             rubric: A new rubric (if different from the last case).
             critics: New critics (if different from the last case).
         """
@@ -339,16 +370,11 @@ class EvalSuite:
         new_case = EvalCase(
             name=name,
             user_message=user_message,
-            expected_tool=expected_tool or last_case.expected_tool,
-            expected_tool_args=last_case.expected_tool_args.copy(),
+            expected_tool_calls=expected_tool_calls or last_case.expected_tool_calls,
             rubric=rubric or last_case.rubric,
             critics=critics or last_case.critics.copy(),
             additional_messages=new_additional_messages,
         )
-
-        # Update expected_tool_args if provided
-        if expected_tool_args:
-            new_case.expected_tool_args.update(expected_tool_args)
 
         self.cases.append(new_case)
 
@@ -375,44 +401,21 @@ class EvalSuite:
 
             predicted_args = get_tool_args(response)
 
-            for tool_name, args in predicted_args:
-                try:
-                    # Validate input against the tool's input model
-                    materialized_tool = self.catalog[tool_name]
-                    materialized_tool.input_model(**args)
-                except KeyError:
-                    evaluation = {
-                        "score": 0,
-                        "pass": False,
-                        "warning": False,
-                        "fail": True,
-                        "error": f"Tool '{tool_name}' not found in catalog.",
-                    }
-                except ValidationError as e:
-                    evaluation = {
-                        "score": 0,
-                        "pass": False,
-                        "warning": False,
-                        "fail": True,
-                        "error": f"Input validation failed: {e!s}",
-                    }
-                else:
-                    evaluation = case.evaluate(
-                        tool_name,
-                        args,
-                    )
+            evaluation = case.evaluate(predicted_args)
 
-                result = {
-                    "name": case.name,
-                    "input": case.user_message,
-                    "expected_tool": case.expected_tool,
-                    "expected_args": case.expected_tool_args,
-                    "predicted_tool": tool_name,
-                    "predicted_args": args,
-                    "evaluation": evaluation,
-                }
+            result = {
+                "name": case.name,
+                "input": case.user_message,
+                "expected_tool_calls": [
+                    {"name": tc.name, "args": tc.args} for tc in case.expected_tool_calls
+                ],
+                "predicted_tool_calls": [
+                    {"name": tool, "args": args} for tool, args in predicted_args
+                ],
+                "evaluation": evaluation,
+            }
 
-                results["cases"].append(result)
+            results["cases"].append(result)
 
         return results
 
@@ -425,12 +428,10 @@ def get_tool_args(chat_completion: ChatCompletion) -> list[tuple[str, dict[str, 
     message = chat_completion.choices[0].message
     if message.tool_calls:
         for tool_call in message.tool_calls:
-            tool_args_list.append(
-                (
-                    tool_call.function.name,
-                    json.loads(tool_call.function.arguments),
-                )
-            )
+            tool_args_list.append((
+                tool_call.function.name,
+                json.loads(tool_call.function.arguments),
+            ))
     return tool_args_list
 
 

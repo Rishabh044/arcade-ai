@@ -9,6 +9,7 @@ from arcade.sdk.eval import (
     BinaryCritic,
     EvalRubric,
     EvalSuite,
+    ExpectedToolCall,
     NumericCritic,
     SimilarityCritic,
     tool_eval,
@@ -37,12 +38,16 @@ def gmail_eval_suite():
     suite.add_case(
         name="Write Draft with specified recipient, subject, and body",
         user_message="Draft and email to john@example.com asking if we can meet tomorrow at 2 PM",
-        expected_tool="WriteDraft",
-        expected_tool_args={
-            "recipient": "john@example.com",
-            "subject": "Meeting Tomorrow",
-            "body": "Hi John, Can we meet tomorrow at 2 PM? Thanks, Alice",
-        },
+        expected_tool_calls=[
+            ExpectedToolCall(
+                name="WriteDraft",
+                args={
+                    "recipient": "john@example.com",
+                    "subject": "Meeting Tomorrow",
+                    "body": "Hi John, Can we meet tomorrow at 2 PM? Thanks, Alice",
+                },
+            )
+        ],
         rubric=rubric,
         critics=[
             BinaryCritic(critic_field="recipient", weight=0.5),
@@ -55,12 +60,16 @@ def gmail_eval_suite():
     suite.add_case(
         name="Search for emails from a specific sender and time period",
         user_message="Find emails from alice@example.com sent last week",
-        expected_tool="SearchEmailsByHeader",
-        expected_tool_args={
-            "sender": "alice@example.com",
-            "date_range": DateRange.LAST_7_DAYS.value,
-            "limit": 25,
-        },
+        expected_tool_calls=[
+            ExpectedToolCall(
+                name="SearchEmailsByHeader",
+                args={
+                    "sender": "alice@example.com",
+                    "date_range": DateRange.LAST_7_DAYS.value,
+                    "limit": 25,
+                },
+            )
+        ],
         rubric=rubric,
         critics=[
             BinaryCritic(critic_field="sender", weight=0.5),
@@ -72,12 +81,16 @@ def gmail_eval_suite():
     suite.add_case(
         name="Search by subject and date range",
         user_message="Search for emails with 'Urgent' in the subject from the last 30 days",
-        expected_tool="SearchEmailsByHeader",
-        expected_tool_args={
-            "subject": "Urgent",
-            "date_range": DateRange.LAST_30_DAYS.value,
-            "limit": 25,
-        },
+        expected_tool_calls=[
+            ExpectedToolCall(
+                name="SearchEmailsByHeader",
+                args={
+                    "subject": "Urgent",
+                    "date_range": DateRange.LAST_30_DAYS.value,
+                    "limit": 25,
+                },
+            )
+        ],
         rubric=rubric,
         critics=[
             SimilarityCritic(critic_field="subject", weight=0.4),
@@ -89,18 +102,27 @@ def gmail_eval_suite():
     suite.extend_case(
         name="Followup search by subject and date range",
         user_message="show me more of those",
-        expected_tool_args={
-            "subject": "Urgent",
-            "date_range": DateRange.LAST_30_DAYS.value,
-            "limit": 50,
-        },
+        expected_tool_calls=[
+            ExpectedToolCall(
+                name="SearchEmailsByHeader",
+                args={
+                    "subject": "Urgent",
+                    "date_range": DateRange.LAST_30_DAYS.value,
+                    "limit": 50,
+                },
+            )
+        ],
     )
 
     suite.add_case(
         name="Retrieve specific number of emails",
         user_message="Retrieve the last 10 emails in my inbox",
-        expected_tool="GetEmails",
-        expected_tool_args={"n_emails": 10},
+        expected_tool_calls=[
+            ExpectedToolCall(
+                name="GetEmails",
+                args={"n_emails": 10},
+            )
+        ],
         rubric=rubric,
         critics=[
             BinaryCritic(critic_field="n_emails", weight=0.8),
