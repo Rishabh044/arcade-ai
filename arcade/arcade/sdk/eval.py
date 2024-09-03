@@ -1,3 +1,4 @@
+import functools
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -16,6 +17,10 @@ class Critic(ABC):
     critic_field: str
     weight: float
 
+    @property
+    def max_score(self) -> float:
+        return self.weight
+
     @abstractmethod
     def evaluate(self, expected: Any, actual: Any) -> dict[str, Any]:
         pass
@@ -23,9 +28,9 @@ class Critic(ABC):
 
 @dataclass
 class BinaryCritic(Critic):
-    def evaluate(self, expected: Any, actual: Any) -> dict[str, Any]:
-        match = bool(expected) == bool(actual)
-        return {"match": match, "score": float(self.weight if match else 0.0)}
+    def evaluate(self, expected: Any, actual: Any) -> dict[str, float | bool]:
+        match = expected == actual
+        return {"match": match, "score": self.weight if match else 0.0}
 
 
 @dataclass
@@ -49,9 +54,13 @@ class SimilarityCritic(Critic):
 
     def evaluate(self, expected: str, actual: str) -> dict[str, Any]:
         if self.metric == "cosine":
-            from sklearn.feature_extraction.text import TfidfVectorizer
-            from sklearn.metrics.pairwise import cosine_similarity
-
+            try:
+                from sklearn.feature_extraction.text import TfidfVectorizer
+                from sklearn.metrics.pairwise import cosine_similarity
+            except ImportError:
+                raise ImportError(
+                    "Please install scikit-learn to use the cosine similarity metric."
+                )
             vectorizer = TfidfVectorizer()
             tfidf_matrix = vectorizer.fit_transform([str(expected), str(actual)])
             similarity = float(cosine_similarity(tfidf_matrix[0], tfidf_matrix[1])[0][0])
@@ -92,13 +101,12 @@ class EvalCase:
         tool_match = actual_tool == self.expected_tool
         total_score += 1.0 if tool_match else 0.0
         total_weight += 1.0
-        results.append(
-            {
-                "field": "tool_selection",
-                "match": tool_match,
-                "score": 1.0 if tool_match else 0.0,
-            }
-        )
+        results.append({
+            "field": "tool_selection",
+            "match": tool_match,
+            "score": 1.0 if tool_match else 0.0,
+            "weight": 1.0,  # weight is always 1.0 for tool selection
+        })
 
         # Evaluate arguments using critics
         for critic in self.critics:
@@ -108,7 +116,12 @@ class EvalCase:
                 result = critic.evaluate(expected_value, actual_value)
                 total_score += result["score"]
                 total_weight += critic.weight
-                results.append({"field": critic.critic_field, **result})
+                results.append({
+                    "field": critic.critic_field,
+                    **result,
+                    "weight": critic.weight,
+                    "max_score": critic.max_score,
+                })
 
         normalized_score = total_score / total_weight if total_weight > 0 else 0.0
         return {
@@ -159,6 +172,51 @@ class EvalSuite:
             additional_messages=additional_messages or [],
         )
         self.cases.append(case)
+
+    def extend_case(
+        self,
+        user_message: str,
+        expected_tool: str | None = None,
+        expected_tool_args: dict[str, Any] | None = None,
+        rubric: EvalRubric | None = None,
+        critics: list[Critic] | None = None,
+    ) -> None:
+        """
+        Extend the last added case with new information.
+
+        Args:
+            user_message: The new user message for this extended case.
+            expected_tool: The new expected tool (if different from the last case).
+            expected_tool_args: New or updated expected tool arguments.
+            rubric: A new rubric (if different from the last case).
+            critics: New critics (if different from the last case).
+        """
+        if not self.cases:
+            raise ValueError("No cases to extend. Add a case first.")
+
+        last_case = self.cases[-1]
+
+        # Create a new message list with the previous case's messages and user message
+        new_additional_messages = [
+            *last_case.additional_messages,
+            {"role": "user", "content": last_case.user_message},
+        ]
+
+        # Create a new case, copying from the last one and updating fields
+        new_case = EvalCase(
+            user_message=user_message,
+            expected_tool=expected_tool or last_case.expected_tool,
+            expected_tool_args=last_case.expected_tool_args.copy(),
+            rubric=rubric or last_case.rubric,
+            critics=critics or last_case.critics.copy(),
+            additional_messages=new_additional_messages,
+        )
+
+        # Update expected_tool_args if provided
+        if expected_tool_args:
+            new_case.expected_tool_args.update(expected_tool_args)
+
+        self.cases.append(new_case)
 
     def register_tool(self, tool_func: Callable):
         self.catalog.add_tool(tool_func)
@@ -232,17 +290,16 @@ def get_tool_args(chat_completion: ChatCompletion) -> list[tuple[str, dict[str, 
     message = chat_completion.choices[0].message
     if message.tool_calls:
         for tool_call in message.tool_calls:
-            tool_args_list.append(
-                (
-                    tool_call.function.name,
-                    json.loads(tool_call.function.arguments),
-                )
-            )
+            tool_args_list.append((
+                tool_call.function.name,
+                json.loads(tool_call.function.arguments),
+            ))
     return tool_args_list
 
 
 def tool_eval(*models: str):
     def decorator(func: Callable):
+        @functools.wraps(func)
         def wrapper():
             client = Arcade(
                 api_key=config.api.key,

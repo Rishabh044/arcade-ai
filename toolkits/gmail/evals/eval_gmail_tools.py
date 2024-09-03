@@ -14,6 +14,13 @@ from arcade.sdk.eval import (
     tool_eval,
 )
 
+# Evaluation rubric
+rubric = EvalRubric(
+    name="Gmail Tools Rubric",
+    fail_threshold=0.7,
+    warn_threshold=0.9,
+)
+
 
 @tool_eval("gpt-3.5-turbo", "gpt-4o")
 def gmail_eval_suite():
@@ -27,37 +34,14 @@ def gmail_eval_suite():
     suite.register_tool(search_emails_by_header)
     suite.register_tool(get_emails)
 
-    # Evaluation rubric
-    rubric = EvalRubric(
-        name="Gmail Tools Rubric",
-        fail_threshold=0.5,
-        warn_threshold=0.8,
-    )
-
     # Write Draft Scenarios
     suite.add_case(
-        user_message="Write a draft email to john@example.com with the subject 'Meeting Tomorrow' and body 'Hi John, Can we meet tomorrow at 2 PM? Thanks, Alice'",
+        user_message="Draft and email to john@example.com asking if we can meet tomorrow at 2 PM",
         expected_tool="WriteDraft",
         expected_tool_args={
             "recipient": "john@example.com",
             "subject": "Meeting Tomorrow",
             "body": "Hi John, Can we meet tomorrow at 2 PM? Thanks, Alice",
-        },
-        rubric=rubric,
-        critics=[
-            BinaryCritic(critic_field="recipient", weight=0.5),
-            SimilarityCritic(critic_field="subject", weight=0.2),
-            SimilarityCritic(critic_field="body", weight=0.3),
-        ],
-    )
-
-    suite.add_case(
-        user_message="Create a draft email to team@company.com about the project update",
-        expected_tool="WriteDraft",
-        expected_tool_args={
-            "recipient": "team@company.com",
-            "subject": "Project Update",
-            "body": "Hello team,\n\nI wanted to provide an update on our current project. [Insert project details here]\n\nBest regards,\n[Your Name]",
         },
         rubric=rubric,
         critics=[
@@ -78,9 +62,9 @@ def gmail_eval_suite():
         },
         rubric=rubric,
         critics=[
-            BinaryCritic(critic_field="sender", weight=0.4),
+            BinaryCritic(critic_field="sender", weight=0.5),
             BinaryCritic(critic_field="date_range", weight=0.4),
-            NumericCritic(critic_field="limit", weight=0.2, value_range=(1, 100)),
+            NumericCritic(critic_field="limit", weight=0.1, value_range=(1, 100)),
         ],
     )
 
@@ -100,31 +84,13 @@ def gmail_eval_suite():
         ],
     )
 
-    suite.add_case(
-        user_message="Find emails sent to support@company.com this month",
-        expected_tool="SearchEmailsByHeader",
+    suite.extend_case(
+        user_message="show me more of those",
         expected_tool_args={
-            "recipient": "support@company.com",
-            "date_range": DateRange.THIS_MONTH,
-            "limit": 25,
+            "subject": "Urgent",
+            "date_range": DateRange.LAST_30_DAYS,
+            "limit": 50,
         },
-        rubric=rubric,
-        critics=[
-            BinaryCritic(critic_field="recipient", weight=0.4),
-            BinaryCritic(critic_field="date_range", weight=0.4),
-            NumericCritic(critic_field="limit", weight=0.2, value_range=(1, 100)),
-        ],
-    )
-
-    # Get Emails Scenarios
-    suite.add_case(
-        user_message="Show me my 3 most recent emails",
-        expected_tool="GetEmails",
-        expected_tool_args={"n_emails": 3},
-        rubric=rubric,
-        critics=[
-            NumericCritic(critic_field="n_emails", weight=1.0, value_range=(1, 100)),
-        ],
     )
 
     suite.add_case(
@@ -133,7 +99,8 @@ def gmail_eval_suite():
         expected_tool_args={"n_emails": 10},
         rubric=rubric,
         critics=[
-            NumericCritic(critic_field="n_emails", weight=1.0, value_range=(1, 100)),
+            BinaryCritic(critic_field="n_emails", weight=0.8),
+            NumericCritic(critic_field="n_emails", weight=0.2, value_range=(1, 20)),
         ],
     )
 
