@@ -17,7 +17,7 @@ docker-build: ## Build the Docker container
 	@echo "🛠️ Building Docker image ($(VERSION)).."
 	@echo "- Commit: $(COMMIT)"
 	@echo "- Build Date: $(BUILD_DATE)"
-	@docker build --build-arg PORT=$(PORT) -t $(REPOSITORY):$(VERSION) . \
+	@docker build --no-cache --build-arg PORT=$(PORT) -t $(REPOSITORY):$(VERSION) . \
 	--build-arg PORT=$(PORT) \
 	--build-arg VERSION="$(VERSION)" \
 	--build-arg COMMIT="$(COMMIT)" \
