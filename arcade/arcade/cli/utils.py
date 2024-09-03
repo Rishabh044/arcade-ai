@@ -171,21 +171,27 @@ def display_eval_results(results: list[dict[str, Any]], show_details: bool = Fal
         table = Table(
             title=f"Evaluation Results for {model}", show_header=True, header_style="bold magenta"
         )
-        table.add_column("Case", style="cyan", no_wrap=True)
-        table.add_column("Expected Tool", style="green")
-        table.add_column("Predicted Tool", style="yellow")
-        table.add_column("Score", justify="right")
-        table.add_column("Status", justify="center")
+        table.add_column("Case")
+        table.add_column("Expected Tools")
+        table.add_column("Predicted Tools")
+        table.add_column("Score")
+        table.add_column("Status")
 
         for case in cases:
-            status = "✅" if case["evaluation"]["pass"] else "❌"
-            if case["evaluation"].get("warning"):
-                status = "⚠️"
+            expected_tools = ", ".join(tc["name"] for tc in case["expected_tool_calls"])
+            predicted_tools = ", ".join(tc["name"] for tc in case["predicted_tool_calls"])
+            status = (
+                "[green]Pass[/green]"
+                if case["evaluation"]["pass"]
+                else "[yellow]Warning[/yellow]"
+                if case["evaluation"].get("warning")
+                else "[red]Fail[/red]"
+            )
 
             table.add_row(
                 case["name"][:30] + "..." if len(case["name"]) > 30 else case["name"],
-                case["expected_tool"],
-                case["predicted_tool"],
+                expected_tools,
+                predicted_tools,
                 f"{case['evaluation']['score']:.2f}",
                 status,
             )
@@ -197,17 +203,15 @@ def display_eval_results(results: list[dict[str, Any]], show_details: bool = Fal
             if not show_details:
                 eval_results = (
                     f"[bold]Case:[/bold] {case['name']}\n"
-                    f"[bold]Evaluation:[/bold]\t{_format_evaluation(case['evaluation'])}"
+                    f"[bold]Evaluation:[/bold]\n{_format_evaluation(case['evaluation'])}"
                 )
                 console.print(eval_results)
             else:
                 detailed_results = (
                     f"[bold]Case:[/bold] {case['name']}\n\n"
-                    f"[bold]User Input:[/bold] {case['input']}\n"
-                    f"[bold]Expected Tool:[/bold] {case['expected_tool']}\n"
-                    f"[bold]Predicted Tool:[/bold] {case['predicted_tool']}\n\n"
-                    f"[bold]Expected Args:[/bold]\n{_format_args(case['expected_args'])}\n"
-                    f"[bold]Predicted Args:[/bold]\n{_format_args(case['predicted_args'])}\n\n"
+                    f"[bold]User Input:[/bold] {case['input']}\n\n"
+                    f"[bold]Expected Tool Calls:[/bold]\n{_format_tool_calls(case['expected_tool_calls'])}\n\n"
+                    f"[bold]Predicted Tool Calls:[/bold]\n{_format_tool_calls(case['predicted_tool_calls'])}\n\n"
                     f"[bold]Evaluation:[/bold]\n{_format_evaluation(case['evaluation'])}\n"
                 )
                 console.print(Panel(detailed_results, title="Case Results", expand=False))
@@ -216,7 +220,7 @@ def display_eval_results(results: list[dict[str, Any]], show_details: bool = Fal
 
 def _format_args(args: dict[str, Any]) -> str:
     """Format argument dictionary for display."""
-    return "\n".join(f"  {k}: {v}" for k, v in args.items())
+    return "\n".join(f"    {k}: {v}" for k, v in args.items())
 
 
 def _format_evaluation(evaluation: dict[str, Any]) -> str:
@@ -269,3 +273,12 @@ def _format_evaluation(evaluation: dict[str, Any]) -> str:
         result.append(critic_result)
 
     return "\n".join(result)
+
+
+def _format_tool_calls(tool_calls: list[dict[str, Any]]) -> str:
+    """Format tool calls for display."""
+    formatted_calls = []
+    for tc in tool_calls:
+        formatted_call = f"  Tool: {tc['name']}\n  Args:\n{_format_args(tc['args'])}"
+        formatted_calls.append(formatted_call)
+    return "\n\n".join(formatted_calls)
