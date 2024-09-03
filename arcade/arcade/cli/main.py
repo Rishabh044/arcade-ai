@@ -11,7 +11,6 @@ import typer
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.markup import escape
-from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
@@ -19,6 +18,7 @@ from arcade.cli.authn import LocalAuthCallbackServer, check_existing_login
 from arcade.cli.utils import (
     OrderCommands,
     create_cli_catalog,
+    display_eval_results,
     display_streamed_markdown,
     markdownify_urls,
     validate_and_get_config,
@@ -339,118 +339,3 @@ def evals(
             console.print(f"\nRunning evaluation from {file}: {func.__name__}", style="bold blue")
             results = func()
             display_eval_results(results, show_details=show_details)
-
-
-def display_eval_results(results: list[dict[str, Any]], show_details: bool = False) -> None:
-    """
-    Display evaluation results in a more readable format with color-coded matches.
-
-    Args:
-        results: List of dictionaries containing evaluation results for each model.
-        show_details: Whether to show detailed results for each case.
-    """
-    for model_results in results:
-        model = model_results.get("model", "Unknown Model")
-        cases = model_results.get("cases", [])
-
-        table = Table(
-            title=f"Evaluation Results for {model}", show_header=True, header_style="bold magenta"
-        )
-        table.add_column("Case", style="cyan", no_wrap=True)
-        table.add_column("Expected Tool", style="green")
-        table.add_column("Predicted Tool", style="yellow")
-        table.add_column("Score", justify="right")
-        table.add_column("Status", justify="center")
-
-        for case in cases:
-            status = "✅" if case["evaluation"]["pass"] else "❌"
-            if case["evaluation"].get("warning"):
-                status = "⚠️"
-
-            table.add_row(
-                case["name"][:30] + "..." if len(case["name"]) > 30 else case["name"],
-                case["expected_tool"],
-                case["predicted_tool"],
-                f"{case['evaluation']['score']:.2f}",
-                status,
-            )
-
-        console.print(table)
-
-        # Display detailed results in a panel
-        for case in cases:
-            if not show_details:
-                eval_results = (
-                    f"[bold]Case:[/bold] {case['name']}\n"
-                    f"[bold]Evaluation:[/bold]\t{format_evaluation(case['evaluation'])}"
-                )
-                console.print(eval_results)
-            else:
-                detailed_results = (
-                    f"[bold]Case:[/bold] {case['name']}\n\n"
-                    f"[bold]User Input:[/bold] {case['user_input']}\n"
-                    f"[bold]Expected Tool:[/bold] {case['expected_tool']}\n"
-                    f"[bold]Predicted Tool:[/bold] {case['predicted_tool']}\n\n"
-                    f"[bold]Expected Args:[/bold]\n{format_args(case['expected_args'])}\n"
-                    f"[bold]Predicted Args:[/bold]\n{format_args(case['predicted_args'])}\n\n"
-                    f"[bold]Evaluation:[/bold]\n{format_evaluation(case['evaluation'])}\n"
-                )
-                console.print(Panel(detailed_results, title="Case Results", expand=False))
-            console.print("-" * 80)
-
-
-def format_args(args: dict[str, Any]) -> str:
-    """Format argument dictionary for display."""
-    return "\n".join(f"  {k}: {v}" for k, v in args.items())
-
-
-def format_evaluation(evaluation: dict[str, Any]) -> str:
-    """
-    Format evaluation results with color-coded matches and accurate score ranges.
-
-    Args:
-        evaluation: A dictionary containing evaluation results.
-
-    Returns:
-        A formatted string representation of the evaluation results.
-    """
-    result = []
-    result.append(f"  Overall Score: {evaluation['score']:.2f}")
-
-    # Determine and add the overall result status
-    if evaluation["pass"]:
-        result.append("  [green]Result: Pass[/green]")
-        # Early return if passed, skipping detailed results
-        # TODO: Make this optional
-        return "\t".join(result)
-    elif evaluation.get("warning"):
-        result.append("  [yellow]Result: Warning[/yellow]")
-    elif evaluation.get("fail"):
-        result.append("  [red]Result: Fail[/red]")
-    else:
-        result.append("  [bold red]Result: Unknown[/bold red]")
-
-    # make consistent with shorter return
-    result = ["\t".join(result)]
-
-    # Add critic results header if we didn't pass
-    result.append("\n[bold]Critic Results:[/bold]")
-
-    # Process each critic result
-    for critic in evaluation.get("critic_results", []):
-        match_color = "green" if critic.get("match") else "red"
-        weight = critic.get("weight", 1.0)
-        max_score = critic.get("max_score", 1.0)
-        field = critic.get("field", "Unknown")
-
-        critic_result = (
-            f"  [bold]{field}:[/bold] "
-            f"[{match_color}]"
-            f"Match: {critic.get('match', False)}, "
-            f"Score: {critic.get('score', 0):.2f}/{max_score:.2f} "
-            f"(Weight: {weight:.2f})"
-            f"[/{match_color}]"
-        )
-        result.append(critic_result)
-
-    return "\n".join(result)
