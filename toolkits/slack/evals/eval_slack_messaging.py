@@ -16,7 +16,7 @@ rubric = EvalRubric(
 )
 
 
-@tool_eval("gpt-3.5-turbo")
+@tool_eval("gpt-3.5-turbo", "gpt-4o")
 def slack_eval_suite() -> EvalSuite:
     """Create an evaluation suite for Slack messaging tools."""
     suite = EvalSuite(

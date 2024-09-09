@@ -109,6 +109,7 @@ def show(
         None, "-t", "--toolkit", help="The toolkit to show the tools of"
     ),
     actor: Optional[str] = typer.Option(None, help="A running actor address to list tools from"),
+    debug: bool = typer.Option(False, "--debug", "-d", help="Show debug information"),
 ) -> None:
     """
     Show the available tools in an actor or toolkit
@@ -130,7 +131,8 @@ def show(
         console.print(table)
 
     except Exception as e:
-        # better error message here
+        if debug:
+            raise
         error_message = f"❌ Failed to List tools: {escape(str(e))}"
         console.print(error_message, style="bold red")
 

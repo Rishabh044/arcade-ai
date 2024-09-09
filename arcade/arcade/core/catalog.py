@@ -1,5 +1,7 @@
 import asyncio
 import inspect
+import types
+import typing
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
@@ -235,14 +237,28 @@ def create_input_definition(func: Callable) -> ToolInputs:
 
         is_enum = False
         enum_values: list[str] = []
-
         # Special case: Literal["string1", "string2"] can be enumerated on the wire
         if is_string_literal(tool_field_info.field_type):
             is_enum = True
             enum_values = [str(e) for e in get_args(tool_field_info.field_type)]
-        elif issubclass(tool_field_info.field_type, Enum):
-            is_enum = True
-            enum_values = [e.value for e in tool_field_info.field_type]
+
+        # Check if the field_type is a class and if it's an Enum
+        elif isinstance(tool_field_info.field_type, type):
+            if issubclass(tool_field_info.field_type, Enum):
+                print(tool_field_info.field_type, "is an enum")
+                is_enum = True
+                enum_values = [e.value for e in tool_field_info.field_type]
+
+        # Handle Union types
+        elif typing.get_origin(tool_field_info.field_type) is Union:
+            # Check if any of the arguments in the Union are Enum types
+            for arg in typing.get_args(tool_field_info.field_type):
+                if arg is not type(None):
+                    if isinstance(arg, type) and issubclass(arg, Enum):
+                        print(arg)
+                        is_enum = True
+                        enum_values = [e.value for e in arg]
+                        break
 
         # If the field has a default value, it is not required
         # If the field is optional, it is not required
@@ -465,6 +481,7 @@ def get_wire_type(
     """
     Mapping between Python types and HTTP/JSON types
     """
+    # TODO ensure Any is not allowed
     type_mapping = {
         str: "string",
         bool: "boolean",
@@ -474,14 +491,32 @@ def get_wire_type(
         list: "json",
         BaseModel: "json",
     }
-
     wire_type = type_mapping.get(_type)
     if wire_type:
         return cast(Literal["string", "integer", "float", "boolean", "json"], wire_type)
+
+    # Account for "|" in the type annotations
+    # account for "list[str]" and "dict[str, int]"
+    elif typing.get_origin(_type) is not None:
+        origin = typing.get_origin(_type)
+        if origin is types.UnionType:
+            # For union types, return the wire type of the first non-None argument
+            # TODO handle multiple non-None arguments. Raise error?
+            for arg in typing.get_args(_type):
+                if arg is not type(None):
+                    return get_wire_type(arg)
+        elif origin in [list, dict]:
+            return "json"
+
     elif hasattr(_type, "__origin__"):
-        # account for "list[str]" and "dict[str, int]" and "Optional[str]" and other typing types
         origin = _type.__origin__
-        if origin in [list, dict]:
+        if origin is typing.Union:
+            # For union types, return the wire type of the first non-None argument
+            # TODO handle multiple non-None arguments. Raise error?
+            for arg in get_args(_type):
+                if arg is not type(None):
+                    return get_wire_type(arg)
+        elif origin in [list, dict, typing.List, typing.Dict]:  # noqa: UP006
             return "json"
     elif issubclass(_type, Enum):
         return "string"
@@ -538,6 +573,17 @@ def determine_output_model(func: Callable) -> type[BaseModel]:
                     output_model_name,
                     result=(field_type, Field(description=str(description))),
                 )
+        # Handle Union types
+        origin = return_annotation.__origin__
+        if origin is typing.Union:
+            # For union types, create a model with the first non-None argument
+            # TODO handle multiple non-None arguments. Raise error?
+            for arg in get_args(return_annotation):
+                if arg is not type(None):
+                    return create_model(
+                        output_model_name,
+                        result=(arg, Field(description="No description provided.")),
+                    )
         # when the return_annotation has an __origin__ attribute
         # and does not have a __metadata__ attribute.
         return create_model(
