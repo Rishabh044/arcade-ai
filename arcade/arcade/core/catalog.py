@@ -216,7 +216,7 @@ class ToolCatalog(BaseModel):
         )
 
 
-def create_input_definition(func: Callable) -> ToolInputs:
+def create_input_definition(func: Callable) -> ToolInputs:  # noqa: C901
     """
     Create an input model for a function based on its parameters.
     """
@@ -253,7 +253,7 @@ def create_input_definition(func: Callable) -> ToolInputs:
         elif typing.get_origin(tool_field_info.field_type) is Union:
             # Check if any of the arguments in the Union are Enum types
             for arg in typing.get_args(tool_field_info.field_type):
-                if arg is not type(None):
+                if arg is not type(None):  # noqa: SIM102
                     if isinstance(arg, type) and issubclass(arg, Enum):
                         print(arg)
                         is_enum = True
@@ -475,7 +475,7 @@ def extract_pydantic_param_info(param: inspect.Parameter) -> ParamInfo:
     )
 
 
-def get_wire_type(
+def get_wire_type(  # noqa: C901
     _type: type,
 ) -> WireType:
     """

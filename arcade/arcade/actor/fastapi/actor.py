@@ -1,14 +1,13 @@
 import json
 from typing import Any, Callable
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 
 from arcade.actor.core.base import (
     BaseActor,
     Router,
 )
 from arcade.actor.core.common import RequestData
-from arcade.actor.fastapi.auth import validate_engine_request
 from arcade.actor.utils import is_async_callable
 
 

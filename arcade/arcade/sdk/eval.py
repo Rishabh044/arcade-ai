@@ -190,14 +190,16 @@ class EvalCase:
                 tool_score = 1.0 if tool_match else 0.0
                 total_score += tool_score
                 total_weight += 1.0
-                results.append({
-                    "field": "tool_selection",
-                    "match": tool_match,
-                    "score": tool_score,
-                    "weight": 1.0,
-                    "expected": expected.name,
-                    "actual": actual_tool,
-                })
+                results.append(
+                    {
+                        "field": "tool_selection",
+                        "match": tool_match,
+                        "score": tool_score,
+                        "weight": 1.0,
+                        "expected": expected.name,
+                        "actual": actual_tool,
+                    }
+                )
 
                 # Evaluate arguments using critics
                 for critic in self.critics:
@@ -207,38 +209,44 @@ class EvalCase:
                         result = critic.evaluate(expected_value, actual_value)
                         total_score += result["score"]
                         total_weight += critic.weight
-                        results.append({
-                            "field": critic.critic_field,
-                            **result,
-                            "weight": critic.weight,
-                            "max_score": critic.max_score,
-                            "expected": expected_value,
-                            "actual": actual_value,
-                        })
+                        results.append(
+                            {
+                                "field": critic.critic_field,
+                                **result,
+                                "weight": critic.weight,
+                                "max_score": critic.max_score,
+                                "expected": expected_value,
+                                "actual": actual_value,
+                            }
+                        )
 
         # Penalize for missing or extra tool calls
         missing_calls = len(self.expected_tool_calls) - len(actual_tool_calls)
         if missing_calls > 0:
             total_weight += missing_calls
-            results.append({
-                "field": "missing_tool_calls",
-                "match": False,
-                "score": 0.0,
-                "weight": missing_calls,
-                "expected": len(self.expected_tool_calls),
-                "actual": len(actual_tool_calls),
-            })
+            results.append(
+                {
+                    "field": "missing_tool_calls",
+                    "match": False,
+                    "score": 0.0,
+                    "weight": missing_calls,
+                    "expected": len(self.expected_tool_calls),
+                    "actual": len(actual_tool_calls),
+                }
+            )
         elif missing_calls < 0:
             extra_calls = abs(missing_calls)
             total_weight += extra_calls
-            results.append({
-                "field": "extra_tool_calls",
-                "match": False,
-                "score": 0.0,
-                "weight": extra_calls,
-                "expected": len(self.expected_tool_calls),
-                "actual": len(actual_tool_calls),
-            })
+            results.append(
+                {
+                    "field": "extra_tool_calls",
+                    "match": False,
+                    "score": 0.0,
+                    "weight": extra_calls,
+                    "expected": len(self.expected_tool_calls),
+                    "actual": len(actual_tool_calls),
+                }
+            )
 
         normalized_score = total_score / total_weight if total_weight > 0 else 0.0
         return {
@@ -428,10 +436,12 @@ def get_tool_args(chat_completion: ChatCompletion) -> list[tuple[str, dict[str, 
     message = chat_completion.choices[0].message
     if message.tool_calls:
         for tool_call in message.tool_calls:
-            tool_args_list.append((
-                tool_call.function.name,
-                json.loads(tool_call.function.arguments),
-            ))
+            tool_args_list.append(
+                (
+                    tool_call.function.name,
+                    json.loads(tool_call.function.arguments),
+                )
+            )
     return tool_args_list
 
 
