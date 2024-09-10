@@ -2,10 +2,10 @@ name: Release and Publish Containers
 
 on:
   push:
-    # branches:
-    #   - main
-    # tags:
-    #   - 'v*'
+    branches:
+      - main
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -69,7 +69,7 @@ jobs:
       if: github.event_name == 'push'
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
-      run: gh workflow -R ArcadeAI/Team run Deploy -f engine-version=${{ env.VERSION }}
+      run: gh workflow -R ArcadeAI/Team run Deploy -f actor-version=${{ env.VERSION }}
 
 
     - name: Generate release notes
