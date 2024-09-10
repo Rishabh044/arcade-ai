@@ -4,6 +4,7 @@ SOURCE ?= https://github.com/ArcadeAI/arcade-ai
 LICENSE ?= MIT
 DESCRIPTION ?= "Arcade AI for LLM Tool Serving"
 REPOSITORY ?= arcadeai/arcade-ai
+ECR_ENDPOINT ?= 471112909428.dkr.ecr.us-east-1.amazonaws.com
 
 VERSION ?= dev
 COMMIT ?= $(shell git describe --dirty --always --abbrev=15)
@@ -17,7 +18,7 @@ docker-build: ## Build the Docker container
 	@echo "🛠️ Building Docker image ($(VERSION)).."
 	@echo "- Commit: $(COMMIT)"
 	@echo "- Build Date: $(BUILD_DATE)"
-	@docker build --build-arg PORT=$(PORT) -t $(REPOSITORY):$(VERSION) . \
+	@docker build --build-arg PORT=$(PORT) -f Dockerfile -t $(REPOSITORY):$(VERSION) .. \
 	--build-arg PORT=$(PORT) \
 	--build-arg VERSION="$(VERSION)" \
 	--build-arg COMMIT="$(COMMIT)" \
@@ -35,6 +36,24 @@ docker-build: ## Build the Docker container
 docker-run: ## Run the Docker container
 	@echo "\n🚀 Run the container with the following ..."
 	@echo ">>> docker run -d -p $(PORT):$(PORT) $(REPOSITORY):$(VERSION)"
+
+
+.PHONY: publish-ecr
+publish-ecr:
+	@echo "🚚 Pushing the Agent image to ECR.."
+	@docker tag $(REPOSITORY):$(VERSION) $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION)
+	@echo "- pushing $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION)"
+	@docker push $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION)
+	@echo $(VERSION) | grep -q $(RC_PART) || { \
+		docker tag $(REPOSITORY):$(VERSION) $(ECR_ENDPOINT)/$(REPOSITORY):latest; \
+		echo "- pushing $(ECR_ENDPOINT)/$(REPOSITORY):latest"; \
+		docker push $(ECR_ENDPOINT)/$(REPOSITORY):latest; \
+	}
+
+
+.PHONY: ecr-login
+ecr-login: # Login to ECR
+	@aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(ECR_ENDPOINT)
 
 .PHONY: help
 help:
