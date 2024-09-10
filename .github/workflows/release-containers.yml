@@ -57,7 +57,7 @@ jobs:
           echo "VERSION=$(date +'%Y.%m.%d')-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
         fi
 
-    - name: Build and push Engine image
+    - name: Build and push Actor image
       id: build
       working-directory: ./docker
       run: |
