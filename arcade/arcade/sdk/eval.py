@@ -11,6 +11,7 @@ from scipy.optimize import linear_sum_assignment
 from arcade.client import Arcade
 from arcade.core.catalog import ToolCatalog
 from arcade.core.config import config
+from arcade.core.toolkit import Toolkit
 
 
 @dataclass
@@ -389,18 +390,19 @@ class EvalSuite:
     def register_tool(self, tool_func: Callable):
         self.catalog.add_tool(tool_func)
 
-    def register_toolkit(self, toolkit):
+    def register_toolkit(self, toolkit: Toolkit):
         self.catalog.add_toolkit(toolkit)
 
     def run(self, model: str, arcade_client: Arcade) -> dict[str, Any]:
         results = {"model": model, "cases": []}
 
         for case in self.cases:
+            print(f"Running case: {case.name}")
             messages = [{"role": "system", "content": self.system}]
             messages.extend(list(case.additional_messages))
             messages.append({"role": "user", "content": case.user_message})
 
-            response = arcade_client.chat.completions.create(
+            response = arcade_client.chat.completions.create(  # type: ignore[call-overload]
                 model=model,
                 messages=messages,
                 tool_choice=self.tool_choice,
@@ -458,6 +460,7 @@ def tool_eval(*models: str):
                 raise TypeError("Eval function must return an EvalSuite")
             results = []
             for model in models:
+                print(f"\nRunning evaluation suite for model: {model}\n")
                 results.append(suite.run(model, client))
             return results
 
