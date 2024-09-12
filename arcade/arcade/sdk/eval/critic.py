@@ -10,7 +10,7 @@ class Critic(ABC):
     critic_field: str
     weight: float
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.weight < 0 or self.weight > 1:
             raise WeightError(f"Critic weight must be between 0 and 1, got {self.weight}")
 

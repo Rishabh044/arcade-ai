@@ -390,7 +390,7 @@ def display_config_as_table(config) -> None:  # type: ignore[no-untyped-def]
 def evals(
     directory: str = typer.Argument(".", help="Directory containing evaluation files"),
     show_details: bool = typer.Option(False, "--details", "-d", help="Show detailed results"),
-):
+) -> None:
     """
     Finds all files starting with 'eval_' in the given directory,
     executes any functions decorated with @tool_eval, and displays the results.
