@@ -23,7 +23,7 @@ catalog.add_tool(send_dm_to_user)
 catalog.add_tool(send_message_to_channel)
 
 
-@tool_eval("gpt-3.5-turbo", "gpt-4o")
+@tool_eval("gpt-4o-mini")
 def slack_eval_suite() -> EvalSuite:
     """Create an evaluation suite for Slack messaging tools."""
     suite = EvalSuite(

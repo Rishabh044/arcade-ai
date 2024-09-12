@@ -9,6 +9,7 @@ from scipy.optimize import linear_sum_assignment
 
 from arcade.client import Arcade
 from arcade.core.config import config
+from arcade.sdk.error import WeightError
 
 if TYPE_CHECKING:
     from arcade.core.catalog import ToolCatalog
@@ -16,17 +17,172 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class EvalRubric:
-    fail_threshold: float
-    """The threshold for failing the evaluation (0.0-1.0)."""
-    warn_threshold: float
-    """The threshold for issuing a warning (0.0-1.0)."""
+class ExpectedToolCall:
+    """
+    Represents an expected tool call with its name and arguments.
+
+    Attributes:
+        name: The name of the tool.
+        args: A dictionary containing the expected arguments for the tool.
+    """
+
+    name: str
+    args: dict[str, Any]
 
 
 @dataclass
-class ExpectedToolCall:
-    name: str
-    args: dict[str, Any]
+class EvalRubric:
+    """
+    Defines the pass/fail criteria and tool selection behavior for an evaluation case.
+
+    Args:
+        fail_threshold: The threshold for failing the evaluation (0.0-1.0).
+        warn_threshold: The threshold for issuing a warning (0.0-1.0).
+        fail_on_tool_selection: Whether to fail the evaluation if the tool selection is incorrect.
+        tool_selection_weight: The weight of the tool selection score (0.0-1.0).
+        missing_tool_calls_weight: The weight for penalizing missing tool calls (0.0-1.0).
+        extra_tool_calls_weight: The weight for penalizing extra tool calls (0.0-1.0).
+
+    Examples:
+        # Strict rubric with high thresholds and strict tool selection
+        rubric = EvalRubric(
+            fail_threshold=0.9,
+            warn_threshold=0.95,
+            fail_on_tool_selection=True,
+            tool_selection_weight=1.0,
+            missing_tool_calls_weight=0.0,
+            extra_tool_calls_weight=0.0,
+        )
+
+        # Lenient rubric with lower thresholds and lenient tool selection
+        rubric = EvalRubric(
+            fail_threshold=0.7,
+            warn_threshold=0.8,
+            fail_on_tool_selection=False,
+            tool_selection_weight=0.3,
+            missing_tool_calls_weight=0.35,
+            extra_tool_calls_weight=0.35,
+        )
+    """
+
+    fail_threshold: float = 0.8
+    warn_threshold: float = 0.9
+    fail_on_tool_selection: bool = True
+    tool_selection_weight: float = 1.0
+    missing_tool_calls_weight: float = 0.0
+    extra_tool_calls_weight: float = 0.0
+
+    def __post_init__(self):
+        """Validate the rubric weights."""
+        self._validate_weights()
+
+    def _validate_weights(self):
+        """Validate the rubric weights."""
+        total_weight = (
+            self.tool_selection_weight
+            + self.missing_tool_calls_weight
+            + self.extra_tool_calls_weight
+        )
+        if total_weight > 1.0:
+            raise WeightError(f"Sum of rubric weights must not exceed 1.0, got {total_weight}")
+
+        for weight in (
+            self.tool_selection_weight,
+            self.missing_tool_calls_weight,
+            self.extra_tool_calls_weight,
+        ):
+            if weight < 0.0 or weight > 1.0:
+                raise WeightError(f"Rubric weights must be between 0.0 and 1.0, got {weight}")
+
+    def get_tool_selection_score(self, expected: str, actual: str) -> float:
+        """
+        Calculate the tool selection score based on the rubric's tool_selection_weight.
+
+        Args:
+            expected: The expected tool name.
+            actual: The actual tool name.
+
+        Returns:
+            The tool selection score (0.0 if the tool names don't match, tool_selection_weight if they match).
+        """
+        return self.tool_selection_weight if expected == actual else 0.0
+
+    def get_missing_tool_calls_score(self, expected_count: int, actual_count: int) -> float:
+        """
+        Calculate the score for missing tool calls based on the rubric's missing_tool_calls_weight.
+
+        Args:
+            expected_count: The expected number of tool calls.
+            actual_count: The actual number of tool calls.
+
+        Returns:
+            The missing tool calls score (0.0 if there are missing calls, missing_tool_calls_weight if not).
+        """
+        missing_calls = max(expected_count - actual_count, 0)
+        return self.missing_tool_calls_weight if missing_calls == 0 else 0.0
+
+    def get_extra_tool_calls_score(self, expected_count: int, actual_count: int) -> float:
+        """
+        Calculate the score for extra tool calls based on the rubric's extra_tool_calls_weight.
+
+        Args:
+            expected_count: The expected number of tool calls.
+            actual_count: The actual number of tool calls.
+
+        Returns:
+            The extra tool calls score (0.0 if there are extra calls, extra_tool_calls_weight if not).
+        """
+        extra_calls = max(actual_count - expected_count, 0)
+        return self.extra_tool_calls_weight if extra_calls == 0 else 0.0
+
+
+@dataclass
+class EvaluationResult:
+    """
+    Represents the result of an evaluation case.
+
+    Attributes:
+        score: The normalized evaluation score (0.0-1.0).
+        passed: Whether the evaluation passed based on the fail_threshold.
+        warning: Whether the evaluation issued a warning based on the warn_threshold.
+        results: A list of dictionaries containing the results for each critic.
+
+    """
+
+    score: float = 0.0
+    passed: bool = False
+    warning: bool = False
+    results: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def fail(self) -> bool:
+        return not self.passed and not self.warning
+
+    def add(
+        self,
+        field: str,
+        result: dict[str, Any],
+        weight: float,
+        expected: Any,
+        actual: Any,
+    ) -> None:
+        """
+        Add a critic result to the list of critic results.
+
+        Args:
+            field: The field name for the critic result.
+            result: A dictionary containing the critic result.
+            weight: The weight of the critic.
+            expected: The expected value for the critic.
+            actual: The actual value for the critic.
+        """
+        self.results.append({
+            "field": field,
+            **result,
+            "weight": weight,
+            "expected": expected,
+            "actual": actual,
+        })
 
 
 @dataclass
@@ -41,9 +197,13 @@ class EvalCase:
         name: A descriptive name for this evaluation case.
         user_message: The user input to be sent to the AI model.
         expected_tool_calls: A list of ExpectedToolCall objects representing the expected tool calls.
-        rubric: An EvalRubric object defining pass/fail criteria.
+        rubric: An EvalRubric object defining pass/fail criteria and tool selection behavior.
         critics: A list of Critic objects used to evaluate tool arguments.
         additional_messages: Optional list of additional context messages.
+
+    Methods:
+        _validate_critics: Validate the sum of critic weights.
+        evaluate: Evaluate the actual tool calls against the expected tool calls and critics.
     """
 
     name: str
@@ -53,19 +213,63 @@ class EvalCase:
     critics: list["Critic"]
     additional_messages: list[dict[str, str]] = field(default_factory=list)
 
+    def __post_init__(self):
+        self._validate_critics()
+
+    def _validate_critics(self):
+        """
+        Validate the sum of critic weights.
+
+        Raises:
+            WeightError: If the sum of critic weights exceeds 1.0.
+        """
+        total_weight = sum(critic.weight for critic in self.critics)
+        if total_weight > 1.0:
+            raise WeightError(f"Sum of critic weights must not exceed 1.0, got {total_weight}")
+
+        for critic in self.critics:
+            if critic.weight < 0.1:
+                raise WeightError(f"Critic weights should be at least 0.1, got {critic.weight}")
+
     def evaluate(
         self,
         actual_tool_calls: list[tuple[str, dict[str, Any]]],
-    ) -> dict[str, Any]:
+    ) -> EvaluationResult:
+        """
+        Evaluate the actual tool calls against the expected tool calls and critics.
+
+        This method uses the Linear Sum Assignment (LSA) algorithm, also known as the Hungarian algorithm,
+        to find the optimal assignment between the expected and actual tool calls. The algorithm minimizes
+        the cost of assigning each expected tool call to an actual tool call, based on a cost matrix.
+
+        The cost matrix is created by comparing the expected tool name and arguments with the actual tool
+        name and arguments. The cost is calculated as 1 - similarity, where similarity is determined by
+        the ToolSelectionCritic for tool names and other critics for tool arguments.
+
+        After finding the optimal assignment, the method calculates the total score by summing the scores
+        from the assigned critics. It also penalizes for missing or extra tool calls by adding a weight
+        for each missing or extra call.
+
+        Finally, the method normalizes the total score by dividing it by the total weight and creates an
+        EvaluationResult object with the normalized score, pass/fail status, warning status, and detailed
+        critic results.
+
+        Args:
+            actual_tool_calls: A list of tuples containing the actual tool name and arguments.
+
+        Returns:
+            An EvaluationResult object containing the evaluation results.
+        """
         # Create a cost matrix for the assignment problem
         cost_matrix = self._create_cost_matrix(actual_tool_calls)
 
-        # Use lsa algorithm to find the optimal assignment
+        # Use the Linear Sum Assignment (LSA) algorithm to find the optimal assignment
+        # The algorithm minimizes the cost of assigning each expected tool call to an actual tool call
         row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize=True)
 
         total_score = 0.0
         total_weight = 0.0
-        results = []
+        evaluation_result = EvaluationResult()
 
         for i, j in zip(row_ind, col_ind):
             if i < len(self.expected_tool_calls) and j < len(actual_tool_calls):
@@ -73,18 +277,22 @@ class EvalCase:
                 actual_tool, actual_args = actual_tool_calls[j]
 
                 # Evaluate tool selection
-                tool_match = actual_tool == expected.name
-                tool_score = 1.0 if tool_match else 0.0
-                total_score += tool_score
-                total_weight += 1.0
-                results.append({
-                    "field": "tool_selection",
-                    "match": tool_match,
-                    "score": tool_score,
-                    "weight": 1.0,
-                    "expected": expected.name,
-                    "actual": actual_tool,
-                })
+                tool_selection_score = self.rubric.get_tool_selection_score(
+                    expected.name, actual_tool
+                )
+                total_score += tool_selection_score
+                total_weight += self.rubric.tool_selection_weight
+                evaluation_result.add(
+                    "tool_selection",
+                    {"match": expected.name == actual_tool, "score": tool_selection_score},
+                    self.rubric.tool_selection_weight,
+                    expected.name,
+                    actual_tool,
+                )
+
+                # If tool selection is incorrect and fail_on_tool_selection_error is True, skip argument evaluation
+                if not tool_selection_score and self.rubric.fail_on_tool_selection:
+                    continue
 
                 # Evaluate arguments using critics
                 for critic in self.critics:
@@ -94,47 +302,55 @@ class EvalCase:
                         result = critic.evaluate(expected_value, actual_value)
                         total_score += result["score"]
                         total_weight += critic.weight
-                        results.append({
-                            "field": critic.critic_field,
-                            **result,
-                            "weight": critic.weight,
-                            "max_score": critic.max_score,
-                            "expected": expected_value,
-                            "actual": actual_value,
-                        })
+                        evaluation_result.add(
+                            critic.critic_field, result, critic.weight, expected_value, actual_value
+                        )
 
         # Penalize for missing or extra tool calls
-        missing_calls = len(self.expected_tool_calls) - len(actual_tool_calls)
-        if missing_calls > 0:
-            total_weight += missing_calls
-            results.append({
-                "field": "missing_tool_calls",
-                "match": False,
-                "score": 0.0,
-                "weight": missing_calls,
-                "expected": len(self.expected_tool_calls),
-                "actual": len(actual_tool_calls),
-            })
-        elif missing_calls < 0:
-            extra_calls = abs(missing_calls)
-            total_weight += extra_calls
-            results.append({
-                "field": "extra_tool_calls",
-                "match": False,
-                "score": 0.0,
-                "weight": extra_calls,
-                "expected": len(self.expected_tool_calls),
-                "actual": len(actual_tool_calls),
-            })
+        expected_count = len(self.expected_tool_calls)
+        actual_count = len(actual_tool_calls)
 
+        # Calculate the score for missing tool calls
+        missing_tool_calls_score = self.rubric.get_missing_tool_calls_score(
+            expected_count, actual_count
+        )
+        total_score += missing_tool_calls_score
+        total_weight += self.rubric.missing_tool_calls_weight
+        evaluation_result.add(
+            "missing_tool_calls",
+            {"match": missing_tool_calls_score > 0, "score": missing_tool_calls_score},
+            self.rubric.missing_tool_calls_weight,
+            expected_count,
+            actual_count,
+        )
+
+        # Calculate the score for extra tool calls
+        extra_tool_calls_score = self.rubric.get_extra_tool_calls_score(
+            expected_count, actual_count
+        )
+        total_score += extra_tool_calls_score
+        total_weight += self.rubric.extra_tool_calls_weight
+        evaluation_result.add(
+            "extra_tool_calls",
+            {"match": extra_tool_calls_score > 0, "score": extra_tool_calls_score},
+            self.rubric.extra_tool_calls_weight,
+            expected_count,
+            actual_count,
+        )
+
+        # Normalize the total score by dividing it by the total weight
         normalized_score = total_score / total_weight if total_weight > 0 else 0.0
-        return {
-            "score": normalized_score,
-            "pass": normalized_score >= self.rubric.warn_threshold,
-            "warning": self.rubric.fail_threshold <= normalized_score < self.rubric.warn_threshold,
-            "fail": normalized_score < self.rubric.fail_threshold,
-            "critic_results": results,
-        }
+        evaluation_result.score = normalized_score
+
+        # Set the pass/fail status based on the fail_threshold
+        evaluation_result.passed = normalized_score >= self.rubric.fail_threshold
+
+        # Set the warning status based on the warn_threshold
+        evaluation_result.warning = (
+            not evaluation_result.passed and normalized_score >= self.rubric.warn_threshold
+        )
+
+        return evaluation_result
 
     def _create_cost_matrix(
         self, actual_tool_calls: list[tuple[str, dict[str, Any]]]
@@ -156,7 +372,7 @@ class EvalCase:
 
         for i, expected in enumerate(self.expected_tool_calls):
             for j, (actual_tool, actual_args) in enumerate(actual_tool_calls):
-                score = 1.0 if expected.name == actual_tool else 0.0
+                score = self.rubric.get_tool_selection_score(expected.name, actual_tool)
                 for critic in self.critics:
                     expected_value = expected.args.get(critic.critic_field)
                     actual_value = actual_args.get(critic.critic_field)

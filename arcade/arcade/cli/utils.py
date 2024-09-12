@@ -1,4 +1,4 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import typer
 from openai.resources.chat.completions import ChatCompletionChunk, Stream
@@ -12,6 +12,9 @@ from typer.models import Context
 from arcade.core.catalog import ToolCatalog
 from arcade.core.config_model import Config
 from arcade.core.toolkit import Toolkit
+
+if TYPE_CHECKING:
+    from arcade.sdk.eval.eval import EvaluationResult
 
 console = Console()
 
@@ -180,11 +183,12 @@ def display_eval_results(results: list[dict[str, Any]], show_details: bool = Fal
         for case in cases:
             expected_tools = ", ".join(tc["name"] for tc in case["expected_tool_calls"])
             predicted_tools = ", ".join(tc["name"] for tc in case["predicted_tool_calls"])
+            evaluation = case["evaluation"]
             status = (
                 "[green]Pass[/green]"
-                if case["evaluation"]["pass"]
+                if evaluation.passed
                 else "[yellow]Warning[/yellow]"
-                if case["evaluation"].get("warning")
+                if evaluation.warning
                 else "[red]Fail[/red]"
             )
 
@@ -192,7 +196,7 @@ def display_eval_results(results: list[dict[str, Any]], show_details: bool = Fal
                 case["name"][:30] + "..." if len(case["name"]) > 30 else case["name"],
                 expected_tools,
                 predicted_tools,
-                f"{case['evaluation']['score']:.2f}",
+                f"{evaluation.score:.2f}",
                 status,
             )
 
@@ -223,28 +227,28 @@ def _format_args(args: dict[str, Any]) -> str:
     return "\n".join(f"    {k}: {v}" for k, v in args.items())
 
 
-def _format_evaluation(evaluation: dict[str, Any]) -> str:
+def _format_evaluation(evaluation: "EvaluationResult") -> str:
     """
     Format evaluation results with color-coded matches and accurate score ranges.
 
     Args:
-        evaluation: A dictionary containing evaluation results.
+        evaluation: An EvaluationResult object containing the evaluation results.
 
     Returns:
         A formatted string representation of the evaluation results.
     """
     result = []
-    result.append(f"  Overall Score: {evaluation['score']:.2f}")
+    result.append(f"  Overall Score: {evaluation.score:.2f}")
 
     # Determine and add the overall result status
-    if evaluation["pass"]:
+    if evaluation.passed:
         result.append("  [green]Result: Pass[/green]")
         # Early return if passed, skipping detailed results
         # TODO: Make this optional
         return "\t".join(result)
-    elif evaluation.get("warning"):
+    elif evaluation.warning:
         result.append("  [yellow]Result: Warning[/yellow]")
-    elif evaluation.get("fail"):
+    elif evaluation.fail:
         result.append("  [red]Result: Fail[/red]")
     else:
         result.append("  [bold red]Result: Unknown[/bold red]")
@@ -256,21 +260,21 @@ def _format_evaluation(evaluation: dict[str, Any]) -> str:
     result.append("\n[bold]Critic Results:[/bold]")
 
     # Process each critic result
-    for critic in evaluation.get("critic_results", []):
-        match_color = "green" if critic.get("match") else "red"
-        weight = critic.get("weight", 1.0)
-        max_score = critic.get("max_score", 1.0)
-        field = critic.get("field", "Unknown")
+    for critic_result in evaluation.results:
+        if critic_result["weight"] <= 0.0:
+            continue
+        match_color = "green" if critic_result["match"] else "red"
+        weight = critic_result["weight"]
+        field = critic_result["field"]
 
-        critic_result = (
+        critic_result_str = (
             f"  [bold]{field}:[/bold] "
             f"[{match_color}]"
-            f"Match: {critic.get('match', False)}, "
-            f"Score: {critic.get('score', 0):.2f}/{max_score:.2f} "
-            f"(Weight: {weight:.2f})"
+            f"Match: {critic_result['match']}, "
+            f"Score: {critic_result['score']:.2f}/{weight:.2f}"
             f"[/{match_color}]"
         )
-        result.append(critic_result)
+        result.append(critic_result_str)
 
     return "\n".join(result)
 
