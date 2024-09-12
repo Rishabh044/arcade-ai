@@ -1,5 +1,6 @@
 from arcade_slack.tools.chat import send_dm_to_user, send_message_to_channel
 
+from arcade.core.catalog import ToolCatalog
 from arcade.sdk.eval import (
     BinaryCritic,
     EvalRubric,
@@ -16,17 +17,20 @@ rubric = EvalRubric(
 )
 
 
+catalog = ToolCatalog()
+# Register the Slack tools
+catalog.add_tool(send_dm_to_user)
+catalog.add_tool(send_message_to_channel)
+
+
 @tool_eval("gpt-3.5-turbo", "gpt-4o")
 def slack_eval_suite() -> EvalSuite:
     """Create an evaluation suite for Slack messaging tools."""
     suite = EvalSuite(
         name="Slack Messaging Tools Evaluation",
         system="You are an AI assistant to a number of tools.",
+        catalog=catalog,
     )
-
-    # Register the Slack tools
-    suite.register_tool(send_dm_to_user)
-    suite.register_tool(send_message_to_channel)
 
     # Send DM to User Scenarios
     suite.add_case(
