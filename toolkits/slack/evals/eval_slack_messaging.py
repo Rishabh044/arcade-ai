@@ -23,13 +23,14 @@ catalog.add_tool(send_dm_to_user)
 catalog.add_tool(send_message_to_channel)
 
 
-@tool_eval("gpt-4o-mini", "gpt-4o")
+@tool_eval("gpt-4o-mini")
 def slack_eval_suite() -> EvalSuite:
     """Create an evaluation suite for Slack messaging tools."""
     suite = EvalSuite(
         name="Slack Messaging Tools Evaluation",
         system="You are an AI assistant to a number of tools.",
         catalog=catalog,
+        rubric=rubric,
     )
 
     # Send DM to User Scenarios
@@ -45,7 +46,6 @@ def slack_eval_suite() -> EvalSuite:
                 },
             )
         ],
-        rubric=rubric,
         critics=[
             BinaryCritic(critic_field="user_name", weight=0.5),
             SimilarityCritic(critic_field="message", weight=0.5),
@@ -64,7 +64,6 @@ def slack_eval_suite() -> EvalSuite:
                 },
             )
         ],
-        rubric=rubric,
         critics=[
             SimilarityCritic(critic_field="user_name", weight=0.4),
             SimilarityCritic(critic_field="message", weight=0.6),
@@ -83,7 +82,6 @@ def slack_eval_suite() -> EvalSuite:
                 },
             )
         ],
-        rubric=rubric,
         critics=[
             BinaryCritic(critic_field="user_name", weight=0.5),
             SimilarityCritic(critic_field="message", weight=0.5),
@@ -103,7 +101,6 @@ def slack_eval_suite() -> EvalSuite:
                 },
             )
         ],
-        rubric=rubric,
         critics=[
             BinaryCritic(critic_field="channel_name", weight=0.5),
             SimilarityCritic(critic_field="message", weight=0.5),
@@ -122,7 +119,6 @@ def slack_eval_suite() -> EvalSuite:
                 },
             )
         ],
-        rubric=rubric,
         critics=[
             SimilarityCritic(critic_field="channel_name", weight=0.4),
             SimilarityCritic(critic_field="message", weight=0.6),
@@ -142,7 +138,6 @@ def slack_eval_suite() -> EvalSuite:
                 },
             )
         ],
-        rubric=rubric,
         critics=[
             SimilarityCritic(critic_field="channel_name", weight=0.4),
             SimilarityCritic(critic_field="message", weight=0.6),
@@ -169,7 +164,6 @@ def slack_eval_suite() -> EvalSuite:
                 },
             ),
         ],
-        rubric=rubric,
         critics=[
             SimilarityCritic(critic_field="user_name", weight=0.4),
             SimilarityCritic(critic_field="message", weight=0.6),
@@ -188,7 +182,6 @@ def slack_eval_suite() -> EvalSuite:
                 },
             )
         ],
-        rubric=rubric,
         critics=[
             BinaryCritic(critic_field="channel_name", weight=0.5),
             SimilarityCritic(critic_field="message", weight=0.5),

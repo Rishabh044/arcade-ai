@@ -4,8 +4,6 @@ import typer
 from openai.resources.chat.completions import ChatCompletionChunk, Stream
 from rich.console import Console
 from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.table import Table
 from typer.core import TyperGroup
 from typer.models import Context
 
@@ -161,124 +159,83 @@ def apply_config_overrides(
 
 def display_eval_results(results: list[dict[str, Any]], show_details: bool = False) -> None:
     """
-    Display evaluation results in a more readable format with color-coded matches.
+    Display evaluation results in a format inspired by pytest's output.
 
     Args:
         results: List of dictionaries containing evaluation results for each model.
         show_details: Whether to show detailed results for each case.
     """
+    total_passed = 0
+    total_failed = 0
+    total_warned = 0
+    total_cases = 0
+
     for model_results in results:
         model = model_results.get("model", "Unknown Model")
+        rubric = model_results.get("rubric", "Unknown Rubric")
         cases = model_results.get("cases", [])
+        total_cases += len(cases)
 
-        table = Table(
-            title=f"Evaluation Results for {model}", show_header=True, header_style="bold magenta"
-        )
-        table.add_column("Case")
-        table.add_column("Expected Tools")
-        table.add_column("Predicted Tools")
-        table.add_column("Score")
-        table.add_column("Status")
+        console.print(f"\n[bold magenta]Model: {model}[/bold magenta]\n")
+        console.print(f"[bold magenta]{rubric}[/bold magenta]\n")
 
         for case in cases:
-            expected_tools = ", ".join(tc["name"] for tc in case["expected_tool_calls"])
-            predicted_tools = ", ".join(tc["name"] for tc in case["predicted_tool_calls"])
             evaluation = case["evaluation"]
             status = (
-                "[green]Pass[/green]"
+                "[green]PASSED[/green]"
                 if evaluation.passed
-                else "[yellow]Warning[/yellow]"
+                else "[yellow]WARNED[/yellow]"
                 if evaluation.warning
-                else "[red]Fail[/red]"
+                else "[red]FAILED[/red]"
             )
-
-            table.add_row(
-                case["name"][:30] + "..." if len(case["name"]) > 30 else case["name"],
-                expected_tools,
-                predicted_tools,
-                f"{evaluation.score:.2f}",
-                status,
-            )
-
-        console.print(table)
-
-        # Display detailed results in a panel
-        for case in cases:
-            if not show_details:
-                eval_results = f"[bold]Evaluation:[/bold]\n{_format_evaluation(case['evaluation'])}"
-                console.print(Panel(eval_results, title=f"Case: {case['name']}", expand=False))
+            if evaluation.passed:
+                total_passed += 1
+            elif evaluation.warning:
+                total_warned += 1
             else:
-                detailed_results = (
-                    f"[bold]User Input:[/bold] {case['input']}\n\n"
-                    f"[bold]Expected Tool Calls:[/bold]\n{_format_tool_calls(case['expected_tool_calls'])}\n\n"
-                    f"[bold]Predicted Tool Calls:[/bold]\n{_format_tool_calls(case['predicted_tool_calls'])}\n\n"
-                    f"[bold]Evaluation:[/bold]\n{_format_evaluation(case['evaluation'])}\n"
-                )
-                console.print(Panel(detailed_results, title=f"Case: {case['name']}", expand=False))
-            console.print("-" * 80)
+                total_failed += 1
 
+            # Display one-line summary for each case
+            console.print(f"{status} {case['name']} -- Score: {evaluation.score:.2f}")
 
-def _format_args(args: dict[str, Any]) -> str:
-    """Format argument dictionary for display."""
-    return "\n".join(f"    {k}: {v}" for k, v in args.items())
+            if show_details:
+                # Show detailed information for each case
+                console.print(f"[bold]User Input:[/bold] {case['input']}\n")
+                console.print("[bold]Details:[/bold]")
+                console.print(_format_evaluation(evaluation))
+                console.print("-" * 80)
+
+    # Summary
+    console.print("\n[bold]Summary:[/bold]")
+    console.print(f"Total Cases: {total_cases}")
+    console.print(f"[green]Passed: {total_passed}[/green]")
+    console.print(f"[yellow]Warnings: {total_warned}[/yellow]")
+    console.print(f"[red]Failed: {total_failed}[/red]\n")
 
 
 def _format_evaluation(evaluation: "EvaluationResult") -> str:
     """
-    Format evaluation results with color-coded matches and accurate score ranges.
+    Format evaluation results with color-coded matches and scores.
 
     Args:
         evaluation: An EvaluationResult object containing the evaluation results.
 
     Returns:
-        A formatted string representation of the evaluation results.
+        A formatted string representation of the evaluation details.
     """
-    result = []
-    result.append(f"  Score: {evaluation.score:.2f}")
-
-    # Determine and add the overall result status
-    if evaluation.passed:
-        result.append("  [green]Result: Pass[/green]")
-        # Early return if passed, skipping detailed results
-        # TODO: Make this optional
-        return "\t".join(result)
-    elif evaluation.warning:
-        result.append("  [yellow]Result: Warning[/yellow]")
-    elif evaluation.fail:
-        result.append("  [red]Result: Fail[/red]")
-    else:
-        result.append("  [bold red]Result: Unknown[/bold red]")
-
-    # make consistent with shorter return
-    result = ["\t".join(result)]
-
-    # Add critic results header if we didn't pass
-    result.append("\n[bold]Critic Results:[/bold]")
-
-    # Process each critic result
+    result_lines = []
     for critic_result in evaluation.results:
-        if critic_result["weight"] <= 0.0:
-            continue
         match_color = "green" if critic_result["match"] else "red"
-        weight = critic_result["weight"]
         field = critic_result["field"]
-
-        critic_result_str = (
-            f"  [bold]{field}:[/bold] "
-            f"[{match_color}]"
-            f"Match: {critic_result['match']}, "
-            f"Score: {critic_result['score']:.2f}/{weight:.2f}"
-            f"[/{match_color}]"
+        score = critic_result["score"]
+        weight = critic_result["weight"]
+        expected = critic_result["expected"]
+        actual = critic_result["actual"]
+        result_lines.append(
+            f"[bold]{field}:[/bold] "
+            f"[{match_color}]Match: {critic_result['match']}, "
+            f"Score: {score:.2f}/{weight:.2f}[/{match_color}]"
+            f"\n    Expected: {expected}"
+            f"\n    Actual: {actual}"
         )
-        result.append(critic_result_str)
-
-    return "\n".join(result)
-
-
-def _format_tool_calls(tool_calls: list[dict[str, Any]]) -> str:
-    """Format tool calls for display."""
-    formatted_calls = []
-    for tc in tool_calls:
-        formatted_call = f"  Tool: {tc['name']}\n  Args:\n{_format_args(tc['args'])}"
-        formatted_calls.append(formatted_call)
-    return "\n\n".join(formatted_calls)
+    return "\n".join(result_lines)

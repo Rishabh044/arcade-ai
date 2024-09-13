@@ -65,6 +65,9 @@ class EvalRubric:
     # weights for scoring evaluation results
     tool_selection_weight: float = 1.0
 
+    def __str__(self) -> str:
+        return f"Fail threshold: {self.fail_threshold}\n" f"Warn threshold: {self.warn_threshold}\n"
+
 
 @dataclass
 class EvaluationResult:
@@ -193,11 +196,10 @@ class EvalCase:
 
         The cost matrix is created by comparing the expected tool name and arguments with the actual tool
         name and arguments. The cost is calculated as 1 - similarity, where similarity is determined by
-        the ToolSelectionCritic for tool names and other critics for tool arguments.
+        the tool selection weight for tool names and other critics for tool arguments.
 
         After finding the optimal assignment, the method calculates the total score by summing the scores
-        from the assigned critics. It also penalizes for missing or extra tool calls by adding a weight
-        for each missing or extra call.
+        from the assigned critics. It also penalizes for missing or extra tool calls.
 
         Finally, the method normalizes the total score by dividing it by the total weight and creates an
         EvaluationResult object with the normalized score, pass/fail status, warning status, and detailed
@@ -315,28 +317,26 @@ class EvalSuite:
     Attributes:
         name: The name of the evaluation suite.
         system: The system message to be used for all cases in this suite.
-        cases: A list of EvalCase objects representing individual test scenarios.
-        exact_tool_selection: Whether to require exact tool name matches (default True).
-        exact_tool_args: Whether to require exact argument matches (default False).
-        tool_choice: The tool choice mode for the AI model ("auto" or "function").
         catalog: A ToolCatalog object containing registered tools.
+        cases: A list of EvalCase objects representing individual test scenarios.
+        tool_choice: The tool choice mode for the AI model ("auto" or "function").
+        rubric: The evaluation rubric for this case.
     """
 
     name: str
     system: str
     catalog: "ToolCatalog"
     cases: list[EvalCase] = field(default_factory=list)
-    exact_tool_selection: bool = True
-    exact_tool_args: bool = False
     tool_choice: str = "auto"
+    rubric: EvalRubric = field(default_factory=EvalRubric)
 
     def add_case(
         self,
         name: str,
         user_message: str,
         expected_tool_calls: list[ExpectedToolCall],
-        rubric: EvalRubric,
         critics: list["Critic"],
+        rubric: EvalRubric | None = None,
         additional_messages: list[dict[str, str]] | None = None,
     ) -> None:
         """
@@ -354,7 +354,7 @@ class EvalSuite:
             name=name,
             user_message=user_message,
             expected_tool_calls=expected_tool_calls,
-            rubric=rubric,
+            rubric=rubric or self.rubric,
             critics=critics,
             additional_messages=additional_messages or [],
         )
@@ -394,7 +394,7 @@ class EvalSuite:
             name=name,
             user_message=user_message,
             expected_tool_calls=expected_tool_calls or last_case.expected_tool_calls,
-            rubric=rubric or last_case.rubric,
+            rubric=rubric or self.rubric,
             critics=critics or last_case.critics.copy(),
             additional_messages=new_additional_messages,
         )
@@ -402,10 +402,9 @@ class EvalSuite:
         self.cases.append(new_case)
 
     def run(self, model: str, arcade_client: Arcade) -> dict[str, Any]:
-        results = {"model": model, "cases": []}
+        results = {"model": model, "rubric": self.rubric, "cases": []}
 
         for case in self.cases:
-            print(f"Running case: {case.name}")
             messages = [{"role": "system", "content": self.system}]
             messages.extend(list(case.additional_messages))
             messages.append({"role": "user", "content": case.user_message})
@@ -466,7 +465,6 @@ def tool_eval(*models: str) -> Callable[[Callable], Callable]:
                 raise TypeError("Eval function must return an EvalSuite")
             results = []
             for model in models:
-                print(f"\nRunning evaluation suite for model: {model}\n")
                 results.append(suite.run(model, client))
             return results
 
