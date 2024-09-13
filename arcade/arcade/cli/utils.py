@@ -205,20 +205,16 @@ def display_eval_results(results: list[dict[str, Any]], show_details: bool = Fal
         # Display detailed results in a panel
         for case in cases:
             if not show_details:
-                eval_results = (
-                    f"[bold]Case:[/bold] {case['name']}\n"
-                    f"[bold]Evaluation:[/bold]\n{_format_evaluation(case['evaluation'])}"
-                )
-                console.print(eval_results)
+                eval_results = f"[bold]Evaluation:[/bold]\n{_format_evaluation(case['evaluation'])}"
+                console.print(Panel(eval_results, title=f"Case: {case['name']}", expand=False))
             else:
                 detailed_results = (
-                    f"[bold]Case:[/bold] {case['name']}\n\n"
                     f"[bold]User Input:[/bold] {case['input']}\n\n"
                     f"[bold]Expected Tool Calls:[/bold]\n{_format_tool_calls(case['expected_tool_calls'])}\n\n"
                     f"[bold]Predicted Tool Calls:[/bold]\n{_format_tool_calls(case['predicted_tool_calls'])}\n\n"
                     f"[bold]Evaluation:[/bold]\n{_format_evaluation(case['evaluation'])}\n"
                 )
-                console.print(Panel(detailed_results, title="Case Results", expand=False))
+                console.print(Panel(detailed_results, title=f"Case: {case['name']}", expand=False))
             console.print("-" * 80)
 
 
@@ -238,7 +234,7 @@ def _format_evaluation(evaluation: "EvaluationResult") -> str:
         A formatted string representation of the evaluation results.
     """
     result = []
-    result.append(f"  Overall Score: {evaluation.score:.2f}")
+    result.append(f"  Score: {evaluation.score:.2f}")
 
     # Determine and add the overall result status
     if evaluation.passed:
