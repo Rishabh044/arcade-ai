@@ -390,10 +390,16 @@ def display_config_as_table(config) -> None:  # type: ignore[no-untyped-def]
 def evals(
     directory: str = typer.Argument(".", help="Directory containing evaluation files"),
     show_details: bool = typer.Option(False, "--details", "-d", help="Show detailed results"),
+    max_concurrent: int = typer.Option(
+        1,
+        "--max-concurrent",
+        "-c",
+        help="Maximum number of concurrent evaluations (default: 1)",
+    ),
 ) -> None:
     """
-    Finds all files starting with 'eval_' in the given directory,
-    executes any functions decorated with @tool_eval, and displays the results.
+    Find all files starting with 'eval_' in the given directory,
+    execute any functions decorated with @tool_eval, and display the results.
     """
     eval_files = [f for f in os.listdir(directory) if f.startswith("eval_") and f.endswith(".py")]
 
@@ -421,5 +427,5 @@ def evals(
 
         for func in eval_functions:
             console.print(f"\nRunning evaluation from {file}: {func.__name__}", style="bold blue")
-            results = func()
+            results = func(max_concurrency=max_concurrent)
             display_eval_results(results, show_details=show_details)
