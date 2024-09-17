@@ -68,8 +68,11 @@ class ToolOutput(BaseModel):
 class OAuth2Requirement(BaseModel):
     """Indicates that the tool requires OAuth 2.0 authorization."""
 
-    authority: AnyUrl
+    authority: Optional[AnyUrl] = None
     """The URL of the OAuth 2.0 authorization server."""
+
+    scopes: Optional[list[str]] = None
+    """The scope(s) needed for authorization, if any."""
 
 
 class ToolAuthRequirement(BaseModel):
@@ -77,9 +80,6 @@ class ToolAuthRequirement(BaseModel):
 
     provider: str
     """The provider type."""
-
-    scopes: Optional[list[str]] = None
-    """The scope(s) needed for authorization."""
 
     oauth2: Optional[OAuth2Requirement] = None
     """The OAuth 2.0 requirement, if any."""

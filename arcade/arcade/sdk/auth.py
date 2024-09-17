@@ -18,6 +18,9 @@ class ToolAuthorization(BaseModel, ABC):
 class BaseOAuth2(ToolAuthorization):
     """Base class for any provider supporting OAuth 2.0-like authorization."""
 
+    authority: Optional[AnyUrl] = None
+    """The URL of the OAuth 2.0 authorization server."""
+
     scopes: Optional[list[str]] = None
     """The scope(s) needed for the authorized action."""
 
@@ -27,9 +30,6 @@ class OAuth2(BaseOAuth2):
 
     def get_provider(self) -> str:
         return "oauth2"
-
-    authority: AnyUrl
-    """The URL of the OAuth 2.0 authorization server."""
 
 
 class Google(BaseOAuth2):

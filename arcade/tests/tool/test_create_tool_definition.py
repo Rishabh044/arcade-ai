@@ -242,9 +242,9 @@ def func_with_complex_return() -> dict[str, str]:
                 "requirements": ToolRequirements(
                     authorization=ToolAuthRequirement(
                         provider="oauth2",
-                        scopes=["scope1", "scope2"],
                         oauth2=OAuth2Requirement(
                             authority="https://example.com/oauth2/auth",
+                            scopes=["scope1", "scope2"],
                         ),
                     )
                 )
@@ -257,7 +257,9 @@ def func_with_complex_return() -> dict[str, str]:
                 "requirements": ToolRequirements(
                     authorization=ToolAuthRequirement(
                         provider="google",
-                        scopes=["https://www.googleapis.com/auth/gmail.readonly"],
+                        oauth2=OAuth2Requirement(
+                            scopes=["https://www.googleapis.com/auth/gmail.readonly"],
+                        ),
                     )
                 )
             },
@@ -280,7 +282,9 @@ def func_with_complex_return() -> dict[str, str]:
                 "requirements": ToolRequirements(
                     authorization=ToolAuthRequirement(
                         provider="slack_user",
-                        scopes=["chat:write", "channels:history"],
+                        oauth2=OAuth2Requirement(
+                            scopes=["chat:write", "channels:history"],
+                        ),
                     )
                 )
             },

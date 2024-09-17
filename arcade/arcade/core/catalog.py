@@ -42,7 +42,7 @@ from arcade.core.utils import (
     snake_to_pascal_case,
 )
 from arcade.sdk.annotations import Inferrable
-from arcade.sdk.auth import BaseOAuth2, OAuth2, ToolAuthorization
+from arcade.sdk.auth import BaseOAuth2, ToolAuthorization
 
 InnerWireType = Literal["string", "integer", "number", "boolean", "json"]
 WireType = Union[InnerWireType, Literal["array"]]
@@ -203,8 +203,6 @@ class ToolCatalog(BaseModel):
                 provider=auth_requirement.get_provider(),
             )
             if isinstance(auth_requirement, BaseOAuth2):
-                new_auth_requirement.scopes = auth_requirement.scopes
-            if isinstance(auth_requirement, OAuth2):
                 new_auth_requirement.oauth2 = OAuth2Requirement(**auth_requirement.model_dump())
             auth_requirement = new_auth_requirement
 
