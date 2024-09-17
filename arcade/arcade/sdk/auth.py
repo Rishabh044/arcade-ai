@@ -15,7 +15,14 @@ class ToolAuthorization(BaseModel, ABC):
     pass
 
 
-class OAuth2(ToolAuthorization):
+class BaseOAuth2(ToolAuthorization):
+    """Base class for any provider supporting OAuth 2.0-like authorization."""
+
+    scopes: Optional[list[str]] = None
+    """The scope(s) needed for the authorized action."""
+
+
+class OAuth2(BaseOAuth2):
     """Marks a tool as requiring OAuth 2.0 authorization."""
 
     def get_provider(self) -> str:
@@ -24,28 +31,19 @@ class OAuth2(ToolAuthorization):
     authority: AnyUrl
     """The URL of the OAuth 2.0 authorization server."""
 
-    scope: Optional[list[str]] = None
-    """The scope(s) needed for the authorized action."""
 
-
-class Google(ToolAuthorization):
+class Google(BaseOAuth2):
     """Marks a tool as requiring Google authorization."""
 
     def get_provider(self) -> str:
         return "google"
 
-    scope: Optional[list[str]] = None
-    """The scope(s) needed for the authorized action."""
 
-
-class SlackUser(ToolAuthorization):
+class SlackUser(BaseOAuth2):
     """Marks a tool as requiring Slack (user token) authorization."""
 
     def get_provider(self) -> str:
         return "slack_user"
-
-    scope: Optional[list[str]] = None
-    """The scope(s) needed for the authorized action."""
 
 
 class GitHubApp(ToolAuthorization):
