@@ -34,7 +34,7 @@ WORKDIR /app/arcade
 RUN python -m build
 
 # Build the project and install the wheel with extras
-RUN poetry export --with fastapi,evals --output requirements.txt
+RUN poetry export --with fastapi,dev,evals --output requirements.txt
 
 # This doesnt install the optional packages for some reason
 RUN python -m pip install dist/arcade_ai-0.1.0-py3-none-any.whl[fastapi,dev,evals] uvicorn
