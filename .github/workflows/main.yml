@@ -2,8 +2,8 @@ name: Main
 
 on:
   push:
-    # branches:
-    #   - main
+    branches:
+      - main
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -11,8 +11,6 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - name: Try to fail
-        run: exit 1
       - name: Check out
         uses: actions/checkout@v4
 
