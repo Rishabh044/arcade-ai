@@ -22,17 +22,24 @@
       "justMyCode": true,
       "cwd": "${workspaceFolder}"
     },
-    ,
     {
-      "name": "Debug `arcade chat -h localhost`",
+      "name": "Debug `arcade chat -h localhost -d`",
       "type": "python",
       "request": "launch",
       "program": "${workspaceFolder}/arcade/run_cli.py",
-      "args": ["chat", "-h", "localhost"],
+      "args": ["chat", "-h", "localhost", "-d"],
       "console": "integratedTerminal",
       "jinja": true,
       "justMyCode": true,
       "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Python: Generate Toolhub Docs",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/toolhub/generate_toolhub_docs.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
     }
   ]
 }
