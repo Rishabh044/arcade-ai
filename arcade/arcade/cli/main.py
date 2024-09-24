@@ -419,7 +419,7 @@ def display_config_as_table(config) -> None:  # type: ignore[no-untyped-def]
 
 
 @cli.command(help="Run tool calling evaluations", rich_help_panel="Tool Development")
-def evals(
+def eval(
     directory: str = typer.Argument(".", help="Directory containing evaluation files"),
     show_details: bool = typer.Option(False, "--details", "-d", help="Show detailed results"),
     max_concurrent: int = typer.Option(
