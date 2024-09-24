@@ -9,6 +9,7 @@ from arcade.sdk.eval import (
     ExpectedToolCall,
     tool_eval,
 )
+from arcade_math.tools.arithmetic import add, sqrt
 
 # Evaluation rubric
 rubric = EvalRubric(
@@ -33,15 +34,7 @@ def arithmetic_eval_suite():
     suite.add_case(
         name="Add two large numbers",
         user_message="Add 12345 and 987654321",
-        expected_tool_calls=[
-            ExpectedToolCall(
-                "Arithmetic_Add",
-                args={
-                    "a": 12345,
-                    "b": 987654321,
-                },
-            )
-        ],
+        expected_tool_calls=[ExpectedToolCall(lambda: add(12345, 987654321))],
         rubric=rubric,
         critics=[
             BinaryCritic(
@@ -54,9 +47,7 @@ def arithmetic_eval_suite():
     suite.add_case(
         name="Take the square root of a large number",
         user_message="What is the square root of 3224990521?",
-        expected_tool_calls=[
-            ExpectedToolCall("Arithmetic_Sqrt", args={"a": 3224990521})
-        ],
+        expected_tool_calls=[ExpectedToolCall(lambda: sqrt(3224990521))],
         rubric=rubric,
         critics=[
             BinaryCritic(critic_field="a", weight=1.0),

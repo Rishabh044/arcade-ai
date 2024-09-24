@@ -1,4 +1,7 @@
 from arcade.core.catalog import ToolCatalog
+from arcade.core.schema import ToolContext
+from arcade.core.toolkit import Toolkit
+import arcade_x
 from arcade_x.tools.tweets import (
     post_tweet,
     delete_tweet_by_id,
@@ -22,11 +25,7 @@ rubric = EvalRubric(
 )
 
 catalog = ToolCatalog()
-catalog.add_tool(search_recent_tweets_by_keywords)
-catalog.add_tool(lookup_single_user_by_username)
-catalog.add_tool(post_tweet)
-catalog.add_tool(delete_tweet_by_id)
-catalog.add_tool(search_recent_tweets_by_username)
+catalog.add_toolkit(Toolkit.from_module(arcade_x))
 
 
 @tool_eval()
@@ -46,10 +45,10 @@ def x_eval_suite() -> EvalSuite:
         user_message="Send out a tweet that says 'Hello World! Exciting stuff is happening over at Arcade AI!'",
         expected_tool_calls=[
             ExpectedToolCall(
-                name="PostTweet",
-                args={
-                    "tweet_text": "Hello World! Exciting stuff is happening over at Arcade AI!"
-                },
+                lambda: post_tweet(
+                    ToolContext(),
+                    "Hello World! Exciting stuff is happening over at Arcade AI!",
+                )
             )
         ],
         critics=[

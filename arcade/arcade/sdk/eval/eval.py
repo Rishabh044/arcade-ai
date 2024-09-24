@@ -1,10 +1,12 @@
 import asyncio
 import functools
+import inspect
 import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
 
 from arcade.core.schema import FullyQualifiedName
+from arcade.core.utils import snake_to_pascal_case
 
 try:
     import numpy as np
@@ -22,18 +24,73 @@ if TYPE_CHECKING:
     from arcade.sdk.eval.critic import Critic
 
 
+def get_function_module(lambda_func):
+    # Extract the code object from the lambda
+    code_obj = lambda_func.__code__
+    # Get the first free variable (the function being called)
+    func_name = code_obj.co_names[0]
+    # Retrieve the function object from the global namespace
+    func_obj = lambda_func.__globals__[func_name]
+    # Return the module of the function
+    return func_obj.__module__
+
+
+def lower(ss: list[str]) -> list[str]:
+    return [s.lower() for s in ss]
+
+
+from inspect import signature
+
+
+import dis
+from dataclasses import dataclass
+from typing import Any, Callable
+
+
 @dataclass
 class ExpectedToolCall:
     """
-    Represents an expected tool call with its name and arguments.
+    Represents an expected tool call with its function and arguments.
 
     Attributes:
-        name: The name of the tool.
-        args: A dictionary containing the expected arguments for the tool.
+        func: A lambda function representing the expected tool call.
     """
 
-    name: str
-    args: dict[str, Any]
+    func: Callable[[], Any]
+
+    @property
+    def name(self) -> str:
+        module = self.module
+        short_module_name = module.split(".")[0]
+        if short_module_name.startswith("arcade_"):
+            short_module_name = short_module_name[len("arcade_") :]
+
+        func_name = self.func.__code__.co_names[0]
+        return f"{short_module_name}_{snake_to_pascal_case(func_name)}"
+
+    @property
+    def args(self) -> dict[str, Any]:
+        # Get the actual function being called by the lambda
+        func_name = self.func.__code__.co_names[0]
+        module = self.module
+        actual_func = getattr(__import__(module, fromlist=[func_name]), func_name)
+
+        # Get argument names from the actual function
+        sig = inspect.signature(actual_func)
+        arg_names = list(sig.parameters.keys())
+
+        # TODO: handle this more elegantly
+        if arg_names[0] == "context":
+            arg_names = arg_names[1:]
+
+        # Get argument values from the lambda
+        arg_values = self.func.__code__.co_consts[1:]
+
+        return dict(zip(arg_names, arg_values))
+
+    @property
+    def module(self) -> str:
+        return get_function_module(self.func)
 
 
 @dataclass
@@ -98,15 +155,13 @@ class EvaluationResult:
             expected: The expected value for the critic.
             actual: The actual value for the critic.
         """
-        self.results.append(
-            {
-                "field": field,
-                **result,
-                "weight": weight,
-                "expected": expected,
-                "actual": actual,
-            }
-        )
+        self.results.append({
+            "field": field,
+            **result,
+            "weight": weight,
+            "expected": expected,
+            "actual": actual,
+        })
 
     def score_tool_selection(self, expected: str, actual: str, weight: float) -> float:
         """
@@ -190,7 +245,9 @@ class EvalCase:
             True if tool selection failure should occur, False otherwise.
         """
         expected_tools = [tc.name for tc in self.expected_tool_calls]
-        return self.rubric.fail_on_tool_selection and set(expected_tools) != set(actual_tools)
+        return self.rubric.fail_on_tool_selection and set(lower(expected_tools)) != set(
+            lower(actual_tools)
+        )
 
     def check_tool_call_quantity_failure(self, actual_count: int) -> bool:
         """
@@ -247,7 +304,7 @@ class EvalCase:
                 actual_tool, actual_args = actual_tool_calls[j]
 
                 tool_selection_score = evaluation_result.score_tool_selection(
-                    expected.name, actual_tool, self.rubric.tool_selection_weight
+                    expected.name.lower(), actual_tool.lower(), self.rubric.tool_selection_weight
                 )
                 total_score += tool_selection_score
                 total_weight += self.rubric.tool_selection_weight
@@ -605,12 +662,10 @@ def get_tool_args(chat_completion: Any) -> list[tuple[str, dict[str, Any]]]:
     message = chat_completion.choices[0].message
     if message.tool_calls:
         for tool_call in message.tool_calls:
-            tool_args_list.append(
-                (
-                    tool_call.function.name,
-                    json.loads(tool_call.function.arguments),
-                )
-            )
+            tool_args_list.append((
+                tool_call.function.name,
+                json.loads(tool_call.function.arguments),
+            ))
     return tool_args_list
 
 
