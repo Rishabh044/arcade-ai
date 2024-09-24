@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from arcade.sdk.eval.critic import Critic
 
 
-def get_function_module(lambda_func):
+def get_function_module(lambda_func: Callable[[], Any]) -> Any:
     # Extract the code object from the lambda
     code_obj = lambda_func.__code__
     # Get the first free variable (the function being called)
@@ -37,14 +37,6 @@ def get_function_module(lambda_func):
 
 def lower(ss: list[str]) -> list[str]:
     return [s.lower() for s in ss]
-
-
-from inspect import signature
-
-
-import dis
-from dataclasses import dataclass
-from typing import Any, Callable
 
 
 @dataclass

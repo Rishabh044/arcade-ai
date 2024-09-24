@@ -4,12 +4,7 @@ from arcade.core.toolkit import Toolkit
 import arcade_x
 from arcade_x.tools.tweets import (
     post_tweet,
-    delete_tweet_by_id,
-    # search_recent_tweets_by_query,
-    search_recent_tweets_by_username,
-    search_recent_tweets_by_keywords,
 )
-from arcade_x.tools.users import lookup_single_user_by_username
 from arcade.sdk.eval import (
     BinaryCritic,
     EvalRubric,
