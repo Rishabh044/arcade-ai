@@ -52,7 +52,7 @@ jobs:
       - name: Load cached venv
         uses: actions/cache@v4
         with:
-          path: .venv
+          path: arcade/.venv
           key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('arcade/poetry.lock') }}
 
       - name: Install tox
