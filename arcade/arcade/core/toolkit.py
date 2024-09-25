@@ -1,5 +1,6 @@
 import importlib.metadata
 import importlib.util
+import logging
 import os
 import types
 from collections import defaultdict
@@ -7,7 +8,10 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from arcade.core.errors import ToolkitLoadError
 from arcade.core.parse import get_tools_from_file
+
+logger = logging.getLogger(__name__)
 
 
 class Toolkit(BaseModel):
@@ -64,23 +68,23 @@ class Toolkit(BaseModel):
             repo = metadata.get("Repository", None)  # type: ignore[attr-defined]
 
         except importlib.metadata.PackageNotFoundError as e:
-            raise ValueError(f"Package {package} not found.") from e
+            raise ToolkitLoadError(f"Package {package} not found.") from e
         except KeyError as e:
-            raise ValueError(f"Metadata key error for package {package}.") from e
+            raise ToolkitLoadError(f"Metadata key error for package {package}.") from e
         except Exception as e:
-            raise ValueError(f"Failed to load metadata for package {package}.") from e
+            raise ToolkitLoadError(f"Failed to load metadata for package {package}.") from e
 
         # Get the package directory
         try:
             package_dir = Path(get_package_directory(package))
-        except AttributeError as e:
-            raise ValueError(f"Failed to locate package directory for {package}.") from e
+        except (ImportError, AttributeError) as e:
+            raise ToolkitLoadError(f"Failed to locate package directory for {package}.") from e
 
         # Get all python files in the package directory
         try:
             modules = [f for f in package_dir.glob("**/*.py") if f.is_file()]
         except OSError as e:
-            raise ValueError(
+            raise ToolkitLoadError(
                 f"Failed to locate Python files in package directory for {package}."
             ) from e
 
@@ -101,7 +105,7 @@ class Toolkit(BaseModel):
             toolkit.tools[import_path] = get_tools_from_file(str(module_path))
 
         if not toolkit.tools:
-            raise ValueError(f"No tools found in package {package}")
+            raise ToolkitLoadError(f"No tools found in package {package}")
 
         return toolkit
 
@@ -123,7 +127,13 @@ class Toolkit(BaseModel):
             for dist in importlib.metadata.distributions(path=[site_packages_dir])
             if dist.metadata["Name"].startswith("arcade_")
         ]
-        return [cls.from_package(package) for package in arcade_packages]
+        toolkits = []
+        for package in arcade_packages:
+            try:
+                toolkits.append(cls.from_package(package))
+            except ToolkitLoadError as e:
+                logger.warning(f"Warning: {e} Skipping toolkit {package}")
+        return toolkits
 
 
 def get_package_directory(package_name: str) -> str:

@@ -17,7 +17,9 @@ except ImportError:
 try:
     import uvicorn
 except ImportError:
-    raise ImportError("Uvicorn is not installed. Please install it using `pip install uvicorn`.")
+    raise ImportError(
+        "Uvicorn is not installed. Please install it using `pip install arcade-ai[fastapi]`."
+    )
 
 from arcade.actor.fastapi.actor import FastAPIActor
 from arcade.core.toolkit import Toolkit

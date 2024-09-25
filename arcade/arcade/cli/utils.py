@@ -9,6 +9,7 @@ from typer.models import Context
 
 from arcade.core.catalog import ToolCatalog
 from arcade.core.config_model import Config
+from arcade.core.errors import ToolkitLoadError
 from arcade.core.toolkit import Toolkit
 
 if TYPE_CHECKING:
@@ -34,10 +35,10 @@ def create_cli_catalog(
         try:
             prefixed_toolkit = "arcade_" + toolkit
             toolkits = [Toolkit.from_package(prefixed_toolkit)]
-        except ValueError:
+        except ToolkitLoadError:
             try:  # try without prefix
                 toolkits = [Toolkit.from_package(toolkit)]
-            except ValueError as e:
+            except ToolkitLoadError as e:
                 console.print(f"❌ {e}", style="bold red")
                 typer.Exit(code=1)
     else:
