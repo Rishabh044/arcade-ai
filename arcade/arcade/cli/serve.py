@@ -7,6 +7,8 @@ from typing import Any
 
 from loguru import logger
 
+from arcade.core.telemetry import OTELHandler
+
 try:
     import fastapi
 except ImportError:
@@ -114,6 +116,9 @@ def serve_default_actor(
         version="0.1.0",
         lifespan=lifespan,  # Use custom lifespan to catch errors, notably KeyboardInterrupt (Ctrl+C)
     )
+
+    OTELHandler(app)
+
     actor = FastAPIActor(app, secret=actor_secret, disable_auth=disable_auth)
     for toolkit in toolkits:
         actor.register_toolkit(toolkit)

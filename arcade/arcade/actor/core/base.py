@@ -4,6 +4,8 @@ import time
 from datetime import datetime
 from typing import Any, Callable, ClassVar
 
+from opentelemetry import trace
+
 from arcade.actor.core.common import Actor, Router
 from arcade.actor.core.components import (
     ActorComponent,
@@ -100,14 +102,16 @@ class BaseActor(Actor):
 
         start_time = time.time()
 
-        output = await ToolExecutor.run(
-            func=materialized_tool.tool,
-            definition=materialized_tool.definition,
-            input_model=materialized_tool.input_model,
-            output_model=materialized_tool.output_model,
-            context=tool_request.context,
-            **tool_request.inputs or {},
-        )
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_as_current_span("RunTool"):
+            output = await ToolExecutor.run(
+                func=materialized_tool.tool,
+                definition=materialized_tool.definition,
+                input_model=materialized_tool.input_model,
+                output_model=materialized_tool.output_model,
+                context=tool_request.context,
+                **tool_request.inputs or {},
+            )
 
         end_time = time.time()  # End time in seconds
         duration_ms = (end_time - start_time) * 1000  # Convert to milliseconds
