@@ -298,6 +298,11 @@ def dev(
         help="Disable authentication for the actor. Not recommended for production.",
         show_default=True,
     ),
+    enable_otel: bool = typer.Option(
+        False,
+        "--otel",
+        help="Enable OpenTelemetry for tracing and metrics.",
+    ),
 ) -> None:
     """
     Starts the actor with host, port, and reload options. Uses
@@ -306,7 +311,7 @@ def dev(
     from arcade.cli.serve import serve_default_actor
 
     try:
-        serve_default_actor(host, port, disable_auth)
+        serve_default_actor(host, port, disable_auth, enable_otel=enable_otel)
     except KeyboardInterrupt:
         typer.Exit()
     except Exception as e:

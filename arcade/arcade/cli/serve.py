@@ -86,6 +86,7 @@ def serve_default_actor(
     disable_auth: bool = False,
     workers: int = 1,
     timeout_keep_alive: int = 5,
+    enable_otel: bool = False,
     **kwargs: Any,
 ) -> None:
     """
@@ -117,7 +118,7 @@ def serve_default_actor(
         lifespan=lifespan,  # Use custom lifespan to catch errors, notably KeyboardInterrupt (Ctrl+C)
     )
 
-    OTELHandler(app)
+    otel_handler = OTELHandler(app, enable=enable_otel)
 
     actor = FastAPIActor(app, secret=actor_secret, disable_auth=disable_auth)
     for toolkit in toolkits:
@@ -148,4 +149,6 @@ def serve_default_actor(
     except KeyboardInterrupt:
         logger.info("Server stopped by user.")
     finally:
+        if enable_otel:
+            otel_handler.shutdown()
         logger.debug("Server shutdown complete.")
