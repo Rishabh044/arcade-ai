@@ -76,9 +76,6 @@ class OTELHandler:
 
         set_meter_provider(self._meter_provider)
 
-        counter = self.get_meter().create_counter("test", "test", "test")
-        counter.add(1, {"test": "test"})
-
     def get_meter(self) -> Meter:
         return get_meter_provider().get_meter(__name__)
 
