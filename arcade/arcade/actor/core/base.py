@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Callable, ClassVar
 
 from opentelemetry import trace
+from opentelemetry.metrics import Meter
 
 from arcade.actor.core.common import Actor, Router
 from arcade.actor.core.components import (
@@ -38,7 +39,9 @@ class BaseActor(Actor):
         HealthCheckComponent,
     )
 
-    def __init__(self, secret: str | None = None, disable_auth: bool = False) -> None:
+    def __init__(
+        self, secret: str | None = None, disable_auth: bool = False, otel_meter: Meter | None = None
+    ) -> None:
         """
         Initialize the BaseActor with an empty ToolCatalog.
         If no secret is provided, the actor will use the ARCADE_ACTOR_SECRET environment variable.
@@ -51,6 +54,11 @@ class BaseActor(Actor):
             )
 
         self.secret = self._set_secret(secret, disable_auth)
+        self.environment = os.environ.get("ARCADE_ENVIRONMENT", "local")
+        if otel_meter:
+            self.tool_counter = otel_meter.create_counter(
+                "tool_call", "requests", "Total number of tools called"
+            )
 
     def _set_secret(self, secret: str | None, disable_auth: bool) -> str:
         if disable_auth:
@@ -101,6 +109,17 @@ class BaseActor(Actor):
             )
 
         start_time = time.time()
+
+        if self.tool_counter:
+            self.tool_counter.add(
+                1,
+                {
+                    "tool_name": tool_fqname.name,
+                    "toolkit_version": str(tool_fqname.toolkit_version),
+                    "toolkit_name": tool_fqname.toolkit_name,
+                    "environment": self.environment,
+                },
+            )
 
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("RunTool"):

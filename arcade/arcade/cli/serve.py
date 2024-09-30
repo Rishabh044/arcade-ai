@@ -120,7 +120,9 @@ def serve_default_actor(
 
     otel_handler = OTELHandler(app, enable=enable_otel)
 
-    actor = FastAPIActor(app, secret=actor_secret, disable_auth=disable_auth)
+    actor = FastAPIActor(
+        app, secret=actor_secret, disable_auth=disable_auth, otel_meter=otel_handler.get_meter()
+    )
     for toolkit in toolkits:
         actor.register_toolkit(toolkit)
 

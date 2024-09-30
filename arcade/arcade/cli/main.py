@@ -300,7 +300,8 @@ def dev(
     ),
     enable_otel: bool = typer.Option(
         False,
-        "--otel",
+        "--otel_enable",
+        is_flag=False,
         help="Enable OpenTelemetry for tracing and metrics.",
     ),
 ) -> None:
