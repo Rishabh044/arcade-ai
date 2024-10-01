@@ -52,14 +52,6 @@ publish: ## publish a release to pypi.
 .PHONY: build-and-publish
 build-and-publish: build publish ## Build and publish.
 
-.PHONY: docs-test
-docs-test: ## Test if documentation can be built without warnings or errors
-	@cd arcade && poetry run mkdocs build -s
-
-.PHONY: docs
-docs: ## Build and serve the documentation
-	@cd arcade && poetry run mkdocs serve -a localhost:8777
-
 .PHONY: docker
 docker: ## Build and run the Docker container
 	@cd docker && make docker-build
