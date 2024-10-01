@@ -142,7 +142,7 @@ def _build_actor_command(host: str, port: int) -> list[str]:
         sys.exit(1)
     cmd = [
         arcade_bin,
-        "dev",
+        "actorup",
         "--host",
         host,
         "--port",
@@ -165,13 +165,12 @@ def _build_engine_command(engine_config: str) -> list[str]:
     if not engine_bin:
         console.print(
             "❌ Engine binary not found, refer to the installation guide at "
-            "https://docs.arcade-ai.com/docs/home/deployment for how to install the engine",
+            "https://docs.arcade-ai.com/guides/installation for how to install the engine",
             style="bold red",
         )
         sys.exit(1)
     cmd = [
         engine_bin,
-        "dev",
         "-c",
         engine_config,
     ]
