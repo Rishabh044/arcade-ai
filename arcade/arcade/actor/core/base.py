@@ -120,6 +120,11 @@ class BaseActor(Actor):
                     "environment": self.environment,
                 },
             )
+        invocation_id = tool_request.invocation_id or ""
+        logger.info(
+            f"{invocation_id} | Calling tool: {tool_fqname} version: {tool_request.tool.version}"
+        )
+        logger.debug(f"{invocation_id} | Tool inputs: {tool_request.inputs}")
 
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("RunTool"):
@@ -132,11 +137,25 @@ class BaseActor(Actor):
                 **tool_request.inputs or {},
             )
 
+        if output.error:
+            logger.warning(
+                f"{invocation_id} | Tool {tool_fqname} version {tool_request.tool.version} failed"
+            )
+            logger.warning(f"{invocation_id} | Tool error: {output.error.message}")
+            logger.debug(
+                f"{invocation_id} | Tool developer message: {output.error.developer_message}"
+            )
+        else:
+            logger.info(
+                f"{invocation_id} | Tool {tool_fqname} version {tool_request.tool.version} success"
+            )
+            logger.debug(f"{invocation_id} | Tool output: {output}")
+
         end_time = time.time()  # End time in seconds
         duration_ms = (end_time - start_time) * 1000  # Convert to milliseconds
 
         return ToolCallResponse(
-            invocation_id=tool_request.invocation_id or "",
+            invocation_id=invocation_id,
             duration=duration_ms,
             finished_at=datetime.now().isoformat(),
             success=not output.error,

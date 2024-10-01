@@ -478,13 +478,14 @@ def dev(
     engine_config: str = typer.Option(
         None, "-c", "--config", help="Path to the engine configuration file."
     ),
+    debug: bool = typer.Option(False, "-d", "--debug", help="Show debug information"),
 ) -> None:
     """
     Start both the actor and engine servers.
     """
     try:
         # TODO: pass Engine env vars from here
-        start_servers(host, port, engine_config)
+        start_servers(host, port, engine_config, engine_env=None, debug=debug)
     except Exception as e:
         error_message = f"❌ Failed to start servers: {escape(str(e))}"
         console.print(error_message, style="bold red")
@@ -505,6 +506,7 @@ def actorup(
         help="Disable authentication for the actor. Not recommended for production.",
         show_default=True,
     ),
+    debug: bool = typer.Option(False, "--debug", "-d", help="Show debug information"),
 ) -> None:
     """
     Starts the actor with host, port, and reload options. Uses
@@ -513,7 +515,7 @@ def actorup(
     from arcade.cli.serve import serve_default_actor
 
     try:
-        serve_default_actor(host, port, disable_auth)
+        serve_default_actor(host, port, disable_auth=disable_auth, debug=debug)
     except KeyboardInterrupt:
         typer.Exit()
     except Exception as e:

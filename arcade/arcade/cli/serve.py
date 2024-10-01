@@ -62,9 +62,9 @@ def setup_logging(log_level: int = logging.INFO) -> None:
                 "sink": sys.stdout,
                 "serialize": False,
                 "level": log_level,
-                "format": "{time:MM-DD HH:mm:ss} | {level: <8} | {message}"
+                "format": "{level}  [{time:HH:mm:ss.SSS}] {message}"
                 + (" {name}:{function}:{line}" if log_level <= logging.DEBUG else "")
-                + ("{exception}\n" if "{exception}" in "{message}" else ""),
+                + ("\n{exception}" if "{exception}" in "{message}" else ""),
             }
         ]
     )
@@ -87,13 +87,14 @@ def serve_default_actor(
     workers: int = 1,
     timeout_keep_alive: int = 5,
     enable_otel: bool = False,
+    debug: bool = False,
     **kwargs: Any,
 ) -> None:
     """
     Get an instance of a FastAPI server with the Arcade Actor.
     """
     # Setup unified logging
-    setup_logging()
+    setup_logging(log_level=logging.DEBUG if debug else logging.INFO)
 
     toolkits = Toolkit.find_all_arcade_toolkits()
     if not toolkits:
