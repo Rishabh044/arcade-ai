@@ -67,6 +67,10 @@ docker: ## Build and run the Docker container
 	@cd docker && make docker-build
 	@cd docker && make docker-run
 
+.PHONY: publish-ecr
+publish-ecr: ## Publish to the ECR
+	@cd docker && make publish-ecr
+
 .PHONY: full-dist
 full-dist: clean-dist ## Build all projects and copy wheels to ./dist
 	@echo " Building a full distribution with toolkits"
