@@ -2,10 +2,10 @@ name: Release and Publish Containers
 
 on:
   push:
-    # branches:
-    #   - main
-    # tags:
-    #   - 'v*'
+    branches:
+      - main
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -76,11 +76,11 @@ jobs:
         make publish-ecr VERSION=${{ env.VERSION }}
         echo "image=471112909428.dkr.ecr.us-east-1.amazonaws.com/arcadeai/arcade-ai:${{ env.VERSION }}" >> $GITHUB_OUTPUT
 
-    # - name: Deploy to Amazon ECS
-    #   if: github.event_name == 'push'
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.PAT }}
-    #   run: gh workflow -R ArcadeAI/Team run Deploy -f actor-version=${{ env.VERSION }}
+    - name: Deploy to Amazon ECS
+      if: github.event_name == 'push'
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      run: gh workflow -R ArcadeAI/Team run Deploy -f actor-version=${{ env.VERSION }}
 
     - name: Set TAR and WHL names
       run: |
@@ -92,60 +92,60 @@ jobs:
         echo "WHL_NAME=$1" >> $GITHUB_ENV
 
 
-    # - name: Generate release notes
-    #   id: generate_release_notes
-    #   if: github.event_name != 'push'
-    #   run: |
-    #     echo "Release notes for version ${{ env.VERSION }}" > release_notes.md
-    #     echo "" >> release_notes.md
-    #     echo "Changes in this release:" >> release_notes.md
-    #     git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s" >> release_notes.md
+    - name: Generate release notes
+      id: generate_release_notes
+      if: github.event_name != 'push'
+      run: |
+        echo "Release notes for version ${{ env.VERSION }}" > release_notes.md
+        echo "" >> release_notes.md
+        echo "Changes in this release:" >> release_notes.md
+        git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s" >> release_notes.md
 
-    # - name: Create Release
-    #   id: create_release
-    #   if: github.event_name != 'push'
-    #   uses: actions/create-release@v1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     tag_name: ${{ env.VERSION }}
-    #     release_name: Release ${{ env.VERSION }}
-    #     body_path: release_notes.md
-    #     draft: false
-    #     prerelease: false
+    - name: Create Release
+      id: create_release
+      if: github.event_name != 'push'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.VERSION }}
+        release_name: Release ${{ env.VERSION }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
 
-    # - name: Upload Release Asset
-    #   uses: actions/upload-release-asset@v1
-    #   if: github.event_name != 'push'
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_path: ./release_notes.md
-    #     asset_name: release_notes.md
-    #     asset_content_type: text/markdown
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      if: github.event_name != 'push'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./release_notes.md
+        asset_name: release_notes.md
+        asset_content_type: text/markdown
 
-    # - name: Upload Python Tar Asset
-    #   uses: actions/upload-release-asset@v1
-    #   if: github.event_name != 'push'
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_path: ./arcade/dist/${{ env.TAR_NAME }}
-    #     asset_name: ${{ env.TAR_NAME }}
-    #     asset_content_type: application/zip
+    - name: Upload Python Tar Asset
+      uses: actions/upload-release-asset@v1
+      if: github.event_name != 'push'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./arcade/dist/${{ env.TAR_NAME }}
+        asset_name: ${{ env.TAR_NAME }}
+        asset_content_type: application/zip
 
-    # - name: Upload Python Whl Asset
-    #   uses: actions/upload-release-asset@v1
-    #   if: github.event_name != 'push'
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_path: ./arcade/dist/${{ env.WHL_NAME }}
-    #     asset_name: ${{ env.WHL_NAME }}
-    #     asset_content_type: application/zip
+    - name: Upload Python Whl Asset
+      uses: actions/upload-release-asset@v1
+      if: github.event_name != 'push'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./arcade/dist/${{ env.WHL_NAME }}
+        asset_name: ${{ env.WHL_NAME }}
+        asset_content_type: application/zip
 
     - name: Upload the distribution packages
       uses: actions/upload-artifact@v4
