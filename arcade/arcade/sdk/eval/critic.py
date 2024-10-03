@@ -33,8 +33,43 @@ class BinaryCritic(Critic):
             - "score": The full weight if there's a match, otherwise 0.0.
     """
 
+    def cast_actual(self, expected: Any, actual: Any) -> Any:
+        """
+        Casts the actual value to the type of the expected value.
+
+        Args:
+            expected (Any): The expected value whose type will be used for casting.
+            actual (Any): The actual value to be cast.
+
+        Returns:
+            Any: The actual value cast to the type of the expected value.
+
+        Raises:
+            TypeError: If the casting is not possible.
+        """
+        expected_type = type(expected)
+        try:
+            return expected_type(actual)
+        except (ValueError, TypeError) as e:
+            raise TypeError(
+                f"Cannot cast actual value '{actual}' to type {expected_type.__name__}: {e}"
+            ) from e
+
     def evaluate(self, expected: Any, actual: Any) -> dict[str, float | bool]:
-        match = expected == actual
+        """
+        Evaluates whether the expected and actual values are exactly equal after casting.
+
+        Args:
+            expected (Any): The expected value.
+            actual (Any): The actual value to compare, cast to the type of expected.
+
+        Returns:
+            dict[str, float | bool]: A dictionary containing the match status and score.
+        """
+        # Cast actual to the type of expected
+        actual_casted = self.cast_actual(expected, actual)
+
+        match = expected == actual_casted
         return {"match": match, "score": self.weight if match else 0.0}
 
 
