@@ -602,7 +602,7 @@ class EvalSuite:
         )
         self.cases.append(new_case)
 
-    async def run_async(self, model: str) -> dict[str, Any]:
+    async def run_async(self, client: AsyncArcade, model: str) -> dict[str, Any]:
         """
         Run the evaluation suite asynchronously.
 
@@ -612,9 +612,6 @@ class EvalSuite:
         Returns:
             A dictionary containing the evaluation results.
         """
-        if not self._client:
-            raise ValueError("Client not initialized. Call initialize_client() first.")
-
         results: dict[str, Any] = {"model": model, "rubric": self.rubric, "cases": []}
 
         semaphore = asyncio.Semaphore(self.max_concurrent)
@@ -622,7 +619,7 @@ class EvalSuite:
 
         async def sem_task(case: EvalCase) -> dict[str, Any]:
             async with semaphore:
-                return await case.run_async(self._client, model, tool_names)  # type: ignore[arg-type]
+                return await case.run_async(client, model, tool_names)  # type: ignore[arg-type]
 
         tasks = [sem_task(case) for case in self.cases]
         case_results = await asyncio.gather(*tasks)
@@ -630,7 +627,7 @@ class EvalSuite:
         results["cases"] = case_results
         return results
 
-    def run_sync(self, model: str) -> dict[str, Any]:
+    async def run_sync(self, client: Arcade, model: str) -> dict[str, Any]:
         """
         Run the evaluation suite synchronously.
 
@@ -640,19 +637,17 @@ class EvalSuite:
         Returns:
             A dictionary containing the evaluation results.
         """
-        if not self._client:
-            raise ValueError("Client not initialized. Call initialize_client() first.")
 
         cases: list[dict[str, Any]] = []
         results = {"model": model, "rubric": self.rubric, "cases": cases}
         tool_names = list(self.catalog.get_tool_names())
         for case in self.cases:
-            result = case.run_sync(self._client, model, tool_names)  # type: ignore[arg-type]
+            result = case.run_sync(client, model, tool_names)  # type: ignore[arg-type]
             cases.append(result)
 
         return results
 
-    def run(self, config: Config, model: str) -> dict[str, Any]:
+    async def run(self, client: AsyncArcade, model: str) -> dict[str, Any]:
         """
         Run the evaluation suite.
 
@@ -662,15 +657,12 @@ class EvalSuite:
         Returns:
             A dictionary containing the evaluation results.
         """
-        if not self._client:
-            self.initialize_client(config)
-
         if self.max_concurrent > 1:
             # Run asynchronously with concurrency
-            return asyncio.run(self.run_async(model))
+            return await self.run_async(client, model)
         else:
             # Run synchronously
-            return self.run_sync(model)
+            return self.run_sync(client, model)
 
 
 def get_tool_args(chat_completion: Any) -> list[tuple[str, dict[str, Any]]]:
@@ -712,7 +704,7 @@ def compare_tool_name(expected: str, actual: str) -> bool:
 def tool_eval() -> Callable[[Callable], Callable]:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(
+        async def wrapper(
             config: Config,
             models: list[str],
             max_concurrency: int = 1,
@@ -722,9 +714,13 @@ def tool_eval() -> Callable[[Callable], Callable]:
                 raise TypeError("Eval function must return an EvalSuite")
             suite.max_concurrent = max_concurrency
             results = []
-            for model in models:
-                result = suite.run(config, model)
-                results.append(result)
+            async with AsyncArcade(
+                api_key=config.api.key,
+                base_url=config.engine_url,
+            ) as client:
+                for model in models:
+                    result = await suite.run(client, model)
+                    results.append(result)
             return results
 
         wrapper.__tool_eval__ = True  # type: ignore[attr-defined]

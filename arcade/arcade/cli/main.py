@@ -1,3 +1,4 @@
+import asyncio
 import importlib.util
 import os
 import readline
@@ -420,7 +421,8 @@ def evals(
     """
     config = _get_config_with_overrides(force_tls, force_no_tls, host, port)
 
-    models = models.split(",")  # type: ignore[assignment]
+    models_list = models.split(",")  # Use 'models_list' to avoid shadowing
+
     directory_path = Path(directory).resolve()
 
     if directory_path.is_dir():
@@ -458,6 +460,8 @@ def evals(
     client = Arcade(api_key=config.api.key, base_url=config.engine_url)
     log_engine_health(client)
 
+    eval_suites = []
+
     for eval_file_path in eval_files:
         module_name = eval_file_path.stem  # filename without extension
 
@@ -474,23 +478,31 @@ def evals(
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)  # type: ignore[union-attr]
 
-        eval_suites = [
+        eval_suite_funcs = [
             obj
             for name, obj in module.__dict__.items()
             if callable(obj) and hasattr(obj, "__tool_eval__")
         ]
 
-        if not eval_suites:
+        if not eval_suite_funcs:
             console.print(f"No @tool_eval functions found in {eval_file_path}", style="bold yellow")
             continue
 
         if show_details:
-            suite_label = "suite" if len(eval_suites) == 1 else "suites"
+            suite_label = "suite" if len(eval_suite_funcs) == 1 else "suites"
             console.print(
-                f"\nFound {len(eval_suites)} {suite_label} in {eval_file_path}", style="bold"
+                f"\nFound {len(eval_suite_funcs)} {suite_label} in {eval_file_path}", style="bold"
             )
 
+        eval_suites.extend(eval_suite_funcs)
+
+    if not eval_suites:
+        console.print("No evaluation suites to run.", style="bold yellow")
+        return
+
+    async def run_evaluations():
         all_evaluations = []
+        tasks = []
         for suite_func in eval_suites:
             console.print(
                 Text.assemble(
@@ -498,9 +510,16 @@ def evals(
                     (suite_func.__name__, "bold blue"),
                 )
             )
-            results = suite_func(config=config, models=models, max_concurrency=max_concurrent)
-            all_evaluations.append(results)
+            task = asyncio.create_task(
+                suite_func(config=config, models=models_list, max_concurrency=max_concurrent)
+            )
+            tasks.append(task)
+        # Wait for all suite functions to complete
+        results = await asyncio.gather(*tasks)
+        all_evaluations.extend(results)
         display_eval_results(all_evaluations, show_details=show_details)
+
+    asyncio.run(run_evaluations())
 
 
 @cli.command(help="Launch Arcade AI locally for tool dev", rich_help_panel="Launch")
