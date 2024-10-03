@@ -15,7 +15,6 @@ except ImportError:
         "Use `pip install arcade-ai[evals]` to install the required dependencies for evaluation."
     )
 
-
 from arcade.client.client import Arcade, AsyncArcade
 from arcade.sdk.error import WeightError
 
@@ -199,10 +198,11 @@ class EvalCase:
         Returns:
             True if tool selection failure should occur, False otherwise.
         """
-        expected_tools = [tc.name for tc in self.expected_tool_calls]
+        sorted_expected_tools = sorted([tc.name for tc in self.expected_tool_calls])
+        sorted_actual_tools = sorted(actual_tools)
         return self.rubric.fail_on_tool_selection and not all(
             compare_tool_name(expected, actual)
-            for expected, actual in zip(expected_tools, actual_tools)
+            for expected, actual in zip(sorted_expected_tools, sorted_actual_tools)
         )
 
     def check_tool_call_quantity_failure(self, actual_count: int) -> bool:
@@ -270,7 +270,7 @@ class EvalCase:
         cost_matrix = self._create_cost_matrix(actual_tool_calls)
 
         # Use the Linear Sum Assignment (LSA) algorithm to find the optimal assignment
-        # The algorithm minimizes the cost of assigning each expected tool call to an actual tool call
+        # The algorithm maximizes the total score of the assignment
         row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize=True)
 
         total_score = 0.0
@@ -292,12 +292,23 @@ class EvalCase:
                     expected_value = expected.args.get(critic.critic_field)
                     actual_value = actual_args.get(critic.critic_field)
                     if expected_value is not None and actual_value is not None:
-                        result = critic.evaluate(expected_value, actual_value)
-                        total_score += result["score"]
-                        total_weight += critic.weight
-                        evaluation_result.add(
-                            critic.critic_field, result, critic.weight, expected_value, actual_value
-                        )
+                        try:
+                            result = critic.evaluate(expected_value, actual_value)
+                            total_score += result["score"]
+                            total_weight += critic.weight
+                            evaluation_result.add(
+                                critic.critic_field,
+                                result,
+                                critic.weight,
+                                expected_value,
+                                actual_value,
+                            )
+                        except Exception as e:
+                            print(
+                                f"Critic evaluation failed for field '{critic.critic_field}': {e}"
+                            )
+                            # Depending on requirements, you might want to continue or handle differently
+                            continue
 
         # Compute the final score using the method from EvaluationResult
         evaluation_result.compute_final_score(total_weight)
@@ -327,25 +338,47 @@ class EvalCase:
         Returns:
             A numpy array representing the cost matrix.
         """
-        n = max(len(self.expected_tool_calls), len(actual_tool_calls))
-        cost_matrix = np.zeros((n, n))
+        num_expected = len(self.expected_tool_calls)
+        num_actual = len(actual_tool_calls)
+        n = max(num_expected, num_actual)
 
-        for i, expected in enumerate(self.expected_tool_calls):
-            for j, (actual_tool, actual_args) in enumerate(actual_tool_calls):
-                score = 0.0
-                if expected.name == actual_tool:
-                    score += self.rubric.tool_selection_weight
+        # Initialize a score matrix with zeros
+        score_matrix = np.zeros((n, n))
 
-                if self.critics:
-                    for critic in self.critics:
-                        expected_value = expected.args.get(critic.critic_field)
-                        actual_value = actual_args.get(critic.critic_field)
-                        if expected_value is not None and actual_value is not None:
-                            result = critic.evaluate(expected_value, actual_value)
-                            score += result["score"]
-                cost_matrix[i, j] = score
+        for i in range(n):
+            for j in range(n):
+                if i < num_expected and j < num_actual:
+                    expected = self.expected_tool_calls[i]
+                    expected_tool = expected.name
+                    expected_args = expected.args
+                    actual_tool, actual_args = actual_tool_calls[j]
+                    score = 0.0
 
-        return cost_matrix
+                    # Tool selection
+                    if compare_tool_name(expected_tool, actual_tool):
+                        score += self.rubric.tool_selection_weight
+
+                    # Critics evaluation
+                    if self.critics:
+                        for critic in self.critics:
+                            expected_value = expected_args.get(critic.critic_field)
+                            actual_value = actual_args.get(critic.critic_field)
+                            if expected_value is not None and actual_value is not None:
+                                try:
+                                    result = critic.evaluate(expected_value, actual_value)
+                                    score += result.get("score", 0.0)
+                                except Exception as e:
+                                    print(
+                                        f"Critic evaluation failed for field '{critic.critic_field}': {e}"
+                                    )
+                                    continue
+
+                    score_matrix[i, j] = score
+                else:
+                    # Assign a score of 0 for dummy assignments
+                    score_matrix[i, j] = 0.0
+
+        return score_matrix
 
     async def run_async(
         self, client: AsyncArcade, model: str, tool_names: list[FullyQualifiedName]
@@ -445,7 +478,6 @@ class EvalSuite:
         system_message: The system message to be used for all cases in this suite.
         catalog: A ToolCatalog object containing registered tools.
         cases: A list of EvalCase objects representing individual test scenarios.
-        tool_choice: The tool choice mode for the AI model ("auto" or "function").
         rubric: The evaluation rubric for this case.
         max_concurrent: Maximum number of concurrent evaluations.
     """
@@ -568,7 +600,6 @@ class EvalSuite:
             critics=critics or (last_case.critics.copy() if last_case.critics else None),
             additional_messages=new_additional_messages,
         )
-
         self.cases.append(new_case)
 
     async def run_async(self, model: str) -> dict[str, Any]:
@@ -675,7 +706,7 @@ def compare_tool_name(expected: str, actual: str) -> bool:
     actual_clean = "".join(char for char in actual if char not in separators)
 
     # Compare the cleaned names
-    return expected_clean == actual_clean
+    return expected_clean.lower() == actual_clean.lower()
 
 
 def tool_eval() -> Callable[[Callable], Callable]:
