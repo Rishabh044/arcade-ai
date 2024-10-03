@@ -15,7 +15,7 @@ except ImportError:
         "Use `pip install arcade-ai[evals]` to install the required dependencies for evaluation."
     )
 
-from arcade.client.client import Arcade, AsyncArcade
+from arcade.client.client import AsyncArcade
 from arcade.sdk.error import WeightError
 
 if TYPE_CHECKING:
@@ -380,7 +380,7 @@ class EvalCase:
 
         return score_matrix
 
-    async def run_async(
+    async def run(
         self, client: AsyncArcade, model: str, tool_names: list[FullyQualifiedName]
     ) -> dict[str, Any]:
         """
@@ -398,48 +398,6 @@ class EvalCase:
         messages.append({"role": "user", "content": self.user_message})
 
         response = await client.chat.completions.create(  # type: ignore[call-overload]
-            model=model,
-            messages=messages,
-            tool_choice="auto",
-            tools=(str(name) for name in tool_names),
-            user="eval_user",
-            stream=False,
-        )
-
-        predicted_args = get_tool_args(response)
-
-        evaluation = self.evaluate(predicted_args)
-
-        result = {
-            "name": self.name,
-            "input": self.user_message,
-            "expected_tool_calls": [
-                {"name": tc.name, "args": tc.args} for tc in self.expected_tool_calls
-            ],
-            "predicted_tool_calls": [{"name": tool, "args": args} for tool, args in predicted_args],
-            "evaluation": evaluation,
-        }
-
-        return result
-
-    def run_sync(
-        self, client: Arcade, model: str, tool_names: list[FullyQualifiedName]
-    ) -> dict[str, Any]:
-        """
-        Run the evaluation case synchronously.
-
-        Args:
-            client: The Arcade client instance.
-            model: The model to evaluate.
-            tool_names: The list of tool names to use for the evaluation.
-        Returns:
-            A dictionary containing the evaluation result for the case.
-        """
-        messages = [{"role": "system", "content": self.system_message}]
-        messages.extend(list(self.additional_messages))
-        messages.append({"role": "user", "content": self.user_message})
-
-        response = client.chat.completions.create(  # type: ignore[call-overload]
             model=model,
             messages=messages,
             tool_choice="auto",
@@ -487,23 +445,7 @@ class EvalSuite:
     catalog: "ToolCatalog"
     cases: list[EvalCase] = field(default_factory=list)
     rubric: EvalRubric = field(default_factory=EvalRubric)
-    max_concurrent: int = 1  # Default to sequential execution
-    _client: AsyncArcade | Arcade | None = None
-
-    def initialize_client(self, config: Config) -> None:
-        """
-        Initialize the client instance for the EvalSuite.
-        """
-        if self.max_concurrent > 1:
-            self._client = AsyncArcade(
-                api_key=config.api.key,
-                base_url=config.engine_url,
-            )
-        else:
-            self._client = Arcade(
-                api_key=config.api.key,
-                base_url=config.engine_url,
-            )
+    max_concurrent: int = 1
 
     def add_case(
         self,
@@ -602,7 +544,7 @@ class EvalSuite:
         )
         self.cases.append(new_case)
 
-    async def run_async(self, client: AsyncArcade, model: str) -> dict[str, Any]:
+    async def run(self, client: AsyncArcade, model: str) -> dict[str, Any]:
         """
         Run the evaluation suite asynchronously.
 
@@ -619,50 +561,13 @@ class EvalSuite:
 
         async def sem_task(case: EvalCase) -> dict[str, Any]:
             async with semaphore:
-                return await case.run_async(client, model, tool_names)  # type: ignore[arg-type]
+                return await case.run(client, model, tool_names)
 
         tasks = [sem_task(case) for case in self.cases]
         case_results = await asyncio.gather(*tasks)
 
         results["cases"] = case_results
         return results
-
-    async def run_sync(self, client: Arcade, model: str) -> dict[str, Any]:
-        """
-        Run the evaluation suite synchronously.
-
-        Args:
-            model: The model to evaluate.
-
-        Returns:
-            A dictionary containing the evaluation results.
-        """
-
-        cases: list[dict[str, Any]] = []
-        results = {"model": model, "rubric": self.rubric, "cases": cases}
-        tool_names = list(self.catalog.get_tool_names())
-        for case in self.cases:
-            result = case.run_sync(client, model, tool_names)  # type: ignore[arg-type]
-            cases.append(result)
-
-        return results
-
-    async def run(self, client: AsyncArcade, model: str) -> dict[str, Any]:
-        """
-        Run the evaluation suite.
-
-        Args:
-            model: The model to evaluate.
-
-        Returns:
-            A dictionary containing the evaluation results.
-        """
-        if self.max_concurrent > 1:
-            # Run asynchronously with concurrency
-            return await self.run_async(client, model)
-        else:
-            # Run synchronously
-            return self.run_sync(client, model)
 
 
 def get_tool_args(chat_completion: Any) -> list[tuple[str, dict[str, Any]]]:
@@ -706,7 +611,7 @@ def tool_eval() -> Callable[[Callable], Callable]:
         @functools.wraps(func)
         async def wrapper(
             config: Config,
-            models: list[str],
+            model: str,
             max_concurrency: int = 1,
         ) -> list[dict[str, Any]]:
             suite = func()
@@ -718,9 +623,8 @@ def tool_eval() -> Callable[[Callable], Callable]:
                 api_key=config.api.key,
                 base_url=config.engine_url,
             ) as client:
-                for model in models:
-                    result = await suite.run(client, model)
-                    results.append(result)
+                result = await suite.run(client, model)  # type: ignore[arg-type]
+                results.append(result)
             return results
 
         wrapper.__tool_eval__ = True  # type: ignore[attr-defined]

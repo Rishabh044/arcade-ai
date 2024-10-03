@@ -1,11 +1,9 @@
 import asyncio
-import importlib.util
 import os
 import readline
 import threading
 import uuid
 import webbrowser
-from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlencode
 
@@ -24,8 +22,10 @@ from arcade.cli.utils import (
     create_cli_catalog,
     display_eval_results,
     display_tool_messages,
+    get_eval_files,
     handle_chat_interaction,
     is_authorization_pending,
+    load_eval_suites,  # Import the new function
     validate_and_get_config,
     wait_for_authorization_completion,
 )
@@ -423,29 +423,8 @@ def evals(
 
     models_list = models.split(",")  # Use 'models_list' to avoid shadowing
 
-    directory_path = Path(directory).resolve()
-
-    if directory_path.is_dir():
-        eval_files = [
-            f
-            for f in directory_path.iterdir()
-            if f.is_file() and f.name.startswith("eval_") and f.name.endswith(".py")
-        ]
-    elif directory_path.is_file():
-        eval_files = (
-            [directory_path]
-            if directory_path.name.startswith("eval_") and directory_path.name.endswith(".py")
-            else []
-        )
-    else:
-        console.print(f"Path not found: {directory_path}", style="bold red")
-        return
-
+    eval_files = get_eval_files(directory)
     if not eval_files:
-        console.print(
-            "No evaluation files found. Filenames must start with 'eval_' and end with '.py'.",
-            style="bold yellow",
-        )
         return
 
     if show_details:
@@ -457,50 +436,23 @@ def evals(
         )
 
     # Try to hit /health endpoint on engine and warn if it is down
-    client = Arcade(api_key=config.api.key, base_url=config.engine_url)
-    log_engine_health(client)
+    with Arcade(api_key=config.api.key, base_url=config.engine_url) as client:
+        log_engine_health(client)  # type: ignore[arg-type]
 
-    eval_suites = []
-
-    for eval_file_path in eval_files:
-        module_name = eval_file_path.stem  # filename without extension
-
-        # Now we need to load the module from eval_file_path
-        file_path_str = str(eval_file_path)
-        module_name_str = module_name
-
-        # Load using importlib
-        spec = importlib.util.spec_from_file_location(module_name_str, file_path_str)
-        if spec is None:
-            console.print(f"Failed to load {eval_file_path}", style="bold red")
-            continue
-
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)  # type: ignore[union-attr]
-
-        eval_suite_funcs = [
-            obj
-            for name, obj in module.__dict__.items()
-            if callable(obj) and hasattr(obj, "__tool_eval__")
-        ]
-
-        if not eval_suite_funcs:
-            console.print(f"No @tool_eval functions found in {eval_file_path}", style="bold yellow")
-            continue
-
-        if show_details:
-            suite_label = "suite" if len(eval_suite_funcs) == 1 else "suites"
-            console.print(
-                f"\nFound {len(eval_suite_funcs)} {suite_label} in {eval_file_path}", style="bold"
-            )
-
-        eval_suites.extend(eval_suite_funcs)
+    # Use the new function to load eval suites
+    eval_suites = load_eval_suites(eval_files)
 
     if not eval_suites:
         console.print("No evaluation suites to run.", style="bold yellow")
         return
 
-    async def run_evaluations():
+    if show_details:
+        suite_label = "suite" if len(eval_suites) == 1 else "suites"
+        console.print(
+            f"\nFound {len(eval_suites)} {suite_label} in the evaluation files.", style="bold"
+        )
+
+    async def run_evaluations() -> None:
         all_evaluations = []
         tasks = []
         for suite_func in eval_suites:
@@ -510,10 +462,14 @@ def evals(
                     (suite_func.__name__, "bold blue"),
                 )
             )
-            task = asyncio.create_task(
-                suite_func(config=config, models=models_list, max_concurrency=max_concurrent)
-            )
-            tasks.append(task)
+            for model in models_list:
+                task = asyncio.create_task(
+                    suite_func(config=config, model=model, max_concurrency=max_concurrent)
+                )
+                tasks.append(task)
+
+        # TODO add a progress bar here
+        # TODO error handling on each eval
         # Wait for all suite functions to complete
         results = await asyncio.gather(*tasks)
         all_evaluations.extend(results)

@@ -1,6 +1,8 @@
+import importlib.util
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Union
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 import typer
 from openai.resources.chat.completions import ChatCompletionChunk, Stream
@@ -386,3 +388,88 @@ def is_authorization_pending(tool_authorization: dict | None) -> bool:
         tool_authorization is not None and tool_authorization.get("status", "") == "pending"
     )
     return is_auth_pending
+
+
+def get_eval_files(directory: str) -> list[Path]:
+    """
+    Get a list of evaluation files starting with 'eval_' and ending with '.py' in the given directory.
+
+    Args:
+        directory: The directory to search for evaluation files.
+
+    Returns:
+        A list of Paths to the evaluation files. Returns an empty list if no files are found.
+    """
+    directory_path = Path(directory).resolve()
+
+    if directory_path.is_dir():
+        eval_files = [
+            f
+            for f in directory_path.iterdir()
+            if f.is_file() and f.name.startswith("eval_") and f.name.endswith(".py")
+        ]
+    elif directory_path.is_file():
+        eval_files = (
+            [directory_path]
+            if directory_path.name.startswith("eval_") and directory_path.name.endswith(".py")
+            else []
+        )
+    else:
+        console.print(f"Path not found: {directory_path}", style="bold red")
+        return []
+
+    if not eval_files:
+        console.print(
+            "No evaluation files found. Filenames must start with 'eval_' and end with '.py'.",
+            style="bold yellow",
+        )
+        return []
+
+    return eval_files
+
+
+def load_eval_suites(eval_files: list[Path]) -> list[Callable]:
+    """
+    Load evaluation suites from the given eval_files by importing the modules
+    and extracting functions decorated with `@tool_eval`.
+
+    Args:
+        eval_files: A list of Paths to evaluation files.
+
+    Returns:
+        A list of callable evaluation suite functions.
+    """
+    eval_suites = []
+    for eval_file_path in eval_files:
+        module_name = eval_file_path.stem  # filename without extension
+
+        # Now we need to load the module from eval_file_path
+        file_path_str = str(eval_file_path)
+        module_name_str = module_name
+
+        # Load using importlib
+        spec = importlib.util.spec_from_file_location(module_name_str, file_path_str)
+        if spec is None:
+            console.print(f"Failed to load {eval_file_path}", style="bold red")
+            continue
+
+        module = importlib.util.module_from_spec(spec)
+        if spec.loader is not None:
+            spec.loader.exec_module(module)
+        else:
+            console.print(f"Failed to load module: {module_name}", style="bold red")
+            continue
+
+        eval_suite_funcs = [
+            obj
+            for name, obj in module.__dict__.items()
+            if callable(obj) and hasattr(obj, "__tool_eval__")
+        ]
+
+        if not eval_suite_funcs:
+            console.print(f"No @tool_eval functions found in {eval_file_path}", style="bold yellow")
+            continue
+
+        eval_suites.extend(eval_suite_funcs)
+
+    return eval_suites
