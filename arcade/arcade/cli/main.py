@@ -267,6 +267,7 @@ def chat(
                     wait_for_authorization_completion(client, tool_authorization)
                 # re-run the chat request now that authorization is complete
                 try:
+                    history.append(history[-2])
                     chat_result = handle_chat_interaction(
                         client, model, history, user_email, stream
                     )
