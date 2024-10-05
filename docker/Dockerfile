@@ -49,4 +49,4 @@ RUN set -e; \
 EXPOSE $PORT
 
 # Run the arcade actorup (hidden cli command)
-CMD arcade actorup --host $HOST --port $PORT
+CMD arcade actorup --host $HOST --port $PORT $([ "$OTEL_ENABLE" = "true" ] && echo "--otel-enable")

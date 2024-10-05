@@ -524,6 +524,9 @@ def actorup(
         help="Disable authentication for the actor. Not recommended for production.",
         show_default=True,
     ),
+    otel_enable: bool = typer.Option(
+        False, "--otel-enable", help="Send logs to OpenTelemetry", show_default=True
+    ),
     debug: bool = typer.Option(False, "--debug", "-d", help="Show debug information"),
 ) -> None:
     """
@@ -533,7 +536,9 @@ def actorup(
     from arcade.cli.serve import serve_default_actor
 
     try:
-        serve_default_actor(host, port, disable_auth=disable_auth, debug=debug)
+        serve_default_actor(
+            host, port, disable_auth=disable_auth, enable_otel=otel_enable, debug=debug
+        )
     except KeyboardInterrupt:
         typer.Exit()
     except Exception as e:
