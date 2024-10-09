@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
 
 from arcade.core.config_model import Config
-from arcade.core.schema import TOOL_NAME_SEPARATOR, FullyQualifiedName
+from arcade.core.schema import TOOL_NAME_SEPARATOR
 
 try:
     import numpy as np
@@ -222,63 +222,49 @@ class EvalCase:
     def evaluate(
         self,
         actual_tool_calls: list[tuple[str, dict[str, Any]]],
-        catalog: "ToolCatalog",
     ) -> EvaluationResult:
         """
         Evaluate the actual tool calls against the expected tool calls and critics.
 
         Args:
             actual_tool_calls: A list of tuples containing the actual tool name and arguments.
-            catalog: The ToolCatalog instance to access tool functions.
 
         Returns:
             An EvaluationResult object containing the evaluation results.
         """
         evaluation_result = EvaluationResult()
-        actual_tools = [tool for tool, _ in actual_tool_calls]
 
+        actual_tools = [tool_name for tool_name, _ in actual_tool_calls]
         actual_count = len(actual_tool_calls)
+
         if self.check_tool_call_quantity_failure(actual_count):
             evaluation_result.score = 0.0
             evaluation_result.passed = False
-            evaluation_result.warning = False
             expected_count = len(self.expected_tool_calls)
             evaluation_result.failure_reason = (
                 f"Expected {expected_count} tool call(s), but got {actual_count}"
             )
             return evaluation_result
 
-        # Check if no tools should be called and none were called
         if not self.expected_tool_calls and not actual_tools:
             evaluation_result.score = 1.0
             evaluation_result.passed = True
-            evaluation_result.warning = False
             return evaluation_result
 
         if self.check_tool_selection_failure(actual_tools):
             evaluation_result.score = 0.0
             evaluation_result.passed = False
-            evaluation_result.warning = False
             expected_tools = [tc.name for tc in self.expected_tool_calls]
             evaluation_result.failure_reason = f"Tool selection mismatch. Expected tools: {expected_tools}, but got: {actual_tools}"
             return evaluation_result
 
-        # If no critics for tool call arguments, return passing score
-        if not self.critics or len(self.critics) == 0:
+        if not self.critics:
             evaluation_result.score = 1.0
             evaluation_result.passed = True
-            evaluation_result.warning = False
-            # TODO: Add passing reason
             return evaluation_result
 
-        # Fill in default arguments for expected and actual tool calls
-        filled_expected_tool_calls = self._fill_default_arguments(self.expected_tool_calls, catalog)
-        filled_actual_tool_calls = self._fill_default_arguments(
-            actual_tool_calls, catalog, is_expected=False
-        )
-
         # Create a cost matrix for the assignment problem
-        cost_matrix = self._create_cost_matrix(filled_actual_tool_calls)
+        cost_matrix = self._create_cost_matrix(actual_tool_calls, self.expected_tool_calls)
 
         # Use the Linear Sum Assignment algorithm to find the optimal assignment
         row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize=True)
@@ -287,12 +273,13 @@ class EvalCase:
         total_weight = 0.0
 
         for i, j in zip(row_ind, col_ind):
-            if i < len(filled_expected_tool_calls) and j < len(filled_actual_tool_calls):
-                expected = filled_expected_tool_calls[i]
-                actual_tool, actual_args = filled_actual_tool_calls[j]
+            if i < len(self.expected_tool_calls) and j < len(actual_tool_calls):
+                expected = self.expected_tool_calls[i]
+                actual_name, actual_args = actual_tool_calls[j]
 
+                # Tool selection
                 tool_selection_score = evaluation_result.score_tool_selection(
-                    expected.name, actual_tool, self.rubric.tool_selection_weight
+                    expected.name, actual_name, self.rubric.tool_selection_weight
                 )
                 total_score += tool_selection_score
                 total_weight += self.rubric.tool_selection_weight
@@ -301,206 +288,93 @@ class EvalCase:
                 for critic in self.critics:
                     expected_value = expected.args.get(critic.critic_field)
                     actual_value = actual_args.get(critic.critic_field)
-                    try:
-                        result = critic.evaluate(expected_value, actual_value)
-                        total_score += result["score"]
-                        total_weight += critic.weight
+
+                    # Only proceed if both values are present
+                    if expected_value is not None and actual_value is not None:
+                        try:
+                            result = critic.evaluate(expected_value, actual_value)
+                            total_score += result["score"]
+                            total_weight += critic.weight
+                            evaluation_result.add(
+                                critic.critic_field,
+                                result,
+                                critic.weight,
+                                expected_value,
+                                actual_value,
+                            )
+                        except Exception as e:
+                            print(
+                                f"Critic evaluation failed for field '{critic.critic_field}': {e}"
+                            )
+                            continue
+                    else:
+                        # Skip critic evaluation, do not add weight
                         evaluation_result.add(
                             critic.critic_field,
-                            result,
-                            critic.weight,
+                            {"match": False, "score": 0.0},
+                            0.0,  # Weight is zero since not counted
                             expected_value,
                             actual_value,
                         )
-                    except Exception as e:
-                        print(f"Critic evaluation failed for field '{critic.critic_field}': {e}")
-                        # Depending on requirements, you might want to continue or handle differently
-                        continue
 
-        # Compute the final score using the method from EvaluationResult
+        # Compute the final score
         evaluation_result.compute_final_score(total_weight)
 
-        # Set the pass/fail status based on the fail_threshold
+        # Set pass/fail and warning status
         evaluation_result.passed = evaluation_result.score >= self.rubric.fail_threshold
-
-        # Set the warning status based on the warn_threshold
         evaluation_result.warning = (
             not evaluation_result.passed and evaluation_result.score >= self.rubric.warn_threshold
         )
 
         return evaluation_result
 
-    def _fill_default_arguments(
-        self,
-        tool_calls: list[Any],
-        catalog: "ToolCatalog",
-        is_expected: bool = True,
-    ) -> list[Any]:
-        """
-        Fill in default arguments for tool calls.
-
-        Args:
-            tool_calls: A list of ExpectedToolCall or actual tool call tuples.
-            catalog: The ToolCatalog instance to access tool functions.
-            is_expected: Flag indicating whether the tool calls are expected or actual.
-
-        Returns:
-            A list of tool calls with default arguments filled in.
-        """
-        filled_tool_calls = []
-
-        for call in tool_calls:
-            if is_expected:
-                tool_name = call.name
-                args = call.args
-            else:
-                tool_name, args = call
-
-            # Get the tool function from the catalog
-
-            tool = catalog.get_tool_by_name(tool_name)
-            if tool is None:
-                raise ValueError(f"Tool '{tool_name}' not found in catalog.")
-            tool_func = tool.tool
-
-            # Fill in default arguments
-            filled_args = self._get_args_with_defaults(tool_func, args)
-
-            if is_expected:
-                filled_tool_calls.append(ExpectedToolCall(name=tool_name, args=filled_args))
-            else:
-                filled_tool_calls.append((tool_name, filled_args))  # type: ignore[arg-type]
-
-        return filled_tool_calls
-
-    def _get_args_with_defaults(
-        self, func: Callable, provided_args: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Returns a new args dict with default arguments filled in.
-
-        Args:
-            func: The tool function to inspect.
-            provided_args: The dictionary of provided arguments.
-
-        Returns:
-            A dictionary of arguments with defaults filled in.
-        """
-        sig = inspect.signature(func)
-        args_with_defaults = {}
-        for param_name, param in sig.parameters.items():
-            if param_name in provided_args:
-                args_with_defaults[param_name] = provided_args[param_name]
-            else:
-                if param.default is not inspect.Parameter.empty:
-                    args_with_defaults[param_name] = param.default
-                else:
-                    # No default value and not provided, set to None or raise an error if desired
-                    args_with_defaults[param_name] = None
-        return args_with_defaults
-
     def _create_cost_matrix(
-        self, actual_tool_calls: list[tuple[str, dict[str, Any]]]
+        self,
+        actual_tool_calls: list[tuple[str, dict[str, Any]]],
+        expected_tool_calls: list[ExpectedToolCall],
     ) -> np.ndarray:
         """
-        Create a cost matrix for the Hungarian algorithm.
-
-        This method computes the score for each possible pairing of expected and actual tool calls.
-        The resulting matrix is used by the Hungarian algorithm to find the optimal assignment.
+        Create a cost matrix for the assignment problem.
 
         Args:
-            actual_tool_calls: A list of tuples containing the actual tool calls and their arguments.
+            actual_tool_calls: A list of tuples of actual tool calls.
+            expected_tool_calls: A list of ExpectedToolCall instances.
 
         Returns:
             A numpy array representing the cost matrix.
         """
-        num_expected = len(self.expected_tool_calls)
+        num_expected = len(expected_tool_calls)
         num_actual = len(actual_tool_calls)
         n = max(num_expected, num_actual)
 
-        # Initialize a score matrix with zeros
-        score_matrix = np.zeros((n, n))
+        cost_matrix = np.zeros((n, n))
 
         for i in range(n):
             for j in range(n):
                 if i < num_expected and j < num_actual:
-                    expected = self.expected_tool_calls[i]
-                    expected_tool = expected.name
-                    expected_args = expected.args
-                    actual_tool, actual_args = actual_tool_calls[j]
+                    expected = expected_tool_calls[i]
+                    actual_name, actual_args = actual_tool_calls[j]
                     score = 0.0
 
                     # Tool selection
-                    if compare_tool_name(expected_tool, actual_tool):
+                    if compare_tool_name(expected.name, actual_name):
                         score += self.rubric.tool_selection_weight
 
                     # Critics evaluation
-                    if self.critics:
-                        for critic in self.critics:
-                            expected_value = expected_args.get(critic.critic_field)
-                            actual_value = actual_args.get(critic.critic_field)
-                            if expected_value is not None and actual_value is not None:
-                                try:
-                                    result = critic.evaluate(expected_value, actual_value)
-                                    score += result.get("score", 0.0)
-                                except Exception as e:
-                                    print(
-                                        f"Critic evaluation failed for field '{critic.critic_field}': {e}"
-                                    )
-                                    continue
+                    for critic in self.critics:  # type: ignore[union-attr]
+                        expected_value = expected.args.get(critic.critic_field)
+                        actual_value = actual_args.get(critic.critic_field)
+                        if expected_value is not None and actual_value is not None:
+                            try:
+                                result = critic.evaluate(expected_value, actual_value)
+                                score += result.get("score", 0.0)
+                            except Exception as e:
+                                print(
+                                    f"Critic evaluation failed for field '{critic.critic_field}': {e}"
+                                )
+                    cost_matrix[i, j] = score
 
-                    score_matrix[i, j] = score
-                else:
-                    # Assign a score of 0 for dummy assignments
-                    score_matrix[i, j] = 0.0
-
-        return score_matrix
-
-    async def run(
-        self,
-        client: AsyncArcade,
-        model: str,
-        tool_names: list[FullyQualifiedName],
-        catalog: "ToolCatalog",
-    ) -> dict[str, Any]:
-        """
-        Run the evaluation case asynchronously.
-
-        Args:
-            client: The AsyncArcade client instance.
-            model: The model to evaluate.
-            tool_names: The list of tool names to use for the evaluation.
-        Returns:
-            A dictionary containing the evaluation result for the case.
-        """
-        messages = [{"role": "system", "content": self.system_message}]
-        messages.extend(list(self.additional_messages))
-        messages.append({"role": "user", "content": self.user_message})
-
-        response = await client.chat.completions.create(  # type: ignore[call-overload]
-            model=model,
-            messages=messages,
-            tool_choice="auto",
-            tools=(str(name) for name in tool_names),
-            user="eval_user",
-            stream=False,
-        )
-
-        predicted_args = get_tool_args(response)
-
-        evaluation = self.evaluate(predicted_args, catalog)
-
-        result = {
-            "name": self.name,
-            "input": self.user_message,
-            "expected_tool_calls": [
-                {"name": tc.name, "args": tc.args} for tc in self.expected_tool_calls
-            ],
-            "predicted_tool_calls": [{"name": tool, "args": args} for tool, args in predicted_args],
-            "evaluation": evaluation,
-        }
-
-        return result
+        return cost_matrix
 
 
 @dataclass
@@ -543,19 +417,19 @@ class EvalSuite:
         Args:
             name: The name of the evaluation case.
             user_message: The user's input message.
-            system_message: The system message to be sent to the AI model.
-            expected_tool_calls: A list of expected tool calls.
+            expected_tool_calls: A list of expected tool calls as tuples of (function, args).
             critics: List of critics to evaluate the tool arguments.
+            system_message: The system message to be used.
             rubric: The evaluation rubric for this case.
             additional_messages: Optional list of additional messages for context.
         """
-        expected = [
-            ExpectedToolCall(
-                name=str(self.catalog.find_tool_by_func(func).get_fully_qualified_name()),
-                args=args,
-            )
-            for func, args in expected_tool_calls
-        ]
+        expected = []
+        for func, args in expected_tool_calls:
+            # Fill in default arguments here
+            args_with_defaults = self._fill_args_with_defaults(func, args)
+            tool_name = str(self.catalog.find_tool_by_func(func).get_fully_qualified_name())
+            expected.append(ExpectedToolCall(name=tool_name, args=args_with_defaults))
+
         case = EvalCase(
             name=name,
             system_message=system_message or self.system_message,
@@ -566,6 +440,30 @@ class EvalSuite:
             additional_messages=additional_messages or [],
         )
         self.cases.append(case)
+
+    def _fill_args_with_defaults(
+        self, func: Callable, provided_args: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Fill in default arguments for a tool function.
+
+        Args:
+            func: The tool function.
+            provided_args: The provided arguments.
+
+        Returns:
+            A dictionary with default arguments filled in.
+        """
+        sig = inspect.signature(func)
+        args_with_defaults = {}
+        for param in sig.parameters.values():
+            if param.name in provided_args:
+                args_with_defaults[param.name] = provided_args[param.name]
+            elif param.default is not inspect.Parameter.empty:
+                args_with_defaults[param.name] = param.default
+            else:
+                args_with_defaults[param.name] = None  # or raise an error
+        return args_with_defaults
 
     def extend_case(
         self,
@@ -604,13 +502,12 @@ class EvalSuite:
 
         expected = last_case.expected_tool_calls
         if expected_tool_calls:
-            expected = [
-                ExpectedToolCall(
-                    name=str(self.catalog.find_tool_by_func(func).get_fully_qualified_name()),
-                    args=args,
-                )
-                for func, args in expected_tool_calls
-            ]
+            expected = []
+            for func, args in expected_tool_calls:
+                # Fill in default arguments here
+                args_with_defaults = self._fill_args_with_defaults(func, args)
+                tool_name = str(self.catalog.find_tool_by_func(func).get_fully_qualified_name())
+                expected.append(ExpectedToolCall(name=tool_name, args=args_with_defaults))
 
         # Create a new case, copying from the last one and updating fields
         new_case = EvalCase(
@@ -626,9 +523,10 @@ class EvalSuite:
 
     async def run(self, client: AsyncArcade, model: str) -> dict[str, Any]:
         """
-        Run the evaluation suite asynchronously.
+        Run the evaluation suite.
 
         Args:
+            client: The AsyncArcade client instance.
             model: The model to evaluate.
 
         Returns:
@@ -641,7 +539,48 @@ class EvalSuite:
 
         async def sem_task(case: EvalCase) -> dict[str, Any]:
             async with semaphore:
-                return await case.run(client, model, tool_names, self.catalog)
+                # Prepare messages
+                messages = [{"role": "system", "content": case.system_message}]
+                messages.extend(case.additional_messages)
+                messages.append({"role": "user", "content": case.user_message})
+
+                # Get the model response
+                response = await client.chat.completions.create(  # type: ignore[call-overload]
+                    model=model,
+                    messages=messages,
+                    tool_choice="auto",
+                    tools=(str(name) for name in tool_names),
+                    user="eval_user",
+                    stream=False,
+                )
+
+                # Extract and fill default arguments for actual tool calls
+                predicted_args = get_tool_args(response)
+                filled_actual_tool_calls = []
+                for tool_name, args in predicted_args:
+                    tool = self.catalog.get_tool_by_name(tool_name)
+                    if tool is None:
+                        raise ValueError(f"Tool '{tool_name}' not found in catalog.")
+                    func = tool.tool
+                    args_with_defaults = self._fill_args_with_defaults(func, args)
+                    filled_actual_tool_calls.append((tool_name, args_with_defaults))
+
+                # Evaluate the case
+                evaluation = case.evaluate(filled_actual_tool_calls)
+
+                # Prepare the result
+                result = {
+                    "name": case.name,
+                    "input": case.user_message,
+                    "expected_tool_calls": [
+                        {"name": tc.name, "args": tc.args} for tc in case.expected_tool_calls
+                    ],
+                    "predicted_tool_calls": [
+                        {"name": name, "args": args} for name, args in filled_actual_tool_calls
+                    ],
+                    "evaluation": evaluation,
+                }
+                return result
 
         tasks = [sem_task(case) for case in self.cases]
         case_results = await asyncio.gather(*tasks)
