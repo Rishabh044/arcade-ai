@@ -32,6 +32,7 @@ from arcade.cli.utils import (
 from arcade.client import Arcade
 from arcade.client.errors import EngineNotHealthyError, EngineOfflineError
 from arcade.core.config_model import Config
+from arcade.core.schema import ToolDefinition
 
 cli = typer.Typer(
     cls=OrderCommands,
@@ -143,6 +144,28 @@ def show(
     toolkit: Optional[str] = typer.Option(
         None, "-t", "--toolkit", help="The toolkit to show the tools of"
     ),
+    host: str = typer.Option(
+        None,
+        "-h",
+        "--host",
+        help="The Arcade Engine address to send chat requests to.",
+    ),
+    port: int = typer.Option(
+        None,
+        "-p",
+        "--port",
+        help="The port of the Arcade Engine.",
+    ),
+    force_tls: bool = typer.Option(
+        False,
+        "--tls",
+        help="Whether to force TLS for the connection to the Arcade Engine. If not specified, the connection will use TLS if the engine URL uses a 'https' scheme.",
+    ),
+    force_no_tls: bool = typer.Option(
+        False,
+        "--no-tls",
+        help="Whether to disable TLS for the connection to the Arcade Engine.",
+    ),
     debug: bool = typer.Option(False, "--debug", "-d", help="Show debug information"),
 ) -> None:
     """
@@ -150,7 +173,11 @@ def show(
     """
 
     try:
-        catalog = create_cli_catalog(toolkit=toolkit)
+        if not host:
+            catalog = create_cli_catalog(toolkit=toolkit)
+            tools = [t.definition for t in list(catalog)]
+        else:
+            tools = get_tools_from_engine(host, port, force_tls, force_no_tls, toolkit)
 
         # Create a table with Rich library
         table = Table(show_header=True, header_style="bold magenta")
@@ -159,12 +186,13 @@ def show(
         table.add_column("Package")
         table.add_column("Version")
 
-        tool_names = catalog.get_tool_names()
-        for tool_name in tool_names:
-            tool = catalog.get_tool(tool_name)
-            package = tool.meta.package if tool.meta.package else tool.meta.toolkit
-            table.add_row(str(tool_name), tool.description, package, tool.version)
-
+        for tool in sorted(tools, key=lambda x: x.toolkit.name):
+            table.add_row(
+                str(tool.get_fully_qualified_name()),
+                tool.description.split("\n")[0] if tool.description else "",
+                tool.toolkit.name,
+                tool.toolkit.version,
+            )
         console.print(table)
 
     # used when debugging a broken package on import.
@@ -175,6 +203,14 @@ def show(
             raise
         error_message = f"❌ Failed to List tools: {escape(str(e))}"
         console.print(error_message, style="bold red")
+
+
+def get_tools_from_engine(
+    host: str, port: int, force_tls: bool, force_no_tls: bool, toolkit: str | None = None
+) -> list[ToolDefinition]:
+    config = _get_config_with_overrides(force_tls, force_no_tls, host, port)
+    client = Arcade(api_key=config.api.key, base_url=config.engine_url)
+    return client.tools.list_tools(toolkit=toolkit)
 
 
 @cli.command(help="Start Arcade Chat in the terminal", rich_help_panel="Launch")
