@@ -235,17 +235,23 @@ class ToolCatalog(BaseModel):
         """
         if separator in name:
             toolkit_name, tool_name = name.split(separator, 1)
+            fq_name = FullyQualifiedName(
+                name=tool_name, toolkit_name=toolkit_name, toolkit_version=version
+            )
+            return self.get_tool(fq_name)
         else:
-            toolkit_name = None
-            tool_name = name
-
-        for fq_name, tool in self._tools.items():
-            if (
-                fq_name.name == tool_name
-                and (toolkit_name is None or fq_name.toolkit_name == toolkit_name)
-                and (version is None or fq_name.toolkit_version == version)
-            ):
-                return tool
+            # No toolkit name provided, search tools with matching tool name
+            matching_tools = [
+                tool
+                for fq_name, tool in self._tools.items()
+                if fq_name.name.lower() == name.lower()
+                and (
+                    version is None
+                    or (fq_name.toolkit_version or "").lower() == (version or "").lower()
+                )
+            ]
+            if matching_tools:
+                return matching_tools[0]
 
         raise ValueError(f"Tool {name} not found in the catalog.")
 

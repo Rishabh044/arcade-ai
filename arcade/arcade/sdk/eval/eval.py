@@ -289,33 +289,28 @@ class EvalCase:
                     expected_value = expected.args.get(critic.critic_field)
                     actual_value = actual_args.get(critic.critic_field)
 
-                    # Only proceed if both values are present
-                    if expected_value is not None and actual_value is not None:
-                        try:
-                            result = critic.evaluate(expected_value, actual_value)
-                            total_score += result["score"]
-                            total_weight += critic.weight
-                            evaluation_result.add(
-                                critic.critic_field,
-                                result,
-                                critic.weight,
-                                expected_value,
-                                actual_value,
-                            )
-                        except Exception as e:
-                            print(
-                                f"Critic evaluation failed for field '{critic.critic_field}': {e}"
-                            )
-                            continue
-                    else:
-                        # Skip critic evaluation, do not add weight
+                    try:
+                        result = critic.evaluate(expected_value, actual_value)
+                        total_score += result["score"]
+                        total_weight += critic.weight
                         evaluation_result.add(
                             critic.critic_field,
-                            {"match": False, "score": 0.0},
-                            0.0,  # Weight is zero since not counted
+                            result,
+                            critic.weight,
                             expected_value,
                             actual_value,
                         )
+                    except Exception as e:
+                        # TODO: log or console
+                        print(f"Critic evaluation failed for field '{critic.critic_field}': {e}")
+                        evaluation_result.add(
+                            critic.critic_field,
+                            {"match": False, "score": 0.0},
+                            critic.weight,
+                            expected_value,
+                            actual_value,
+                        )
+                        continue
 
         # Compute the final score
         evaluation_result.compute_final_score(total_weight)

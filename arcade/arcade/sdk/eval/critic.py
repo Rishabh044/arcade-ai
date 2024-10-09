@@ -51,7 +51,16 @@ class BinaryCritic(Critic):
         Raises:
             TypeError: If the casting is not possible.
         """
+        # In case both are strings.
+        if actual == "None":
+            actual = None
+        if expected == "None":
+            expected = None
+        if expected is None:
+            # No need to cast; return actual as is
+            return actual
         if actual is None:
+            # No need to cast; return None
             return None
         expected_type = type(expected)
         try:
