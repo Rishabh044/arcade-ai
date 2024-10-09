@@ -5,13 +5,13 @@ on:
     branches:
       - main
     tags:
-      - 'v*'
+      - '*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., v0.1.0)'
+        description: 'Version to release (e.g., 0.1.0)'
         required: true
-        default: 'v0.0.1'
+        default: '0.0.1'
 
 env:
   REGISTRY: ghcr.io
