@@ -1,4 +1,8 @@
 VERSION ?= "0.1.0.dev0"
+DOCKER_VERSION ?= "0.1.0.dev0"
+
+## Remove the leading 'v' if given for the version
+VERSION = $(echo "$VERSION" | sed 's/^v//')
 
 .PHONY: install
 install: ## Install the poetry environment and install the pre-commit hooks
