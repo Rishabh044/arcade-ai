@@ -166,16 +166,14 @@ class ToolResource(BaseResource[ClientT]):
         )
         return AuthResponse(**data)
 
-    def list_tools(
-        self, toolkit: str | None = None, provider: str | None = None
-    ) -> list[ToolDefinition]:
+    def list_tools(self, toolkit: str | None = None) -> list[ToolDefinition]:
         """
         List the tools available for a given toolkit and provider.
         """
         data = self._client._execute_request(  # type: ignore[attr-defined]
             "GET",
             f"{self._resource_path}/list",
-            params={"toolkit": toolkit, "provider": provider},
+            params={"toolkit": toolkit},
         )
         return [ToolDefinition(**tool) for tool in data]
 
@@ -344,16 +342,14 @@ class AsyncToolResource(BaseResource[AsyncArcadeClient]):
         )
         return AuthResponse(**data)
 
-    async def list_tools(
-        self, toolkit: str | None = None, provider: str | None = None
-    ) -> list[ToolDefinition]:
+    async def list_tools(self, toolkit: str | None = None) -> list[ToolDefinition]:
         """
         List the tools available for a given toolkit and provider.
         """
         data = await self._client._execute_request(  # type: ignore[attr-defined]
             "GET",
             f"{self._resource_path}/list",
-            params={"toolkit": toolkit, "provider": provider},
+            params={"toolkit": toolkit},
         )
         return [ToolDefinition(**tool) for tool in data]
 

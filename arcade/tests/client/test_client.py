@@ -373,3 +373,24 @@ async def test_async_arcade_health_check_raises_error(
     monkeypatch.setattr(AsyncArcade, "_execute_request", mock_execute_request)
     with pytest.raises(EngineNotHealthyError):
         await test_async_client.health.check()
+
+
+def test_arcade_tool_list_tools(test_sync_client, mock_response, monkeypatch):
+    """Test Arcade.tools.list_tools method."""
+    data = [TOOL_DEFINITION_DATA]
+    monkeypatch.setattr(Arcade, "_execute_request", lambda *args, **kwargs: data)
+    tool_definitions = test_sync_client.tools.list_tools(toolkit="TestToolkit")
+    assert tool_definitions == [ToolDefinition(**TOOL_DEFINITION_DATA)]
+
+
+@pytest.mark.asyncio
+async def test_async_arcade_tool_list_tools(test_async_client, mock_async_response, monkeypatch):
+    """Test AsyncArcade.tools.list_tools method."""
+    data = [TOOL_DEFINITION_DATA]
+
+    async def mock_execute_request(*args, **kwargs):
+        return data
+
+    monkeypatch.setattr(AsyncArcade, "_execute_request", mock_execute_request)
+    tool_definitions = await test_async_client.tools.list_tools(toolkit="TestToolkit")
+    assert tool_definitions == [ToolDefinition(**TOOL_DEFINITION_DATA)]
