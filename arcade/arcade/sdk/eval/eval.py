@@ -1,11 +1,12 @@
 import asyncio
 import functools
+import inspect
 import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
 
 from arcade.core.config_model import Config
-from arcade.core.schema import FullyQualifiedName
+from arcade.core.schema import TOOL_NAME_SEPARATOR, FullyQualifiedName
 
 try:
     import numpy as np
@@ -218,12 +219,17 @@ class EvalCase:
         expected_count = len(self.expected_tool_calls)
         return self.rubric.fail_on_tool_call_quantity and expected_count != actual_count
 
-    def evaluate(self, actual_tool_calls: list[tuple[str, dict[str, Any]]]) -> EvaluationResult:
+    def evaluate(
+        self,
+        actual_tool_calls: list[tuple[str, dict[str, Any]]],
+        catalog: "ToolCatalog",
+    ) -> EvaluationResult:
         """
         Evaluate the actual tool calls against the expected tool calls and critics.
 
         Args:
             actual_tool_calls: A list of tuples containing the actual tool name and arguments.
+            catalog: The ToolCatalog instance to access tool functions.
 
         Returns:
             An EvaluationResult object containing the evaluation results.
@@ -242,7 +248,7 @@ class EvalCase:
             )
             return evaluation_result
 
-        # check if no tools should be called and none were called
+        # Check if no tools should be called and none were called
         if not self.expected_tool_calls and not actual_tools:
             evaluation_result.score = 1.0
             evaluation_result.passed = True
@@ -257,29 +263,33 @@ class EvalCase:
             evaluation_result.failure_reason = f"Tool selection mismatch. Expected tools: {expected_tools}, but got: {actual_tools}"
             return evaluation_result
 
-        # if no critics for tool call arguments, then return
-        # passing score as only tool selection and quantity is checked
+        # If no critics for tool call arguments, return passing score
         if not self.critics or len(self.critics) == 0:
             evaluation_result.score = 1.0
             evaluation_result.passed = True
             evaluation_result.warning = False
-            # TODO passing reason should be added
+            # TODO: Add passing reason
             return evaluation_result
 
-        # Create a cost matrix for the assignment problem
-        cost_matrix = self._create_cost_matrix(actual_tool_calls)
+        # Fill in default arguments for expected and actual tool calls
+        filled_expected_tool_calls = self._fill_default_arguments(self.expected_tool_calls, catalog)
+        filled_actual_tool_calls = self._fill_default_arguments(
+            actual_tool_calls, catalog, is_expected=False
+        )
 
-        # Use the Linear Sum Assignment (LSA) algorithm to find the optimal assignment
-        # The algorithm maximizes the total score of the assignment
+        # Create a cost matrix for the assignment problem
+        cost_matrix = self._create_cost_matrix(filled_actual_tool_calls)
+
+        # Use the Linear Sum Assignment algorithm to find the optimal assignment
         row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize=True)
 
         total_score = 0.0
         total_weight = 0.0
 
         for i, j in zip(row_ind, col_ind):
-            if i < len(self.expected_tool_calls) and j < len(actual_tool_calls):
-                expected = self.expected_tool_calls[i]
-                actual_tool, actual_args = actual_tool_calls[j]
+            if i < len(filled_expected_tool_calls) and j < len(filled_actual_tool_calls):
+                expected = filled_expected_tool_calls[i]
+                actual_tool, actual_args = filled_actual_tool_calls[j]
 
                 tool_selection_score = evaluation_result.score_tool_selection(
                     expected.name, actual_tool, self.rubric.tool_selection_weight
@@ -291,24 +301,21 @@ class EvalCase:
                 for critic in self.critics:
                     expected_value = expected.args.get(critic.critic_field)
                     actual_value = actual_args.get(critic.critic_field)
-                    if expected_value is not None and actual_value is not None:
-                        try:
-                            result = critic.evaluate(expected_value, actual_value)
-                            total_score += result["score"]
-                            total_weight += critic.weight
-                            evaluation_result.add(
-                                critic.critic_field,
-                                result,
-                                critic.weight,
-                                expected_value,
-                                actual_value,
-                            )
-                        except Exception as e:
-                            print(
-                                f"Critic evaluation failed for field '{critic.critic_field}': {e}"
-                            )
-                            # Depending on requirements, you might want to continue or handle differently
-                            continue
+                    try:
+                        result = critic.evaluate(expected_value, actual_value)
+                        total_score += result["score"]
+                        total_weight += critic.weight
+                        evaluation_result.add(
+                            critic.critic_field,
+                            result,
+                            critic.weight,
+                            expected_value,
+                            actual_value,
+                        )
+                    except Exception as e:
+                        print(f"Critic evaluation failed for field '{critic.critic_field}': {e}")
+                        # Depending on requirements, you might want to continue or handle differently
+                        continue
 
         # Compute the final score using the method from EvaluationResult
         evaluation_result.compute_final_score(total_weight)
@@ -322,6 +329,75 @@ class EvalCase:
         )
 
         return evaluation_result
+
+    def _fill_default_arguments(
+        self,
+        tool_calls: list[Any],
+        catalog: "ToolCatalog",
+        is_expected: bool = True,
+    ) -> list[Any]:
+        """
+        Fill in default arguments for tool calls.
+
+        Args:
+            tool_calls: A list of ExpectedToolCall or actual tool call tuples.
+            catalog: The ToolCatalog instance to access tool functions.
+            is_expected: Flag indicating whether the tool calls are expected or actual.
+
+        Returns:
+            A list of tool calls with default arguments filled in.
+        """
+        filled_tool_calls = []
+
+        for call in tool_calls:
+            if is_expected:
+                tool_name = call.name
+                args = call.args
+            else:
+                tool_name, args = call
+
+            # Get the tool function from the catalog
+
+            tool = catalog.get_tool_by_name(tool_name)
+            if tool is None:
+                raise ValueError(f"Tool '{tool_name}' not found in catalog.")
+            tool_func = tool.tool
+
+            # Fill in default arguments
+            filled_args = self._get_args_with_defaults(tool_func, args)
+
+            if is_expected:
+                filled_tool_calls.append(ExpectedToolCall(name=tool_name, args=filled_args))
+            else:
+                filled_tool_calls.append((tool_name, filled_args))  # type: ignore[arg-type]
+
+        return filled_tool_calls
+
+    def _get_args_with_defaults(
+        self, func: Callable, provided_args: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Returns a new args dict with default arguments filled in.
+
+        Args:
+            func: The tool function to inspect.
+            provided_args: The dictionary of provided arguments.
+
+        Returns:
+            A dictionary of arguments with defaults filled in.
+        """
+        sig = inspect.signature(func)
+        args_with_defaults = {}
+        for param_name, param in sig.parameters.items():
+            if param_name in provided_args:
+                args_with_defaults[param_name] = provided_args[param_name]
+            else:
+                if param.default is not inspect.Parameter.empty:
+                    args_with_defaults[param_name] = param.default
+                else:
+                    # No default value and not provided, set to None or raise an error if desired
+                    args_with_defaults[param_name] = None
+        return args_with_defaults
 
     def _create_cost_matrix(
         self, actual_tool_calls: list[tuple[str, dict[str, Any]]]
@@ -381,7 +457,11 @@ class EvalCase:
         return score_matrix
 
     async def run(
-        self, client: AsyncArcade, model: str, tool_names: list[FullyQualifiedName]
+        self,
+        client: AsyncArcade,
+        model: str,
+        tool_names: list[FullyQualifiedName],
+        catalog: "ToolCatalog",
     ) -> dict[str, Any]:
         """
         Run the evaluation case asynchronously.
@@ -408,7 +488,7 @@ class EvalCase:
 
         predicted_args = get_tool_args(response)
 
-        evaluation = self.evaluate(predicted_args)
+        evaluation = self.evaluate(predicted_args, catalog)
 
         result = {
             "name": self.name,
@@ -561,7 +641,7 @@ class EvalSuite:
 
         async def sem_task(case: EvalCase) -> dict[str, Any]:
             async with semaphore:
-                return await case.run(client, model, tool_names)
+                return await case.run(client, model, tool_names, self.catalog)
 
         tasks = [sem_task(case) for case in self.cases]
         case_results = await asyncio.gather(*tasks)
@@ -585,7 +665,7 @@ def get_tool_args(chat_completion: Any) -> list[tuple[str, dict[str, Any]]]:
     if message.tool_calls:
         for tool_call in message.tool_calls:
             tool_args_list.append((
-                tool_call.function.name,
+                normalize_name(tool_call.function.name),
                 json.loads(tool_call.function.arguments),
             ))
     return tool_args_list
@@ -593,17 +673,31 @@ def get_tool_args(chat_completion: Any) -> list[tuple[str, dict[str, Any]]]:
 
 def compare_tool_name(expected: str, actual: str) -> bool:
     """
-    Compare the tool name without penalizing for mismatch in separators
-    between module names and tool names ex. '-' vs '_' vs '.' vs ' '
-    """
-    # TODO optimize this
-    # Remove all separators from both names
-    separators = "-_."
-    expected_clean = "".join(char for char in expected if char not in separators)
-    actual_clean = "".join(char for char in actual if char not in separators)
+    Compare the tool names by replacing all separators with the TOOL_NAME_SEPARATOR
+    and comparing the normalized names.
 
-    # Compare the cleaned names
-    return expected_clean.lower() == actual_clean.lower()
+    Converts names like 'Google_ListEmails' to 'Google.ListEmails' if
+    TOOL_NAME_SEPARATOR is '.'.
+
+    Args:
+        expected: The expected tool name.
+        actual: The actual tool name.
+
+    Returns:
+        True if the normalized tool names match, False otherwise.
+    """
+    separators = "-_."
+    expected_normalized = normalize_name(expected, separators)
+    actual_normalized = normalize_name(actual, separators)
+
+    return expected_normalized.lower() == actual_normalized.lower()
+
+
+def normalize_name(name: str, separators: str = "-_.") -> str:
+    for sep in separators:
+        if sep != TOOL_NAME_SEPARATOR:
+            name = name.replace(sep, TOOL_NAME_SEPARATOR)
+    return name
 
 
 def tool_eval() -> Callable[[Callable], Callable]:

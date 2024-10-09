@@ -25,6 +25,7 @@ from pydantic_core import PydanticUndefined
 
 from arcade.core.errors import ToolDefinitionError
 from arcade.core.schema import (
+    TOOL_NAME_SEPARATOR,
     FullyQualifiedName,
     InputParameter,
     OAuth2Requirement,
@@ -214,6 +215,39 @@ class ToolCatalog(BaseModel):
             if tool.tool == func:
                 return tool.definition
         raise ValueError(f"Tool {func} not found in the catalog.")
+
+    def get_tool_by_name(
+        self, name: str, version: Optional[str] = None, separator: str = TOOL_NAME_SEPARATOR
+    ) -> MaterializedTool:
+        """
+        Get a tool from the catalog by name, optionally including the toolkit name.
+
+        Args:
+            name: The name of the tool, potentially including the toolkit name separated by the `separator`.
+            version: The version of the toolkit. Defaults to None.
+            separator: The separator between toolkit and tool names. Defaults to `TOOL_NAME_SEPARATOR`.
+
+        Returns:
+            MaterializedTool: The matching tool from the catalog.
+
+        Raises:
+            ValueError: If the tool is not found in the catalog.
+        """
+        if separator in name:
+            toolkit_name, tool_name = name.split(separator, 1)
+        else:
+            toolkit_name = None
+            tool_name = name
+
+        for fq_name, tool in self._tools.items():
+            if (
+                fq_name.name == tool_name
+                and (toolkit_name is None or fq_name.toolkit_name == toolkit_name)
+                and (version is None or fq_name.toolkit_version == version)
+            ):
+                return tool
+
+        raise ValueError(f"Tool {name} not found in the catalog.")
 
     def get_tool(self, name: FullyQualifiedName) -> MaterializedTool:
         """
