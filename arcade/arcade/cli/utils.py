@@ -1,7 +1,7 @@
 import importlib.util
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Union
+from typing import Callable, Union
 
 import typer
 from openai.resources.chat.completions import ChatCompletionChunk, Stream
@@ -13,15 +13,13 @@ from typer.core import TyperGroup
 from typer.models import Context
 
 from arcade.client.client import Arcade
-from arcade.client.errors import APITimeoutError
+from arcade.client.errors import APITimeoutError, EngineNotHealthyError, EngineOfflineError
 from arcade.client.schema import AuthResponse
 from arcade.core.catalog import ToolCatalog
 from arcade.core.config_model import Config
 from arcade.core.errors import ToolkitLoadError
+from arcade.core.schema import ToolDefinition
 from arcade.core.toolkit import Toolkit
-
-if TYPE_CHECKING:
-    from arcade.sdk.eval.eval import EvaluationResult
 
 console = Console()
 
@@ -64,17 +62,37 @@ def create_cli_catalog(
     return catalog
 
 
-def display_tool_messages(tool_messages: list[dict]) -> None:
-    for message in tool_messages:
-        if message["role"] == "assistant":
-            for tool_call in message.get("tool_calls", []):
-                console.print(
-                    f"[bright_black][bold]Called tool '{tool_call['function']['name']}'[/bold]\n[bold]Parameters:[/bold]{tool_call['function']['arguments']}[/bright_black]"
-                )
-        elif message["role"] == "tool":
-            console.print(
-                f"[bright_black][bold]'{message['name']}' tool returned:[/bold]{message['content']}[/bright_black]"
-            )
+def get_config_with_overrides(
+    force_tls: bool,
+    force_no_tls: bool,
+    host_input: str | None = None,
+    port_input: int | None = None,
+) -> Config:
+    """
+    Get the config with CLI-specific optional overrides applied.
+    """
+    config = validate_and_get_config()
+
+    if not force_tls and not force_no_tls:
+        tls_input = None
+    elif force_no_tls:
+        tls_input = False
+    else:
+        tls_input = True
+    apply_config_overrides(config, host_input, port_input, tls_input)
+    return config
+
+
+def get_tools_from_engine(
+    host: str,
+    port: int | None = None,
+    force_tls: bool = False,
+    force_no_tls: bool = False,
+    toolkit: str | None = None,
+) -> list[ToolDefinition]:
+    config = get_config_with_overrides(force_tls, force_no_tls, host, port)
+    client = Arcade(api_key=config.api.key, base_url=config.engine_url)
+    return client.tools.list_tools(toolkit=toolkit)
 
 
 def get_tool_messages(choice: dict) -> list[dict]:
@@ -199,96 +217,26 @@ def apply_config_overrides(
         config.engine.tls = tls_input
 
 
-def display_eval_results(results: list[list[dict[str, Any]]], show_details: bool = False) -> None:
-    """
-    Display evaluation results in a format inspired by pytest's output.
+def log_engine_health(client: Arcade) -> None:
+    try:
+        client.health.check()
 
-    Args:
-        results: List of dictionaries containing evaluation results for each model.
-        show_details: Whether to show detailed results for each case.
-    """
-    total_passed = 0
-    total_failed = 0
-    total_warned = 0
-    total_cases = 0
-
-    for eval_suite in results:
-        for model_results in eval_suite:
-            model = model_results.get("model", "Unknown Model")
-            rubric = model_results.get("rubric", "Unknown Rubric")
-            cases = model_results.get("cases", [])
-            total_cases += len(cases)
-
-            console.print(f"[bold]Model:[/bold] [bold magenta]{model}[/bold magenta]")
-            if show_details:
-                console.print(f"[bold magenta]{rubric}[/bold magenta]")
-
-            for case in cases:
-                evaluation = case["evaluation"]
-                status = (
-                    "[green]PASSED[/green]"
-                    if evaluation.passed
-                    else "[yellow]WARNED[/yellow]"
-                    if evaluation.warning
-                    else "[red]FAILED[/red]"
-                )
-                if evaluation.passed:
-                    total_passed += 1
-                elif evaluation.warning:
-                    total_warned += 1
-                else:
-                    total_failed += 1
-
-                # Display one-line summary for each case
-                console.print(f"{status} {case['name']} -- Score: {evaluation.score:.2f}")
-
-                if show_details:
-                    # Show detailed information for each case
-                    console.print(f"[bold]User Input:[/bold] {case['input']}\n")
-                    console.print("[bold]Details:[/bold]")
-                    console.print(_format_evaluation(evaluation))
-                    console.print("-" * 80)
-
-    # Summary
-    summary = (
-        f"[bold]Summary -- [/bold]Total: {total_cases} -- [green]Passed: {total_passed}[/green]"
-    )
-    if total_warned > 0:
-        summary += f" -- [yellow]Warnings: {total_warned}[/yellow]"
-    if total_failed > 0:
-        summary += f" -- [red]Failed: {total_failed}[/red]"
-    console.print(summary + "\n")
-
-
-def _format_evaluation(evaluation: "EvaluationResult") -> str:
-    """
-    Format evaluation results with color-coded matches and scores.
-
-    Args:
-        evaluation: An EvaluationResult object containing the evaluation results.
-
-    Returns:
-        A formatted string representation of the evaluation details.
-    """
-    result_lines = []
-    if evaluation.failure_reason:
-        result_lines.append(f"[bold red]Failure Reason:[/bold red] {evaluation.failure_reason}")
-    else:
-        for critic_result in evaluation.results:
-            match_color = "green" if critic_result["match"] else "red"
-            field = critic_result["field"]
-            score = critic_result["score"]
-            weight = critic_result["weight"]
-            expected = critic_result["expected"]
-            actual = critic_result["actual"]
-            result_lines.append(
-                f"[bold]{field}:[/bold] "
-                f"[{match_color}]Match: {critic_result['match']}, "
-                f"Score: {score:.2f}/{weight:.2f}[/{match_color}]"
-                f"\n    Expected: {expected}"
-                f"\n    Actual: {actual}"
-            )
-    return "\n".join(result_lines)
+    except EngineNotHealthyError as e:
+        console.print(
+            "[bold][yellow]⚠️ Warning: "
+            + str(e)
+            + " ("
+            + "[/yellow]"
+            + "[red]"
+            + str(e.status_code)
+            + "[/red]"
+            + "[yellow])[/yellow][/bold]"
+        )
+    except EngineOfflineError:
+        console.print(
+            "⚠️ Warning: Arcade Engine was unreachable. (Is it running?)",
+            style="bold yellow",
+        )
 
 
 @dataclass

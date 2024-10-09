@@ -63,9 +63,11 @@ ignore_missing_imports = "True"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
-[tool.coverage.report]
-skip_empty = true
 
 [tool.coverage.run]
 branch = true
 source = ["arcade"]
+omit = ["arcade/cli/*"]
+
+[tool.coverage.report]
+skip_empty = true
