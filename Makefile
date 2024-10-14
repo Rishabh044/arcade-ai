@@ -115,11 +115,11 @@ full-dist: clean-dist ## Build all projects and copy wheels to ./dist
 			toolkit_name=$$(basename "$$toolkit_dir"); \
 			echo "Building $$toolkit_name project..."; \
 			cd "$$toolkit_dir" && poetry version $(VERSION); \
-            awk '{gsub(/arcade-ai = "0.1.\*"/, "arcade-ai = \"$(VERSION)\"")}1' pyproject.toml > temp_file && mv temp_file pyproject.toml; \
+            awk '{gsub(/arcade-ai = "0.1.0"/, "arcade-ai = \"" VERSION "\"")}1' pyproject.toml > temp_file && mv temp_file pyproject.toml; \
             poetry build; \
 			cp dist/*.whl ../../dist/toolkits; \
             poetry version 0.1.0; \
-            awk '{gsub(/arcade-ai = "$(VERSION)"/, "arcade-ai = \"0.1.\*\"")}1' pyproject.toml > temp_file && mv temp_file pyproject.toml; \
+            awk '{gsub(/arcade-ai = \"" VERSION "\"/, "arcade-ai = \"0.1.0\"")}1' pyproject.toml > temp_file && mv temp_file pyproject.toml; \
 			cd -; \
 		fi; \
 	done
