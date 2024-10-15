@@ -22,6 +22,8 @@ tomlkit = "^0.12.4"
 openai = "^1.36.0" # TODO: relax to an earlier version that still has what we need
 pyjwt = "^2.8.0"
 loguru = "^0.7.0"
+types-python-dateutil = "2.9.0.20241003"
+types-pytz = "2024.2.0.20241003"
 opentelemetry-instrumentation-fastapi = {version = "0.48b0", optional = true}
 opentelemetry-exporter-otlp-proto-http = {version = "1.27.0", optional = true}
 opentelemetry-exporter-otlp-proto-common = {version = "1.27.0", optional = true}
