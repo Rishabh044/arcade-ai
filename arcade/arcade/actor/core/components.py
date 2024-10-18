@@ -1,4 +1,3 @@
-import time
 from typing import Any
 
 from opentelemetry import trace
@@ -56,7 +55,6 @@ class CallToolComponent(ActorComponent):
 class ToolStatusComponent(ActorComponent):
     def __init__(self, actor: Actor) -> None:
         self.actor = actor
-        self.last_update_time = time.time()
 
     def register(self, router: Router) -> None:
         """

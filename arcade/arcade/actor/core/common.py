@@ -65,7 +65,7 @@ class Actor(ABC):
     @abstractmethod
     async def tool_status(self, request: ToolStatusRequest) -> ToolStatusResponse:
         """
-        Send a request to get the last time tools were updated
+        Send a request to get the last uuid of the toolkits
         """
         pass
 

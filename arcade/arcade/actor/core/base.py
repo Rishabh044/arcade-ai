@@ -110,7 +110,6 @@ class BaseActor(Actor):
         """
         self.catalog.add_toolkit(toolkit)
         self._update_catalog_uuid()
-        print(self.uuid)
 
     async def call_tool(self, tool_request: ToolCallRequest) -> ToolCallResponse:
         """

@@ -256,7 +256,7 @@ class ToolStatusRequest(BaseModel):
     """The request to check for updates for tools."""
 
     uuid: str
-    """The timestamp to compare the last update against"""
+    """The UUID to compare against the current toolkits UUID"""
 
 
 class ToolCallError(BaseModel):
@@ -330,4 +330,4 @@ class ToolStatusResponse(BaseModel):
     """The response to a status invocation."""
 
     uuid: str
-    """The timestamp when the tools were last updated."""
+    """The current UUID of the registered toolkits."""
