@@ -2,11 +2,13 @@ import asyncio
 import logging
 import os
 import sys
+import threading
 from contextlib import asynccontextmanager
 from typing import Any
 
 from loguru import logger
 
+from arcade.core.schema import FullyQualifiedName
 from arcade.core.telemetry import OTELHandler
 
 try:
@@ -80,6 +82,59 @@ async def lifespan(app: fastapi.FastAPI):  # type: ignore[no-untyped-def]
         logger.debug("Lifespan cancelled.")
 
 
+class ToolkitWatcher:
+    def __init__(
+        self,
+        initial: list[Toolkit],
+        actor: FastAPIActor,
+        shutdown_event: threading.Event,
+    ):
+        self.current_tools: list[FullyQualifiedName] = self._list_tools(initial)
+        self.actor = actor
+        self.shutdown_event = shutdown_event
+
+    async def start(self, interval: int = 1) -> None:
+        while not self.shutdown_event.is_set():
+            try:
+                new_toolkits = Toolkit.find_all_arcade_toolkits()
+                new_tools = self._list_tools(new_toolkits)
+                if new_tools != self.current_tools:
+                    logger.info("Toolkit changes detected. Updating actor's catalog...")
+
+                    for tool in new_tools:
+                        if tool not in self.current_tools:
+                            logger.info(f"New tool added:  {tool}")
+
+                    for tool in self.current_tools:
+                        if tool not in new_tools:
+                            logger.info(f"Toolkit removed: {tool}")
+
+                    self.actor.new_catalog()
+                    for toolkit in new_toolkits:
+                        self.actor.register_toolkit(toolkit)
+
+                    self.current_tools = new_tools
+
+                    logger.info("Actor's catalog has been updated.")
+                else:
+                    pass
+
+            except Exception:
+                logger.exception("Error while polling toolkits")
+
+            await asyncio.sleep(interval)
+
+    def _list_tools(self, toolkits: list[Toolkit]) -> list[FullyQualifiedName]:
+        tools_list = []
+        for toolkit in toolkits:
+            for _, tools in toolkit.tools.items():
+                if len(tools) != 0:
+                    tools_list.extend([
+                        FullyQualifiedName(tool, toolkit.name, toolkit.version) for tool in tools
+                    ])
+        return tools_list
+
+
 def serve_default_actor(
     host: str = "127.0.0.1",
     port: int = 8002,
@@ -127,6 +182,16 @@ def serve_default_actor(
     for toolkit in toolkits:
         actor.register_toolkit(toolkit)
 
+    shutdown_event = threading.Event()
+
+    toolkit_watcher = ToolkitWatcher(toolkits, actor, shutdown_event)
+
+    def run_polling() -> None:
+        asyncio.run(toolkit_watcher.start())
+
+    polling_thread = threading.Thread(target=run_polling, daemon=True)
+    polling_thread.start()
+
     logger.info("Starting FastAPI server...")
 
     class CustomUvicornServer(uvicorn.Server):
@@ -154,4 +219,6 @@ def serve_default_actor(
     finally:
         if enable_otel:
             otel_handler.shutdown()
+        shutdown_event.set()
+        polling_thread.join(timeout=5)
         logger.debug("Server shutdown complete.")
