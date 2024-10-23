@@ -145,7 +145,7 @@ def _get_config_file(file_path: str | None, default_filename: str = "engine.yaml
         etc_path = Path(path) / default_filename
         if etc_path.is_file():
             console.print(f"Using config file at {etc_path}", style="bold green")
-            return etc_path
+            return str(etc_path)
 
     console.print(
         f"❌ Config file '{default_filename}' not found in any of the default locations.",
