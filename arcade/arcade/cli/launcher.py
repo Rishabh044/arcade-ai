@@ -16,6 +16,16 @@ from rich.console import Console
 console = Console(highlight=False)
 logger = logging.getLogger(__name__)
 
+known_engine_config_locations = [
+    "/etc/arcade-ai",
+    "/etc/arcade-engine",
+    "/opt/homebrew/etc/arcade-engine",
+]
+
+if os.environ.get("HOMEBREW_REPOSITORY") is not None:
+    homebrew_home = os.path.join(os.environ["HOMEBREW_REPOSITORY"], "etc", "arcade-engine")
+    known_engine_config_locations.append(homebrew_home)
+
 
 def start_servers(
     host: str,
@@ -129,6 +139,13 @@ def _get_config_file(file_path: str | None, default_filename: str = "engine.yaml
     if home_config_path.is_file():
         console.print(f"Using config file at {home_config_path}", style="bold green")
         return str(home_config_path)
+
+    # Look for known installation directories
+    for path in known_engine_config_locations:
+        etc_path = Path(path) / default_filename
+        if etc_path.is_file():
+            console.print(f"Using config file at {etc_path}", style="bold green")
+            return etc_path
 
     console.print(
         f"❌ Config file '{default_filename}' not found in any of the default locations.",
