@@ -20,7 +20,7 @@ class TestToolkitWatcher(unittest.IsolatedAsyncioTestCase):
         # Mock actor
         actor = MagicMock(spec=FastAPIActor)
         actor.register_toolkit = MagicMock()
-        actor.new_catalog = MagicMock()
+        actor.clear_catalog = MagicMock()
 
         # Create shutdown event
         shutdown_event = threading.Event()
@@ -54,7 +54,7 @@ class TestToolkitWatcher(unittest.IsolatedAsyncioTestCase):
             await watcher_task
 
             # Assertions
-            actor.new_catalog.assert_called()
+            actor.clear_catalog.assert_called()
             actor.register_toolkit.assert_called_with(updated_toolkit)
 
             # Check that current_tools has been updated
@@ -75,7 +75,7 @@ class TestToolkitWatcher(unittest.IsolatedAsyncioTestCase):
         # Mock actor
         actor = MagicMock(spec=FastAPIActor)
         actor.register_toolkit = MagicMock()
-        actor.new_catalog = MagicMock()
+        actor.clear_catalog = MagicMock()
 
         # Create shutdown event
         shutdown_event = threading.Event()
@@ -100,8 +100,8 @@ class TestToolkitWatcher(unittest.IsolatedAsyncioTestCase):
             # Await the watcher task to finish
             await watcher_task
 
-            # Assert that actor.new_catalog was never called since there were no changes
-            actor.new_catalog.assert_not_called()
+            # Assert that actor.clear_catalog was never called since there were no changes
+            actor.clear_catalog.assert_not_called()
             actor.register_toolkit.assert_not_called()
 
     async def test_start_handles_exception(self):
@@ -115,7 +115,7 @@ class TestToolkitWatcher(unittest.IsolatedAsyncioTestCase):
         # Mock actor
         actor = MagicMock(spec=FastAPIActor)
         actor.register_toolkit = MagicMock()
-        actor.new_catalog = MagicMock()
+        actor.clear_catalog = MagicMock()
 
         # Create shutdown event
         shutdown_event = threading.Event()
@@ -144,8 +144,8 @@ class TestToolkitWatcher(unittest.IsolatedAsyncioTestCase):
             await watcher_task
 
             # Since the exception is caught and logged, we can check that it does not crash
-            # Assert that actor.new_catalog was never called
-            actor.new_catalog.assert_not_called()
+            # Assert that actor.clear_catalog was never called
+            actor.clear_catalog.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ class ToolkitWatcher:
                         if tool not in new_tools:
                             logger.info(f"Toolkit removed: {tool}")
 
-                    self.actor.new_catalog()
+                    self.actor.clear_catalog()
                     for toolkit in new_toolkits:
                         self.actor.register_toolkit(toolkit)
 

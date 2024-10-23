@@ -87,7 +87,7 @@ class BaseActor(Actor):
             "No secret provided for actor. Set the ARCADE_ACTOR_SECRET environment variable."
         )
 
-    def new_catalog(self) -> None:
+    def clear_catalog(self) -> None:
         self.catalog = ToolCatalog()
         self._update_catalog_uuid()
 
