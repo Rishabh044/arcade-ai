@@ -8,6 +8,7 @@ authors = ["Arcade AI <dev@arcade-ai.com>"]
 python = "^3.10"
 arcade-ai = "0.1.*"
 serpapi = "^0.1.5"
+exa_py = "^1.4.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.3.0"
