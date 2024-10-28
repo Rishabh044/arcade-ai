@@ -1,9 +1,10 @@
 import os
-import time
 
 from configuration import AgentConfigurable
 from langchain_arcade import ArcadeToolManager
+from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
+from langgraph.errors import NodeInterrupt
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 
@@ -45,6 +46,17 @@ def should_continue(state: MessagesState):
     return END
 
 
+def should_wait_for_authorization(state: MessagesState):
+    """Determine if the tool call required auth and if we are waiting for authorization."""
+    last_message = state["messages"][-1]
+    # if there is no AIMessage with auth url and instead just a tool call
+    # we should proceed to "tools"
+    if last_message.tool_calls:
+        return "tools"
+    # if there is an AIMessage with auth url, we should wait for authorization
+    return "wait_for_authorization"
+
+
 # Function to handle tool authorization
 def authorize(state: MessagesState, config: dict):
     user_id = config["configurable"].get("user_id")
@@ -55,15 +67,25 @@ def authorize(state: MessagesState, config: dict):
         # Authorization is complete; proceed to the next step
         return {"messages": state["messages"]}
     else:
-        # Prompt the user to complete authorization
-        print("Please authorize the application in your browser:")
-        print(auth_response.authorization_url)
-        input("Press Enter after completing authorization...")
+        # Create the authorization message with an HTML link
+        auth_message = (
+            f"Please authorize the application in your browser: {auth_response.authorization_url}"
+        )
 
-        # Poll for authorization status
-        while not toolkit.is_authorized(auth_response.authorization_id):
-            time.sleep(3)
-        return {"messages": state["messages"]}
+        # Put the authorization message in the logs
+        print("Authorize: ", auth_response.authorization_url)
+
+        # Add the new message to the message history
+        messages = state["messages"]
+        messages.append(AIMessage(content=auth_message))
+        return {"messages": messages}
+
+
+def wait_for_authorization(state: MessagesState):
+    # Remove the authorization message from the message history
+    # so that when we route to tools, the tool call is the latest one
+    state["messages"].pop()
+    return {"messages": state["messages"]}
 
 
 # Build the workflow graph
@@ -73,12 +95,16 @@ workflow = StateGraph(MessagesState, AgentConfigurable)
 workflow.add_node("agent", call_agent)
 workflow.add_node("tools", tool_node)
 workflow.add_node("authorization", authorize)
-
+workflow.add_node("wait_for_authorization", wait_for_authorization)
 # Define the edges and control flow
 workflow.add_edge(START, "agent")
 workflow.add_conditional_edges("agent", should_continue, ["authorization", "tools", END])
-workflow.add_edge("authorization", "tools")
+workflow.add_conditional_edges(
+    "authorization", should_wait_for_authorization, ["wait_for_authorization", "tools"]
+)
+workflow.add_edge("wait_for_authorization", "tools")
 workflow.add_edge("tools", "agent")
 
-# Compile the graph
-graph = workflow.compile()
+# Compile the graph with an interrupt after the authorization node
+# so that we can prompt the user to authorize the application
+graph = workflow.compile(interrupt_after=["authorization"])
