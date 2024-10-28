@@ -1,17 +1,11 @@
-import os
-from enum import Enum
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
 from exa_py import Exa
 
 from arcade.sdk import tool
 from arcade.sdk.errors import RetryableToolError
-
-
-class SearchType(str, Enum):
-    NEURAL = "neural"  # Uses embeddings
-    KEYWORD = "keyword"  # Uses traditional search
-    AUTO = "auto"  # Decides betwee neural and keyword, based on the query
+from arcade_search.tools.models import SearchType
+from arcade_search.tools.utils import get_secret
 
 
 @tool
@@ -20,12 +14,16 @@ async def search_exa(
     search_type: Annotated[
         str,
         "Neural uses embeddings. Keyword uses traditional search. Auto decides between neural and keyword, based on the query.",
-    ] = SearchType.NEURAL,
-    use_autoprompt: Annotated[Optional[bool], ""] = True,
+    ] = SearchType.AUTO,
+    use_autoprompt: Annotated[
+        Optional[bool],
+        "If true, the provided query will be converted to a prompt-engineered Exa query.",
+    ] = False,
     num_results: Annotated[int, "Number of results to retrieve"] = 10,
 ) -> Annotated[str, "Search results as a string"]:
-    """
-    Perform a search with a Exa prompt-engineered query and retrieve a list of relevant results.
+    """Perform a web search.
+    The search uses 'exa' to retrieve a list of relevant results without the webpage contents.
+    Requires EXA_API_KEY to be set.
     """
 
     api_key = get_secret("EXA_API_KEY")
@@ -49,12 +47,16 @@ async def search_and_contents_exa(
     search_type: Annotated[
         str,
         "Neural uses embeddings. Keyword uses traditional search. Auto decides between neural and keyword, based on the query.",
-    ] = SearchType.NEURAL,
-    use_autoprompt: Annotated[Optional[bool], ""] = True,
+    ] = SearchType.AUTO,
+    use_autoprompt: Annotated[
+        Optional[bool],
+        "If true, the provided query will be converted to a prompt-engineered Exa query.",
+    ] = False,
     num_results: Annotated[int, "Number of results to retrieve"] = 10,
 ) -> Annotated[str, "Search results as a string"]:
-    """
-    Perform a search with a Exa prompt-engineered query and retrieve a list of relevant results with the webpage contents for each result.
+    """Perform a search and get the contents of the results.
+    The search uses a 'exa' to retrieve a list of relevant results with the webpage contents for each result.
+    Requires EXA_API_KEY to be set.
     """
 
     api_key = get_secret("EXA_API_KEY")
@@ -81,8 +83,9 @@ async def find_similar_exa(
         Optional[bool], "Whether to exclude the source domain from the results"
     ] = False,
 ) -> Annotated[str, "Search results as a string"]:
-    """
-    Find similar results for a given URL using Exa API.
+    """Find similar results for a given URL.
+    Uses 'exa'' API.
+    Requires EXA_API_KEY to be set.
     """
     print("URL HERE: ", url)
 
@@ -116,8 +119,9 @@ async def find_similar_and_contents_exa(
         Optional[bool], "Whether to exclude the source domain from the results"
     ] = False,
 ) -> Annotated[str, "Search results as a string"]:
-    """
-    Find similar results for a given URL using Exa API and retrieve the contents of the results.
+    """Find similar results for a given URL.
+    Uses 'exa' API and retrieves the contents of the results.
+    Requires EXA_API_KEY to be set.
     """
 
     api_key = get_secret("EXA_API_KEY")
@@ -142,12 +146,3 @@ async def find_similar_and_contents_exa(
         )
 
     return str(result)
-
-
-def get_secret(name: str, default: Optional[Any] = None) -> Any:
-    secret = os.getenv(name)
-    if secret is None:
-        if default is not None:
-            return default
-        raise ValueError(f"Secret {name} is not set.")
-    return secret
