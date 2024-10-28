@@ -1,10 +1,11 @@
 import os
+from datetime import datetime
 
 from configuration import AgentConfigurable
 from langchain_arcade import ArcadeToolManager
 from langchain_core.messages import AIMessage
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-from langgraph.errors import NodeInterrupt
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 
@@ -17,22 +18,31 @@ toolkit = ArcadeToolManager(api_key=arcade_api_key)
 tools = toolkit.get_tools(langgraph=True)
 tool_node = ToolNode(tools)
 
+PROMPT_TEMPLATE = f"""
+You are a helpful assistant who can use tools to help users with tasks
+Today's date is {datetime.now().strftime("%Y-%m-%d")}
+
+ALL RESPONSES should be in plain text and not markdown.
+"""
+# prompt for the main agent
+prompt = ChatPromptTemplate.from_messages([
+    ("system", PROMPT_TEMPLATE),
+    ("placeholder", "{messages}"),
+])
 # Initialize the language model with your OpenAI API key
-model = ChatOpenAI(model="gpt-4o", api_key=openai_api_key)
-# make the model aware of the tools
-model_with_tools = model.bind_tools(tools)
+model = prompt | ChatOpenAI(model="gpt-4o", api_key=openai_api_key).bind_tools(tools)
 
 
-# Define the agent function that invokes the model
 def call_agent(state):
+    """Define the agent function that invokes the model"""
     messages = state["messages"]
-    response = model_with_tools.invoke(messages)
-    # Return the updated message history
-    return {"messages": [*messages, response]}
+    # replace placeholder with messages from state
+    response = model.invoke({"messages": messages})
+    return {"messages": [response]}
 
 
-# Function to determine the next step based on the model's response
 def should_continue(state: MessagesState):
+    """Function to determine the next step based on the model's response"""
     last_message = state["messages"][-1]
     if last_message.tool_calls:
         tool_name = last_message.tool_calls[0]["name"]
@@ -54,11 +64,11 @@ def should_wait_for_authorization(state: MessagesState):
     if last_message.tool_calls:
         return "tools"
     # if there is an AIMessage with auth url, we should wait for authorization
-    return "wait_for_authorization"
+    return "wait_for_auth"
 
 
-# Function to handle tool authorization
 def authorize(state: MessagesState, config: dict):
+    """Function to handle tool authorization"""
     user_id = config["configurable"].get("user_id")
     tool_name = state["messages"][-1].tool_calls[0]["name"]
     auth_response = toolkit.authorize(tool_name, user_id)
@@ -68,20 +78,12 @@ def authorize(state: MessagesState, config: dict):
         return {"messages": state["messages"]}
     else:
         # Create the authorization message with an HTML link
-        auth_message = (
-            f"Please authorize the application in your browser: {auth_response.authorization_url}"
-        )
-
-        # Put the authorization message in the logs
-        print("Authorize: ", auth_response.authorization_url)
-
+        auth_message = f"Please authorize the application in your browser:\n\n {auth_response.authorization_url}"
         # Add the new message to the message history
-        messages = state["messages"]
-        messages.append(AIMessage(content=auth_message))
-        return {"messages": messages}
+        return {"messages": [AIMessage(content=auth_message)]}
 
 
-def wait_for_authorization(state: MessagesState):
+def wait_for_auth(state: MessagesState):
     # Remove the authorization message from the message history
     # so that when we route to tools, the tool call is the latest one
     state["messages"].pop()
@@ -95,16 +97,17 @@ workflow = StateGraph(MessagesState, AgentConfigurable)
 workflow.add_node("agent", call_agent)
 workflow.add_node("tools", tool_node)
 workflow.add_node("authorization", authorize)
-workflow.add_node("wait_for_authorization", wait_for_authorization)
+workflow.add_node("wait_for_auth", wait_for_auth)
+
 # Define the edges and control flow
 workflow.add_edge(START, "agent")
 workflow.add_conditional_edges("agent", should_continue, ["authorization", "tools", END])
 workflow.add_conditional_edges(
-    "authorization", should_wait_for_authorization, ["wait_for_authorization", "tools"]
+    "authorization", should_wait_for_authorization, ["wait_for_auth", "tools"]
 )
-workflow.add_edge("wait_for_authorization", "tools")
+workflow.add_edge("wait_for_auth", "tools")
 workflow.add_edge("tools", "agent")
 
 # Compile the graph with an interrupt after the authorization node
 # so that we can prompt the user to authorize the application
-graph = workflow.compile(interrupt_after=["authorization"])
+graph = workflow.compile(interrupt_after=["wait_for_auth"])
