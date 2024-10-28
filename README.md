@@ -2,7 +2,7 @@
   <a name="readme-top"></a>
   <img
     src="https://docs.arcade-ai.com/images/logo/arcade-ai-logo.png"
-    height="200"
+    style="width: 400px;"
   >
 </h3>
 <div align="center">
@@ -12,44 +12,41 @@
     <a href="https://pepy.tech/project/arcade-ai">
   <img src="https://static.pepy.tech/badge/arcade-ai" alt="Downloads">
 </a>
-<a href="https://github.com/ArcadeAI/arcade-ai/graphs/contributors">
-  <img src="https://img.shields.io/github/contributors/arcadeai/arcade-ai.svg" alt="GitHub Contributors">
+  <img src="https://img.shields.io/github/last-commit/ArcadeAI/arcade-ai" alt="GitHub last commit">
 </a>
-<a href="https://arcade-ai.com">
-  <img src="https://img.shields.io/badge/Visit_Our_Website-orange" alt="Visit arcade-ai.com">
+<a href="https://img.shields.io/pypi/pyversions/arcade-ai">
+  <img src="https://img.shields.io/pypi/pyversions/arcade-ai" alt="Python Version">
 </a>
 </div>
 <div>
-  <p align="center">
+  <p align="center" style="display: flex; justify-content: center; gap: 10px;">
     <a href="https://x.com/TryArcade">
-      <img src="https://img.shields.io/badge/Follow%20on%20X-000000?style=for-the-badge&logo=x&logoColor=white" alt="Follow on X" />
+      <img src="https://img.shields.io/badge/Follow%20on%20X-000000?style=for-the-badge&logo=x&logoColor=white" alt="Follow on X" style="width: 125px;height: 25px; padding-top: .8px; border-radius: 5px;" />
     </a>
-    <a href="https://www.linkedin.com/company/arcade-ai">
-      <img src="https://img.shields.io/badge/Follow%20on%20LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" alt="Follow on LinkedIn" />
+    <a href="https://www.linkedin.com/company/arcade-ai" >
+      <img src="https://img.shields.io/badge/Follow%20on%20LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" alt="Follow on LinkedIn" style="width: 150px; padding-top: 1.5px;height: 22px; border-radius: 5px;" />
     </a>
     <a href="https://discord.com/invite/GUZEMpEZ9p">
-      <img src="https://img.shields.io/badge/Join%20our%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join our Discord" />
+      <img src="https://img.shields.io/badge/Join%20our%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join our Discord" style="width: 150px; padding-top: 1.5px; height: 22px; border-radius: 5px;" />
     </a>
   </p>
 </div>
 
-<p align="center">
+<p align="center" style="display: flex; justify-content: center; gap: 5px; font-size: 15px;">
     <a href="https://docs.arcade-ai.com" target="_blank">Docs</a> •
     <a href="https://docs.arcade-ai.com/integrations" target="_blank">Integrations</a> •
-    <a href="https://github.com/ArcadeAI/cookbook" target="_blank">Cookbook</a> •
-    <a href="https://github.com/ArcadeAI/arcade-py" target="_blank">Python Client</a> •
-    <a href="https://github.com/ArcadeAI/arcade-js" target="_blank">JavaScript Client</a>
-</p>
+    <a href="https://docs.arcade-ai.com/integrations/toolkits" target="_blank">Toolkits</a> •
+    <a href="https://github.com/ArcadeAI/arcade-ai/tree/main/examples" target="_blank">Examples</a>
 
 ## What is Arcade AI?
 
-[Arcade AI](https://arcade-ai.com?ref=github) offers developer-focused tooling and APIs designed to improve the capabilities of LLM applications and agents.
+[Arcade AI](https://arcade-ai.com?ref=github) provides developer-focused tooling and APIs designed to improve the capabilities of LLM applications and agents.
 
-By providing an authentication and authorization layer for agents and the tools agents use, Arcade AI connects agentic applications with your users' data and services - like accessing their Gmail, GitHub, Zoom, Spotify, LinkedIn, and more.
+By removing the complexity of connecting agentic applications with your users' data and services, Arcade AI enables developers to focus on building their agentic applications.
 
 To learn more, check out our [documentation](https://docs.arcade-ai.com).
 
-_Pst. hey, you, join our stargazers! It's free!_
+_Pst. hey, you, give us a star if you like it!_
 
 <a href="https://github.com/arcadeai/arcade-ai">
   <img src="https://img.shields.io/github/stars/arcadeai/arcade-ai.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
@@ -59,52 +56,52 @@ _Pst. hey, you, join our stargazers! It's free!_
 
 ### Requirements
 
-1. An **[Arcade AI account](https://arcade-ai.typeform.com/early-access)** (current a waitlist)
-2. **Python 3.10+**. Verify your Python version by running `python --version` or `python3 --version` in your terminal
-3. **pip**, the Python package installer that is typically included with Python
+1. An **[Arcade AI account](https://arcade-ai.typeform.com/early-access)** (currently a waitlist)
+2. **Python 3.10+** and **pip**
 
 ### Installation
+
+Install the package:
 
 ```bash
 pip install 'arcade-ai[fastapi]'
 ```
 
-Then login to your account (we're working through the waitlist as fast as we can!)
+Log in to your account:
 
 ```bash
 arcade login
 ```
 
-This will open a browser window to login.
+This opens a browser window for authentication.
 
-### Verify Installation using `arcade chat`
+### Verify Installation with `arcade chat`
 
-The `arcade-ai` package comes with a CLI app called `arcade chat` that is used to test tools as you develop them.
-
-By default, `arcade chat` will connect to the hosted version of Arcade AI with built-in tools (found in `toolkits`).
+Use the `arcade chat` CLI app to test tools:
 
 ```bash
 arcade chat
 ```
 
-This launches a chat with the Arcade Cloud Engine (hosted at `api.arcade-ai.com`). All pre-built Arcade tools are available to use.
+This connects to the Arcade Cloud Engine (`api.arcade-ai.com`) with all pre-built Arcade tools.
 
-For example, try asking:
+For example, try:
 
 ```
-star the ArcadeAI/arcade-ai repo on Github
+User (dev@arcade-ai.com):
+> star the ArcadeAI/arcade-ai repo on Github
 ```
 
-Arcade AI will ask you to authorize with GitHub, and then the AI assistant will star the [ArcadeAI/arcade-ai](https://github.com/ArcadeAI/arcade-ai) repo on your behalf.
+Arcade AI will prompt you to authorize with GitHub and will star the [ArcadeAI/arcade-ai](https://github.com/ArcadeAI/arcade-ai) repo on your behalf.
 
-You'll see output similar to this:
+You'll see:
 
 ```
 Assistant (gpt-4o):
 I starred the ArcadeAI/arcade-ai repo on Github for you!
 ```
 
-You can use Ctrl-C to exit the chat at any time.
+Press `Ctrl-C` to exit the chat.
 
 ## Arcade Cloud
 
@@ -242,6 +239,60 @@ Arcade AI offers a number of prebuilt toolkits that can be used by agents to int
   </tbody>
 </table>
 
+### Supported Language Models
+
+The LLM API supports a variety of language models. Currently, the ones supported in Arcade Cloud are OpenAI, Anthropic, Ollama, and Groq.
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center;">Model</th>
+      <th style="text-align: center;">Provider</th>
+      <th style="text-align: center;">Documentation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center;">
+        <img src="https://docs.arcade-ai.com/images/icons/openai.png" alt="OpenAI" width="30" height="30" />
+      </td>
+      <td style="text-align: center;">OpenAI</td>
+      <td style="text-align: center;">
+        <a href="https://docs.arcade-ai.com/integrations/models/openai">OpenAI Models Docs</a>
+      </td>
+    </tr>
+    <tr>
+      <td style="text-align: center;">
+        <img src="https://docs.arcade-ai.com/images/icons/anthropic.png" alt="Anthropic" width="30" height="30" />
+      </td>
+      <td style="text-align: center;">Anthropic</td>
+      <td style="text-align: center;">
+        <a href="https://docs.arcade-ai.com/integrations/models/anthropic">Anthropic Models Docs</a>
+      </td>
+    </tr>
+    <tr>
+      <td style="text-align: center;">
+        <img src="https://docs.arcade-ai.com/images/icons/ollama.png" alt="Ollama" width="30" height="30" />
+      </td>
+      <td style="text-align: center;">Ollama</td>
+      <td style="text-align: center;">
+        <a href="https://docs.arcade-ai.com/integrations/models/ollama">Ollama Models Docs</a>
+      </td>
+    </tr>
+    <tr>
+      <td style="text-align: center;">
+        <img src="https://docs.arcade-ai.com/images/icons/groq.png" alt="Groq" width="30" height="30" />
+      </td>
+      <td style="text-align: center;">Groq</td>
+      <td style="text-align: center;">
+        <a href="https://docs.arcade-ai.com/integrations/models/groq">Groq Models Docs</a>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+For more information, refer to the [models documentation](https://docs.arcade-ai.com/integrations/models/openai).
+
 ### Building Your Own Tools
 
 Learn how to build your own tools by following our [creating a custom toolkit guide](https://docs.arcade-ai.com/tools/overview).
@@ -252,23 +303,9 @@ Arcade AI enables you to evaluate your custom tools to ensure they function corr
 
 Learn how to evaluate your tools by following our [evaluating tools guide](https://docs.arcade-ai.com/home/evaluate-tools/create-an-evaluation-suite).
 
-### Models
-
-<img src="https://docs.arcade-ai.com/images/icons/openai.png" alt="" width="30" height="30" style="vertical-align: top;" /><img src="https://docs.arcade-ai.com/images/icons/anthropic.png" alt="" width="30" height="30" style="vertical-align: top;" /><img src="https://docs.arcade-ai.com/images/icons/ollama.png" alt="" width="30" height="30" style="vertical-align: top;" /><img src="https://docs.arcade-ai.com/images/icons/groq.png" alt="" width="30" height="30" style="vertical-align: top;" />
-<br><br>
-Arcade AI supports a variety of model providers when using the Arcade AI LLM API.
-
-To see all available models, refer to the [models documentation](https://docs.arcade-ai.com/integrations/models/openai).
-
 ## Contributing
 
 We love contributions! Please read our [contributing guide](CONTRIBUTING.md) before submitting a pull request. If you'd like to self-host, refer to the [self-hosting documentation](https://docs.arcade-ai.com/home/install/overview).
-
-## Contributors
-
-<a href="https://github.com/ArcadeAI/arcade-ai/graphs/contributors">
-  <img alt="contributors" src="https://contrib.rocks/image?repo=ArcadeAI/arcade-ai"/>
-</a>
 
 <p align="right" style="font-size: 14px; color: #555; margin-top: 20px;">
     <a href="#readme-top" style="text-decoration: none; color: #007bff; font-weight: bold;">
