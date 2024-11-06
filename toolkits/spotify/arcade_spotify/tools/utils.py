@@ -36,14 +36,6 @@ async def send_spotify_request(
     return response
 
 
-def handle_404_playback_state(response, message, is_playing: bool) -> dict | None:
-    if response.status_code == 404:
-        return convert_to_playback_state({
-            "is_playing": is_playing,
-            "message": message,
-        }).to_dict()
-
-
 def get_url(endpoint: str, **kwargs) -> str:
     """
     Get the full Spotify URL for a given endpoint.
@@ -83,7 +75,9 @@ def convert_to_playback_state(data: dict) -> PlaybackState:
         playback_state.album_spotify_url = album.get("external_urls", {}).get("spotify")
         playback_state.track_name = item.get("name")
         playback_state.track_id = item.get("id")
+        playback_state.track_spotify_url = item.get("external_urls").get("spotify")
         playback_state.track_artists = [artist.get("name") for artist in item.get("artists", [])]
+        playback_state.track_artists_ids = [artist.get("id") for artist in item.get("artists", [])]
     elif data.get("currently_playing_type") == "episode":
         item = data.get("item", {})
         show = item.get("show", {})

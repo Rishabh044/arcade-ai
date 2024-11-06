@@ -8,7 +8,6 @@ from arcade_spotify.tools.search import search
 from arcade_spotify.tools.utils import (
     convert_to_playback_state,
     get_url,
-    handle_404_playback_state,
     send_spotify_request,
 )
 
@@ -24,7 +23,7 @@ async def adjust_playback_position(
         Optional[int],
         "The relative position from the current playback position in milliseconds to seek to",
     ] = None,
-) -> Annotated[dict, "The updated playback state"]:
+) -> Annotated[str, "Success/failure message"]:
     """Adjust the playback position within the currently playing track.
 
     Knowledge of the current playback state is NOT needed to use this tool as it handles
@@ -47,8 +46,7 @@ async def adjust_playback_position(
     if relative_position_ms is not None:
         playback_state = await get_playback_state(context)
         if playback_state.get("device_id") is None:
-            playback_state["message"] = "No track to adjust position"
-            return playback_state
+            return "No track to adjust position"
 
         absolute_position_ms = playback_state["progress_ms"] + relative_position_ms
 
@@ -59,82 +57,71 @@ async def adjust_playback_position(
 
     response = await send_spotify_request(context, "PUT", url, params=params)
 
-    playback_state = handle_404_playback_state(response, "No track to adjust position", False)
-    if playback_state:
-        return playback_state
+    if response.status_code == 404:
+        return "No track to adjust position"
 
     response.raise_for_status()
 
-    playback_state = await get_playback_state(context)
-    return playback_state
+    return "Playback position adjusted"
 
 
 # NOTE: This tool only works for Spotify Premium users
 @tool(requires_auth=Spotify(scopes=["user-read-playback-state", "user-modify-playback-state"]))
 async def skip_to_previous_track(
     context: ToolContext,
-) -> Annotated[dict, "The updated playback state"]:
+) -> Annotated[str, "Success/failure message"]:
     """Skip to the previous track in the user's queue, if any"""
     url = get_url("player_skip_to_previous")
 
     response = await send_spotify_request(context, "POST", url)
 
-    playback_state = handle_404_playback_state(response, "No track to go back to", False)
-    if playback_state:
-        return playback_state
+    if response.status_code == 404:
+        return "No track to go back to"
 
     response.raise_for_status()
 
-    playback_state = await get_playback_state(context)
-
-    return playback_state
+    return "Playback skipped to previous track"
 
 
 # NOTE: This tool only works for Spotify Premium users
 @tool(requires_auth=Spotify(scopes=["user-read-playback-state", "user-modify-playback-state"]))
 async def skip_to_next_track(
     context: ToolContext,
-) -> Annotated[dict, "The updated playback state"]:
+) -> Annotated[str, "Success/failure message"]:
     """Skip to the next track in the user's queue, if any"""
     url = get_url("player_skip_to_next")
 
     response = await send_spotify_request(context, "POST", url)
 
-    playback_state = handle_404_playback_state(response, "No track to skip", False)
-    if playback_state:
-        return playback_state
+    if response.status_code == 404:
+        return "No track to skip"
 
     response.raise_for_status()
 
-    playback_state = await get_playback_state(context)
-
-    return playback_state
+    return "Playback skipped to next track"
 
 
 # NOTE: This tool only works for Spotify Premium users
 @tool(requires_auth=Spotify(scopes=["user-read-playback-state", "user-modify-playback-state"]))
 async def pause_playback(
     context: ToolContext,
-) -> Annotated[dict, "The updated playback state"]:
+) -> Annotated[str, "Success/failure message"]:
     """Pause the currently playing track, if any"""
     playback_state = await get_playback_state(context)
 
     # There is no current state, therefore nothing to pause
     if playback_state.get("device_id") is None:
-        playback_state["message"] = "No track to pause"
-        return playback_state
+        return "No track to pause"
     # Track is already paused
     if playback_state.get("is_playing") is False:
-        playback_state["message"] = "Track is already paused"
-        return playback_state
+        return "Track is already paused"
 
     url = get_url("player_pause_playback")
 
     response = await send_spotify_request(context, "PUT", url)
     response.raise_for_status()
 
-    playback_state["is_playing"] = False
-    return playback_state
+    return "Playback paused"
 
 
 # NOTE: This tool only works for Spotify Premium users
@@ -145,26 +132,23 @@ async def pause_playback(
 )
 async def resume_playback(
     context: ToolContext,
-) -> Annotated[dict, "The updated playback state"]:
+) -> Annotated[str, "Success/failure message"]:
     """Resume the currently playing track, if any"""
     playback_state = await get_playback_state(context)
 
     # There is no current state, therefore nothing to resume
     if playback_state.get("device_id") is None:
-        playback_state["message"] = "No track to resume"
-        return playback_state
+        return "No track to resume"
     # Track is already playing
     if playback_state.get("is_playing") is True:
-        playback_state["message"] = "Track is already playing"
-        return playback_state
+        return "Track is already playing"
 
     url = get_url("player_modify_playback")
 
     response = await send_spotify_request(context, "PUT", url)
     response.raise_for_status()
 
-    playback_state["is_playing"] = True
-    return playback_state
+    return "Playback resumed"
 
 
 # NOTE: This tool only works for Spotify Premium users
@@ -183,7 +167,7 @@ async def start_tracks_playback_by_id(
         Optional[int],
         "The position in milliseconds to start the first track from",
     ] = 0,
-) -> Annotated[dict, "The updated playback state"]:
+) -> Annotated[str, "Success/failure message"]:
     """Start playback of a list of tracks (songs)"""
 
     devices = [
@@ -204,16 +188,13 @@ async def start_tracks_playback_by_id(
     }
 
     response = await send_spotify_request(context, "PUT", url, params=params, json_data=body)
-    playback_state = handle_404_playback_state(
-        response, "Cannot start playback because no active device is available", False
-    )
-    if playback_state:
-        return playback_state
+
+    if response.status_code == 404:
+        return "Cannot start playback because no active device is available"
 
     response.raise_for_status()
 
-    playback_state = await get_playback_state(context)
-    return playback_state
+    return "Playback started"
 
 
 @tool(requires_auth=Spotify(scopes=["user-read-playback-state"]))
@@ -252,7 +233,7 @@ async def get_currently_playing(
 async def play_artist_by_name(
     context: ToolContext,
     name: Annotated[str, "The name of the artist to play"],
-) -> Annotated[dict, "The updated playback state"]:
+) -> Annotated[str, "Success/failure message"]:
     """Plays a song by an artist and queues four more songs by the same artist"""
     q = f"artist:{name}"
     search_results = await search(context, q, [SearchType.TRACK], 5)
@@ -264,9 +245,9 @@ async def play_artist_by_name(
             retry_after_ms=500,
         )
     track_ids = [item["id"] for item in search_results["tracks"]["items"]]
-    playback_state = await start_tracks_playback_by_id(context, track_ids)
+    response = await start_tracks_playback_by_id(context, track_ids)
 
-    return playback_state
+    return response
 
 
 # NOTE: This tool only works for Spotify Premium users
@@ -279,7 +260,7 @@ async def play_track_by_name(
     context: ToolContext,
     track_name: Annotated[str, "The name of the track to play"],
     artist_name: Annotated[Optional[str], "The name of the artist of the track"] = None,
-) -> Annotated[dict, "The updated playback state"]:
+) -> Annotated[str, "Success/failure message"]:
     """Plays a song by name"""
     q = f"track:{track_name}"
     if artist_name:
@@ -297,9 +278,9 @@ async def play_track_by_name(
         )
 
     track_id = search_results["tracks"]["items"][0]["id"]
-    playback_state = await start_tracks_playback_by_id(context, [track_id])
+    response = await start_tracks_playback_by_id(context, [track_id])
 
-    return playback_state
+    return response
 
 
 # NOTE: This tool only works for Spotify Premium users
