@@ -1,4 +1,43 @@
+import os
+
 from arcadepy import Arcade
+
+from arcade.core.toolkit import Toolkit
+
+
+def snake_to_camel(snake_str):
+    return "".join(word.capitalize() for word in snake_str.split("_"))
+
+
+toolkits = Toolkit.find_all_arcade_toolkits()
+toolkits_to_files = {}
+for toolkit in toolkits:
+    files_to_tools = {}
+    for filepath, tools in toolkit.tools.items():
+        if not len(tools):
+            continue
+        files_to_tools[filepath.split(".")[-1]] = []
+        for tool in tools:
+            tool_id = toolkit.name.capitalize() + "." + snake_to_camel(tool)
+            files_to_tools[filepath.split(".")[-1]].append(tool_id)
+    toolkits_to_files[toolkit.name] = files_to_tools
+
+file_path_to_tools = {}
+for tk, file_to_tools in toolkits_to_files.items():
+    if not len(file_to_tools):
+        continue
+    if len(file_to_tools) == 1:
+        path = "integrations/toolkits/" + tk + ".mdx"
+        file_path_to_tools[path] = next(iter(file_to_tools.values()))
+    else:
+        for file, tools in file_to_tools.items():
+            path = "integrations/toolkits/" + tk.capitalize() + "/" + file + ".mdx"
+            file_path_to_tools[path] = tools
+
+for path, tools in file_path_to_tools.items():
+    print(path)
+    for tool in tools:
+        print(f"    {tool}")
 
 client = Arcade(base_url="https://api.arcade-ai.com")
 
@@ -60,7 +99,7 @@ for tool in tools.items:
     if tool.inputs.parameters:
         mdx_content += "\n**Parameters**\n\n"
         for param in tool.inputs.parameters:
-            mdx_content += f'- **`{param.name}`** _({param.value_schema.val_type}, {"required" if param.required else "optional"})_ {param.description}\n'
+            mdx_content += f"- **`{param.name}`** _({param.value_schema.val_type}, {'required' if param.required else 'optional'})_ {param.description}\n"
         mdx_content += "\n\n"
     mdx_content += "---\n"
 
@@ -82,7 +121,8 @@ With a self-hosted installation of Arcade AI, you need to [configure the Slack a
 """
 
 # Write the content to the .mdx file
-file_name = f"{toolkit_name}.mdx"
+file_name = f"integrations/toolkits/{toolkit_name}.mdx"
+os.makedirs(os.path.dirname(file_name), exist_ok=True)
 with open(file_name, "w") as file:
     file.write(mdx_content)
 
