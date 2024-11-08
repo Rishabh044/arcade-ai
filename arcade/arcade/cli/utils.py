@@ -5,7 +5,7 @@ import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Union, cast
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 import idna
 import typer
@@ -69,7 +69,7 @@ def create_cli_catalog(
     return catalog
 
 
-def compute_base_url(
+def compute_engine_base_url(
     force_tls: bool,
     force_no_tls: bool,
     host: str,
@@ -77,6 +77,8 @@ def compute_base_url(
 ) -> str:
     """
     Compute the base URL for the Arcade Engine from the provided overrides.
+
+    Treats 127.0.0.1 and 0.0.0.0 as aliases for localhost.
 
     force_no_tls takes precedence over force_tls. For example, if both are set to True,
     the resulting URL will use http.
@@ -102,6 +104,9 @@ def compute_base_url(
     Returns:
         str: The fully constructed URL for the Arcade Engine.
     """
+    # "Use 127.0.0.1" and "0.0.0.0" as aliases for "localhost"
+    host = "localhost" if host in ["127.0.0.1", "0.0.0.0"] else host  # noqa: S104
+
     # Determine TLS setting based on input flags
     if force_no_tls:
         is_tls = False
@@ -150,6 +155,25 @@ def compute_base_url(
         return f"{protocol}://{encoded_host}"
 
 
+def compute_login_url(host: str, state: str, port: int | None) -> str:
+    """
+    Compute the full URL for the CLI login endpoint.
+    """
+    callback_uri = "http://localhost:9905/callback"
+    params = urlencode({"callback_uri": callback_uri, "state": state})
+
+    port = port if port else 8000
+
+    login_base_url = (
+        f"http://localhost:{port}"
+        if host in ["localhost", "127.0.0.1", "0.0.0.0"]  # noqa: S104
+        else f"https://{host}"
+    )
+    endpoint = "/api/v1/auth/cli_login"
+
+    return f"{login_base_url}{endpoint}?{params}"
+
+
 def get_tools_from_engine(
     host: str,
     port: int | None = None,
@@ -158,7 +182,7 @@ def get_tools_from_engine(
     toolkit: str | None = None,
 ) -> list[ToolDefinition]:
     config = validate_and_get_config()
-    base_url = compute_base_url(force_tls, force_no_tls, host, port)
+    base_url = compute_engine_base_url(force_tls, force_no_tls, host, port)
     client = Arcade(api_key=config.api.key, base_url=base_url)
 
     tools = []
