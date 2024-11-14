@@ -3,6 +3,7 @@ from pathlib import Path
 
 import toml
 
+from arcade.core.schema import InputParameter, ToolDefinition
 from arcade.sdk import ToolCatalog, Toolkit
 
 
@@ -28,7 +29,7 @@ def get_toolkit_name_from_toml(directory: str) -> str:
     try:
         with open(pyproject_path) as f:
             pyproject_data = toml.load(f)
-        return pyproject_data["tool"]["poetry"]["name"]
+        return str(pyproject_data["tool"]["poetry"]["name"])
     except toml.TomlDecodeError as e:
         raise ValueError(f"Error parsing pyproject.toml: {e}")
     except KeyError:
@@ -80,7 +81,7 @@ def create_tool_toc_table(toolkit: Toolkit) -> str:
     return tool_toc_table
 
 
-def create_tool_parameter_details(param) -> str:
+def create_tool_parameter_details(param: InputParameter) -> str:
     """Create markdown documentation for a single tool parameter."""
     param_parts = []
 
@@ -102,7 +103,7 @@ def create_tool_parameter_details(param) -> str:
     return "".join(param_parts) + "\n"
 
 
-def create_single_tool_details(tool) -> str:
+def create_single_tool_details(tool: ToolDefinition) -> str:
     """Create markdown documentation for a single tool."""
     # Create tool header section
     tool_section = [f"### {tool.name}\n", f"{tool.description}\n\n"]
