@@ -30,6 +30,9 @@
 | ListDraftEmails | Lists draft emails in the user's draft mailbox using the Gmail API. |
 | ListEmailsByHeader | Search for emails by header using the Gmail API. |
 | ListEmails | Read emails from a Gmail account and extract plain text content. |
+| SearchThreads | Search for threads in the user's mailbox |
+| ListThreads | List threads in the user's mailbox. |
+| GetThread | Get the specified thread by ID. |
 | ListDocuments | List documents in the user's Google Drive. Excludes documents that are in the trash. |
 
 
@@ -206,7 +209,7 @@ Lists draft emails in the user's draft mailbox using the Gmail API.
 
 ### ListEmailsByHeader
 Search for emails by header using the Gmail API.
-At least one of the following parametersMUST be provided: sender, recipient, subject, body.
+At least one of the following parameters MUST be provided: sender, recipient, subject, body.
 
 #### Parameters
 - `sender`*(string, optional)* The name or email address of the sender of the email
@@ -223,6 +226,41 @@ Read emails from a Gmail account and extract plain text content.
 
 #### Parameters
 - `n_emails`*(integer, optional)* Number of emails to read
+
+---
+
+### SearchThreads
+Search for threads in the user's mailbox
+
+#### Parameters
+- `page_token`*(string, optional)* Page token to retrieve a specific page of results in the list
+- `max_results`*(integer, optional)* The maximum number of threads to return
+- `include_spam_trash`*(boolean, optional)* Whether to include spam and trash in the results
+- `label_ids`*(array, optional)* The IDs of labels to filter by
+- `sender`*(string, optional)* The name or email address of the sender of the email
+- `recipient`*(string, optional)* The name or email address of the recipient
+- `subject`*(string, optional)* Words to find in the subject of the email
+- `body`*(string, optional)* Words to find in the body of the email
+- `date_range`*(string, optional)* The date range of the email, Valid values are 'today', 'yesterday', 'last_7_days', 'last_30_days', 'this_month', 'last_month', 'this_year'
+
+---
+
+### ListThreads
+List threads in the user's mailbox.
+
+#### Parameters
+- `page_token`*(string, optional)* Page token to retrieve a specific page of results in the list
+- `max_results`*(integer, optional)* The maximum number of threads to return
+- `include_spam_trash`*(boolean, optional)* Whether to include spam and trash in the results
+
+---
+
+### GetThread
+Get the specified thread by ID.
+
+#### Parameters
+- `thread_id`*(string, required)* The ID of the thread to retrieve
+- `metadata_headers`*(array, optional)* When given and format is METADATA, only include headers specified.
 
 ---
 
