@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "arcade_zoom"
 version = "0.1.0"
-description = "Arcade tools for Zoom"
+description = "Arcade tools for interacting with the Zoom Meetings API"
 authors = ["Arcade AI <dev@arcade-ai.com>"]
 
 [tool.poetry.dependencies]
