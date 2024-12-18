@@ -71,3 +71,4 @@ jobs:
           status: "${{ (steps.Test_Toolkit.outcome == 'failure' || steps.Publish_Toolkit.outcome == 'failure') && 'Failed' || 'Success' }}"
           toolkit: ${{ steps.set-toolkit.outputs.toolkit }}
           version: ${{ steps.Publish_Toolkit.outputs.version }}
+          url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
