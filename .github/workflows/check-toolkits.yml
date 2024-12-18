@@ -25,6 +25,7 @@ jobs:
       env:
         ADDED_FILES: ${{ steps.changed-files.outputs.added_files }}
         CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
       run: |
         echo "Added files: ${ADDED_FILES}"
         echo "Changed files: ${CHANGED_FILES}"
