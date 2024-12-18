@@ -1,0 +1,54 @@
+name: Publish Toolkit
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      toolkit:
+        description: 'The directory of the toolkit to publish'
+        required: true
+
+jobs:
+  release-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+
+    - name: Test Toolkit
+      working-directory: toolkits/${{ inputs.toolkit }}
+      run: |
+        make test
+
+    - name: Publish Toolkit
+      working-directory: toolkits/${{ inputs.toolkit }}
+      run: |
+        poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
+        poetry publish --dry-run
+
+
+
+    # - name: Get changed files
+    #   id: changed-files
+    #   uses: tj-actions/changed-files@v45
+
+    # - name: List all added files
+    #   env:
+    #     ADDED_FILES: ${{ steps.changed-files.outputs.added_files }}
+    #     CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+    #   run: |
+    #     echo "Added files: ${ADDED_FILES}"
+    #     echo "Changed files: ${CHANGED_FILES}"
+    #     for file in ${ADDED_FILES}; do
+    #       echo "$file was added"
+    #     done
