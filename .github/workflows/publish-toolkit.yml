@@ -53,20 +53,3 @@ jobs:
       run: |
         poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
         poetry publish --dry-run
-
-
-
-    # - name: Get changed files
-    #   id: changed-files
-    #   uses: tj-actions/changed-files@v45
-
-    # - name: List all added files
-    #   env:
-    #     ADDED_FILES: ${{ steps.changed-files.outputs.added_files }}
-    #     CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
-    #   run: |
-    #     echo "Added files: ${ADDED_FILES}"
-    #     echo "Changed files: ${CHANGED_FILES}"
-    #     for file in ${ADDED_FILES}; do
-    #       echo "$file was added"
-    #     done
