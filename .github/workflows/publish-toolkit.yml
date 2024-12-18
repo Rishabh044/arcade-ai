@@ -46,6 +46,7 @@ jobs:
       id: Test_Toolkit
       working-directory: toolkits/${{ steps.set-toolkit.outputs.toolkit }}
       run: |
+        make check
         make install
         make test
 
