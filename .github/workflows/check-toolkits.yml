@@ -2,6 +2,8 @@ name: Check Toolkits
 
 on:
   push:
+    branches:
+      - main
 
 jobs:
   check-toolkits:
@@ -23,12 +25,9 @@ jobs:
 
     - name: List all added files
       env:
-        ADDED_FILES: ${{ steps.changed-files.outputs.added_files }}
         CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         GITHUB_TOKEN: ${{ secrets.PAT }}
       run: |
-        echo "Added files: ${ADDED_FILES}"
-        echo "Changed files: ${CHANGED_FILES}"
         dirs=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep "toolkits/" | cut -d'/' -f2 | sort -u)
         echo "$dirs" | while read -r dir; do
           echo "$dir"

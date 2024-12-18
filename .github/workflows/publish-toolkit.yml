@@ -41,12 +41,13 @@ jobs:
         cache: 'pip'
 
     - name: Install Python Dependencies
-      run: pip install pytest pytest-cov pytest-mock ./arcade
+      run: pip install ./arcade
 
     - name: Test Toolkit
       id: Test_Toolkit
       working-directory: toolkits/${{ steps.set-toolkit.outputs.toolkit }}
       run: |
+        make install
         make test
 
     - name: Publish Toolkit
@@ -59,7 +60,6 @@ jobs:
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
         poetry publish --dry-run
-        exit 1
 
     - name: Send status to Slack
       if: always()
