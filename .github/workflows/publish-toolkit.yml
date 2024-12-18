@@ -16,6 +16,16 @@ jobs:
       packages: write
 
     steps:
+    - name: Set toolkit input
+      id: set-toolkit
+      run: |
+        if [ "${{ github.event_name }}" = "push" ]; then
+          # Extract toolkit name from changed files
+          TOOLKIT=x
+          echo "toolkit=$TOOLKIT" >> $GITHUB_OUTPUT
+        else
+          echo "toolkit=${{ inputs.toolkit }}" >> $GITHUB_OUTPUT
+        fi
 
     - name: Checkout code
       uses: actions/checkout@v3
@@ -26,12 +36,12 @@ jobs:
       uses: snok/install-poetry@v1
 
     - name: Test Toolkit
-      working-directory: toolkits/${{ inputs.toolkit }}
+      working-directory: toolkits/${{ steps.set-toolkit.outputs.toolkit }}
       run: |
         make test
 
     - name: Publish Toolkit
-      working-directory: toolkits/${{ inputs.toolkit }}
+      working-directory: toolkits/${{ steps.set-toolkit.outputs.toolkit }}
       run: |
         poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
         poetry publish --dry-run
