@@ -41,7 +41,7 @@ jobs:
         cache: 'pip'
 
     - name: Install Python Dependencies
-      run: pip install pytest
+      run: pip install pytest ./arcade
 
     - name: Test Toolkit
       working-directory: toolkits/${{ steps.set-toolkit.outputs.toolkit }}
