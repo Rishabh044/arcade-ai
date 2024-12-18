@@ -51,5 +51,6 @@ jobs:
     - name: Publish Toolkit
       working-directory: toolkits/${{ steps.set-toolkit.outputs.toolkit }}
       run: |
+        poetry build
         poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
         poetry publish --dry-run
