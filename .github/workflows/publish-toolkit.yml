@@ -20,7 +20,7 @@ jobs:
       run: |
         if [ "${{ github.event_name }}" = "push" ]; then
           # Extract toolkit name from changed files
-          TOOLKIT=x
+          TOOLKIT=this_is_for_testing
           echo "toolkit=$TOOLKIT" >> $GITHUB_OUTPUT
         else
           echo "toolkit=${{ inputs.toolkit }}" >> $GITHUB_OUTPUT
