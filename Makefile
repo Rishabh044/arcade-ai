@@ -108,8 +108,8 @@ full-dist: clean-dist ## Build all projects and copy wheels to ./dist
 	@echo "Setting version to $(VERSION)"
 	@make set-version
 
-	@echo "🛠️ Building all projects and copying wheels to ./dist"
-	@mkdir -p dist/toolkits
+	# @echo "🛠️ Building all projects and copying wheels to ./dist"
+	@mkdir -p dist
 
 	# Build the main arcade project
 	@echo "🛠️ Building arcade project wheel..."
@@ -123,15 +123,15 @@ full-dist: clean-dist ## Build all projects and copy wheels to ./dist
 
 	@echo "🛠️ Building all projects and copying wheels to ./dist"
 	# Build and copy wheels for each toolkit
-	@for toolkit_dir in toolkits/*; do \
-		if [ -d "$$toolkit_dir" ]; then \
-			toolkit_name=$$(basename "$$toolkit_dir"); \
-			echo "Building $$toolkit_name project..."; \
-            poetry build; \
-			cp dist/*.whl ../../dist/toolkits; \
-			cd -; \
-		fi; \
-	done
+	# @for toolkit_dir in toolkits/*; do \
+	# 	if [ -d "$$toolkit_dir" ]; then \
+	# 		toolkit_name=$$(basename "$$toolkit_dir"); \
+	# 		echo "Building $$toolkit_name project..."; \
+    #         poetry build; \
+	# 		cp dist/*.whl ../../dist/toolkits; \
+	# 		cd -; \
+	# 	fi; \
+	# done
 
 	@echo "✅ All toolkits built and wheels copied to ./dist"
 
