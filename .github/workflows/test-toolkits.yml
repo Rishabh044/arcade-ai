@@ -21,6 +21,7 @@ jobs:
           echo "tools=$(jq -cn --argjson environments "$TARGETS" '{target: $environments}')" >> $GITHUB_OUTPUT
 
   test-toolkits:
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.setup.outputs.tool_matrix) }}
