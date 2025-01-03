@@ -393,11 +393,10 @@ async def list_emails_by_header(
     dict, "A dictionary containing a list of email details matching the search criteria"
 ]:
     """
-    Searches for emails by selected filters (sender, recipient, subject, body, date range, label)
-    through the Gmail API.
+    Search for emails by header using the Gmail API.
 
-    You must provide at least one of these fields:
-    sender, recipient, subject, body, label, or date_range.
+    At least one of the following parameters MUST be provided: sender, recipient,
+    subject, date_range, label, or body.
     """
     service = _build_gmail_service(context)
     # Ensure at least one search parameter is provided
