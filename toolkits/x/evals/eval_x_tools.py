@@ -128,6 +128,31 @@ def x_eval_suite() -> EvalSuite:
     )
 
     suite.add_case(
+        name="Search recent tweets by username without attachments",
+        user_message="Show me the recent tweets from 'elonmusk'. Do not include media attachments.",
+        expected_tool_calls=[
+            ExpectedToolCall(
+                func=search_recent_tweets_by_username,
+                args={
+                    "username": "elonmusk",
+                    "max_results": 10,
+                    "return_attachments_metadata": False,
+                },
+            )
+        ],
+        critics=[
+            BinaryCritic(
+                critic_field="username",
+                weight=1.0,
+            ),
+            BinaryCritic(
+                critic_field="return_attachments_metadata",
+                weight=1.0,
+            ),
+        ],
+    )
+
+    suite.add_case(
         name="Search recent tweets by username with history",
         user_message="Get the next 42",
         additional_messages=search_recent_tweets_by_username_history,
@@ -174,6 +199,27 @@ def x_eval_suite() -> EvalSuite:
         ],
     )
 
+    suite.add_case(
+        name="Lookup user by username without attachments",
+        user_message="Can you get information about the user '@jack'. Do not include media attachments.",
+        expected_tool_calls=[
+            ExpectedToolCall(
+                func=lookup_single_user_by_username,
+                args={"username": "jack", "return_attachments_metadata": False},
+            )
+        ],
+        critics=[
+            BinaryCritic(
+                critic_field="username",
+                weight=1.0,
+            ),
+            BinaryCritic(
+                critic_field="return_attachments_metadata",
+                weight=1.0,
+            ),
+        ],
+    )
+
     # Add a case for searching recent tweets by keywords
     suite.add_case(
         name="Search recent tweets by keywords",
@@ -213,6 +259,27 @@ def x_eval_suite() -> EvalSuite:
         critics=[
             BinaryCritic(
                 critic_field="tweet_id",
+                weight=1.0,
+            ),
+        ],
+    )
+
+    suite.add_case(
+        name="Lookup tweet by ID without attachments",
+        user_message="Can you provide details about the tweet with ID '123456789'? Do not include media attachments.",
+        expected_tool_calls=[
+            ExpectedToolCall(
+                func=lookup_tweet_by_id,
+                args={"tweet_id": "123456789", "return_attachments_metadata": False},
+            )
+        ],
+        critics=[
+            BinaryCritic(
+                critic_field="tweet_id",
+                weight=1.0,
+            ),
+            BinaryCritic(
+                critic_field="return_attachments_metadata",
                 weight=1.0,
             ),
         ],
