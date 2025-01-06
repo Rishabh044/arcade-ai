@@ -122,11 +122,67 @@ async def test_search_recent_tweets_by_username_success(tool_context, mock_httpx
     mock_httpx_client.get.return_value = mock_response
 
     username = "testuser"
-    result = await search_recent_tweets_by_username(tool_context, username)
+    result = await search_recent_tweets_by_username(
+        tool_context, username, return_attachments_metadata=False
+    )
 
     assert "data" in result
+    assert "includes" in result
     assert len(result["data"]) == 1
     assert result["data"][0]["text"] == full_tweet_text
+    assert "media" not in result["includes"]
+    mock_httpx_client.get.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_search_recent_tweets_by_username_with_attachments_success(
+    tool_context, mock_httpx_client
+):
+    """Test successful search of recent tweets by username with attachments."""
+    # Mock response for a successful tweet search
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": [
+            {
+                "id": "1234567890",
+                "note_tweet": {
+                    "entities": {
+                        "mentions": [
+                            {"end": 19, "id": "00000000", "start": 4, "username": "aUsername"}
+                        ]
+                    },
+                    "text": full_tweet_text,
+                },
+                "text": truncated_tweet_text,
+                "entities": {
+                    "urls": [
+                        {"url": "https://t.co/short", "expanded_url": "https://example.com/long"}
+                    ]
+                },
+            }
+        ],
+        "includes": {
+            "users": [{"id": "0987654321", "name": "Test User", "username": "testuser"}],
+            "media": [
+                {"media_key": "1234567890", "type": "photo", "url": "https://example.com/photo.jpg"}
+            ],
+        },
+    }
+    mock_httpx_client.get.return_value = mock_response
+
+    username = "testuser"
+    result = await search_recent_tweets_by_username(
+        tool_context, username, return_attachments_metadata=True
+    )
+
+    assert "data" in result
+    assert "includes" in result
+    assert len(result["data"]) == 1
+    assert result["data"][0]["text"] == full_tweet_text
+    assert "media" in result["includes"]
+    assert len(result["includes"]["media"]) == 1
+    assert result["includes"]["media"][0]["url"] == "https://example.com/photo.jpg"
     mock_httpx_client.get.assert_called_once()
 
 
@@ -173,11 +229,61 @@ async def test_search_recent_tweets_by_keywords_success(tool_context, mock_httpx
     mock_httpx_client.get.return_value = mock_response
 
     keywords = ["test", "keyword"]
+    result = await search_recent_tweets_by_keywords(
+        context=tool_context,
+        keywords=keywords,
+        return_attachments_metadata=False,
+    )
+
+    assert "data" in result
+    assert len(result["data"]) == 1
+    assert result["data"][0]["text"] == full_tweet_text
+    assert "media" not in result.get("includes", {})
+    mock_httpx_client.get.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_search_recent_tweets_by_keywords_with_attachments_success(
+    tool_context, mock_httpx_client
+):
+    """Test successful search of recent tweets by keywords with attachments."""
+    # Mock response for a successful keyword search
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": [
+            {
+                "id": "1234567890",
+                "note_tweet": {
+                    "entities": {
+                        "mentions": [
+                            {"end": 19, "id": "00000000", "start": 4, "username": "aUsername"}
+                        ]
+                    },
+                    "text": full_tweet_text,
+                },
+                "text": truncated_tweet_text,
+                "entities": {},
+            }
+        ],
+        "includes": {
+            "users": [{"id": "0987654321", "name": "Test User", "username": "testuser"}],
+            "media": [
+                {"media_key": "1234567890", "type": "photo", "url": "https://example.com/photo.jpg"}
+            ],
+        },
+    }
+    mock_httpx_client.get.return_value = mock_response
+
+    keywords = ["test", "keyword"]
     result = await search_recent_tweets_by_keywords(tool_context, keywords=keywords)
 
     assert "data" in result
     assert len(result["data"]) == 1
     assert result["data"][0]["text"] == full_tweet_text
+    assert "media" in result.get("includes", {})
+    assert len(result["includes"]["media"]) == 1
+    assert result["includes"]["media"][0]["url"] == "https://example.com/photo.jpg"
     mock_httpx_client.get.assert_called_once()
 
 
@@ -212,10 +318,49 @@ async def test_lookup_tweet_by_id_success(tool_context, mock_httpx_client):
     mock_httpx_client.get.return_value = mock_response
 
     tweet_id = "1234567890"
-    result = await lookup_tweet_by_id(tool_context, tweet_id)
+    result = await lookup_tweet_by_id(tool_context, tweet_id, return_attachments_metadata=False)
 
     assert "data" in result
     assert result["data"]["text"] == full_tweet_text
+    assert "media" not in result.get("includes", {})
+    mock_httpx_client.get.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_lookup_tweet_by_id_with_attached_media(tool_context, mock_httpx_client):
+    """Test successful lookup of a tweet by ID with attached media."""
+    # Use MagicMock for the response
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": {
+            "id": "1234567890",
+            "note_tweet": {
+                "entities": {
+                    "mentions": [{"end": 19, "id": "00000000", "start": 4, "username": "aUsername"}]
+                },
+                "text": full_tweet_text,
+            },
+            "text": truncated_tweet_text,
+            "entities": {},
+        },
+        "includes": {
+            "media": [
+                {"media_key": "1234567890", "type": "photo", "url": "https://example.com/photo.jpg"}
+            ]
+        },
+    }
+    mock_httpx_client.get.return_value = mock_response
+
+    tweet_id = "1234567890"
+    result = await lookup_tweet_by_id(tool_context, tweet_id, return_attachments_metadata=True)
+
+    assert "data" in result
+    assert "includes" in result
+    assert result["data"]["text"] == full_tweet_text
+    assert "media" in result["includes"]
+    assert len(result["includes"]["media"]) == 1
+    assert result["includes"]["media"][0]["url"] == "https://example.com/photo.jpg"
     mock_httpx_client.get.assert_called_once()
 
 
