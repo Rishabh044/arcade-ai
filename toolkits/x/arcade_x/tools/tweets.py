@@ -65,9 +65,6 @@ async def delete_tweet_by_id(
 async def search_recent_tweets_by_username(
     context: ToolContext,
     username: Annotated[str, "The username of the X (Twitter) user to look up"],
-    return_attachments_metadata: Annotated[
-        bool, "Whether to return metadata about the media attached to the tweet"
-    ] = True,
     max_results: Annotated[
         int, "The maximum number of results to return. Must be in range [1, 100] inclusive"
     ] = 10,
@@ -89,10 +86,7 @@ async def search_recent_tweets_by_username(
         "user.fields": "id,name,username,entities",
         "tweet.fields": "entities,note_tweet",
     }
-    params = remove_none_values(params)
-
-    if return_attachments_metadata:
-        expand_attached_media(params)
+    params = expand_attached_media(remove_none_values(params))
 
     url = f"{TWEETS_URL}/search/recent"
 
@@ -125,9 +119,6 @@ async def search_recent_tweets_by_keywords(
     phrases: Annotated[
         list[str] | None, "List of phrases that must be present in the tweet"
     ] = None,
-    return_attachments_metadata: Annotated[
-        bool, "Whether to return metadata about the media attached to the tweet"
-    ] = True,
     max_results: Annotated[
         int, "The maximum number of results to return. Must be in range [1, 100] inclusive"
     ] = 10,
@@ -165,10 +156,7 @@ async def search_recent_tweets_by_keywords(
         "user.fields": "id,name,username,entities",
         "tweet.fields": "entities,note_tweet",
     }
-    params = remove_none_values(params)
-
-    if return_attachments_metadata:
-        expand_attached_media(params)
+    params = expand_attached_media(remove_none_values(params))
 
     url = f"{TWEETS_URL}/search/recent"
 
@@ -196,9 +184,6 @@ async def search_recent_tweets_by_keywords(
 async def lookup_tweet_by_id(
     context: ToolContext,
     tweet_id: Annotated[str, "The ID of the tweet you want to look up"],
-    return_attachments_metadata: Annotated[
-        bool, "Whether to return metadata about the media attached to the tweet"
-    ] = True,
 ) -> Annotated[dict[str, Any], "Dictionary containing the tweet data"]:
     """Look up a tweet on X (Twitter) by tweet ID."""
 
@@ -208,9 +193,7 @@ async def lookup_tweet_by_id(
         "user.fields": "id,name,username,entities",
         "tweet.fields": "entities,note_tweet",
     }
-
-    if return_attachments_metadata:
-        expand_attached_media(params)
+    params = expand_attached_media(params)
 
     url = f"{TWEETS_URL}/{tweet_id}"
 

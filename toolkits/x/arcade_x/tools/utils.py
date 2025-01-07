@@ -153,7 +153,6 @@ def expand_attached_media(params: dict) -> dict:
         "duration_ms",
         "height",
         "width",
-        "url",
         "preview_image_url",
         "alt_text",
         "public_metrics",
