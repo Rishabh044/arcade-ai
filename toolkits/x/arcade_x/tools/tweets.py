@@ -5,6 +5,7 @@ from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import X
 from arcade.sdk.errors import RetryableToolError
 
+from arcade_x.tools.constants import TWEETS_URL
 from arcade_x.tools.utils import (
     expand_long_tweet,
     expand_urls_in_tweets,
@@ -13,9 +14,6 @@ from arcade_x.tools.utils import (
     parse_search_recent_tweets_response,
     remove_none_values,
 )
-
-TWEETS_URL = "https://api.x.com/2/tweets"
-
 
 # Manage Tweets Tools. See developer docs for additional available parameters:
 # https://developer.x.com/en/docs/x-api/tweets/manage-tweets/api-reference
