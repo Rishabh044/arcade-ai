@@ -24,7 +24,7 @@ async def get_track_from_id(
         response.raise_for_status()
         return dict(response.json())
     except httpx.HTTPStatusError as e:
-        raise ToolExecutionError(f"Failed to get Spotify track with ID {track_id}: {e}")
+        raise ToolExecutionError(f"Failed to get Spotify track with ID {track_id}: {e}") from e
 
 
 @tool(requires_auth=Spotify())
