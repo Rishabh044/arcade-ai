@@ -1,7 +1,9 @@
 from typing import Annotated, Optional
 
+import httpx
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Spotify
+from arcade.sdk.errors import ToolExecutionError
 
 from arcade_spotify.tools.utils import (
     get_url,
@@ -17,9 +19,12 @@ async def get_track_from_id(
     """Get information about a track"""
     url = get_url("tracks_get_track", track_id=track_id)
 
-    response = await send_spotify_request(context, "GET", url)
-    response.raise_for_status()
-    return dict(response.json())
+    try:
+        response = await send_spotify_request(context, "GET", url)
+        response.raise_for_status()
+        return dict(response.json())
+    except httpx.HTTPStatusError as e:
+        raise ToolExecutionError(f"Failed to get Spotify track with ID {track_id}: {e}")
 
 
 @tool(requires_auth=Spotify())
