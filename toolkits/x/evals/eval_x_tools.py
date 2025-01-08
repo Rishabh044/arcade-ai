@@ -80,9 +80,7 @@ def x_eval_suite() -> EvalSuite:
         expected_tool_calls=[
             ExpectedToolCall(
                 func=post_tweet,
-                args={
-                    "tweet_text": "Hello World! Exciting stuff is happening over at Arcade AI!",
-                },
+                args={"tweet_text": "Hello World! Exciting stuff is happening over at Arcade AI!"},
             )
         ],
         critics=[
@@ -139,7 +137,7 @@ def x_eval_suite() -> EvalSuite:
                     "max_results": 42,
                     "next_token": "b26v89c19zqg8o3frr3tekall7a7ooom3sctaw30rz62l",
                 },
-            )
+            ),
         ],
         critics=[
             BinaryCritic(
@@ -164,7 +162,7 @@ def x_eval_suite() -> EvalSuite:
             ExpectedToolCall(
                 func=lookup_single_user_by_username,
                 args={"username": "jack"},
-            )
+            ),
         ],
         critics=[
             BinaryCritic(
@@ -186,7 +184,7 @@ def x_eval_suite() -> EvalSuite:
                     "phrases": ["Arcade AI"],
                     "max_results": 10,
                 },
-            )
+            ),
         ],
         critics=[
             BinaryCritic(
@@ -208,7 +206,7 @@ def x_eval_suite() -> EvalSuite:
             ExpectedToolCall(
                 func=lookup_tweet_by_id,
                 args={"tweet_id": "123456789"},
-            )
+            ),
         ],
         critics=[
             BinaryCritic(
