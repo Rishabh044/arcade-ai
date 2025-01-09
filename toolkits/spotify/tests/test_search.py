@@ -8,25 +8,12 @@ from arcade_spotify.tools.models import SearchType
 from arcade_spotify.tools.search import search
 from arcade_spotify.tools.utils import get_url
 
-SAMPLE_TRACK = {
-    "album": {"id": "1234567890", "name": "Test Album", "uri": "spotify:album:1234567890"},
-    "artists": [{"name": "Test Artist", "type": "artist", "uri": "spotify:artist:1234567890"}],
-    "available_markets": ["us"],
-    "duration_ms": 123456,
-    "id": "1234567890",
-    "is_playable": True,
-    "name": "Test Track",
-    "popularity": 100,
-    "type": "track",
-    "uri": "spotify:track:1234567890",
-}
-
 
 @pytest.mark.asyncio
-async def test_search_success(tool_context, mock_httpx_client):
+async def test_search_success(tool_context, mock_httpx_client, sample_track):
     sample_tracks = []
     for i in range(4):
-        sample_track = SAMPLE_TRACK.copy()
+        sample_track = sample_track.copy()
         sample_track["id"] = f"{i}"
         sample_tracks.append(sample_track)
 
