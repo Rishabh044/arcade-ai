@@ -103,11 +103,11 @@ async def skip_to_next_track(
     response = await send_spotify_request(context, "POST", url)
 
     if response.status_code == 404:
-        return "No track to skip"
+        return RESPONSE_MSGS["no_track_to_skip"]
 
     response.raise_for_status()
 
-    return "Playback skipped to next track"
+    return RESPONSE_MSGS["playback_skipped_to_next_track"]
 
 
 # NOTE: This tool only works for Spotify Premium users
@@ -120,17 +120,17 @@ async def pause_playback(
 
     # There is no current state, therefore nothing to pause
     if playback_state.get("device_id") is None:
-        return "No track to pause"
+        return RESPONSE_MSGS["no_track_to_pause"]
     # Track is already paused
     if playback_state.get("is_playing") is False:
-        return "Track is already paused"
+        return RESPONSE_MSGS["track_is_already_paused"]
 
     url = get_url("player_pause_playback")
 
     response = await send_spotify_request(context, "PUT", url)
     response.raise_for_status()
 
-    return "Playback paused"
+    return RESPONSE_MSGS["playback_paused"]
 
 
 # NOTE: This tool only works for Spotify Premium users
