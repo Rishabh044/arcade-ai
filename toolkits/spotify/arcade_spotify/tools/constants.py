@@ -24,8 +24,10 @@ RESPONSE_MSGS = {
     "playback_skipped_to_next_track": "Playback skipped to next track",
     "playback_paused": "Playback paused",
     "playback_resumed": "Playback resumed",
+    "no_track_to_resume": "No track to resume",
     "no_track_to_pause": "No track to pause",
     "no_track_to_play": "No track to play",
     "no_available_devices": "No available devices",
     "track_is_already_paused": "Track is already paused",
+    "track_is_already_playing": "Track is already playing",
 }

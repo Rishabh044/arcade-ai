@@ -147,17 +147,17 @@ async def resume_playback(
 
     # There is no current state, therefore nothing to resume
     if playback_state.get("device_id") is None:
-        return "No track to resume"
+        return RESPONSE_MSGS["no_track_to_resume"]
     # Track is already playing
     if playback_state.get("is_playing") is True:
-        return "Track is already playing"
+        return RESPONSE_MSGS["track_is_already_playing"]
 
     url = get_url("player_modify_playback")
 
     response = await send_spotify_request(context, "PUT", url)
     response.raise_for_status()
 
-    return "Playback resumed"
+    return RESPONSE_MSGS["playback_resumed"]
 
 
 # NOTE: This tool only works for Spotify Premium users
