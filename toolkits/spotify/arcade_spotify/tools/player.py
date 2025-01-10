@@ -1,9 +1,11 @@
 from typing import Annotated, Optional
 
+import httpx
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Spotify
-from arcade.sdk.errors import RetryableToolError
+from arcade.sdk.errors import RetryableToolError, ToolExecutionError
 
+from arcade_spotify.tools.constants import RESPONSE_MSGS
 from arcade_spotify.tools.models import Device, SearchType
 from arcade_spotify.tools.search import search
 from arcade_spotify.tools.utils import (
@@ -50,7 +52,7 @@ async def adjust_playback_position(
     if relative_position_ms is not None:
         playback_state = await get_playback_state(context)
         if playback_state.get("device_id") is None:
-            return "No track to adjust position"
+            return RESPONSE_MSGS["no_track_to_adjust_position"]
 
         absolute_position_ms = playback_state["progress_ms"] + relative_position_ms
 
@@ -59,14 +61,17 @@ async def adjust_playback_position(
     url = get_url("player_seek_to_position")
     params = {"position_ms": absolute_position_ms}
 
-    response = await send_spotify_request(context, "PUT", url, params=params)
+    try:
+        response = await send_spotify_request(context, "PUT", url, params=params)
+    except httpx.HTTPStatusError as e:
+        raise ToolExecutionError(f"Failed to adjust playback position: {e}") from e
 
     if response.status_code == 404:
-        return "No track to adjust position"
+        return RESPONSE_MSGS["no_track_to_adjust_position"]
 
     response.raise_for_status()
 
-    return "Playback position adjusted"
+    return RESPONSE_MSGS["playback_position_adjusted"]
 
 
 # NOTE: This tool only works for Spotify Premium users

@@ -14,3 +14,8 @@ ENDPOINTS = {
     "tracks_get_audio_features": "/audio-features",
     "search": "/search",
 }
+
+RESPONSE_MSGS = {
+    "no_track_to_adjust_position": "No track to adjust position",
+    "playback_position_adjusted": "Playback position adjusted",
+}
