@@ -85,11 +85,11 @@ async def skip_to_previous_track(
     response = await send_spotify_request(context, "POST", url)
 
     if response.status_code == 404:
-        return "No track to go back to"
+        return RESPONSE_MSGS["no_track_to_go_back_to"]
 
     response.raise_for_status()
 
-    return "Playback skipped to previous track"
+    return RESPONSE_MSGS["playback_skipped_to_previous_track"]
 
 
 # NOTE: This tool only works for Spotify Premium users

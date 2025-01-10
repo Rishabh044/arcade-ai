@@ -7,6 +7,8 @@ from arcade.sdk.errors import RetryableToolError, ToolExecutionError
 from arcade_spotify.tools.constants import RESPONSE_MSGS
 from arcade_spotify.tools.player import (
     adjust_playback_position,
+    skip_to_next_track,
+    skip_to_previous_track,
 )
 from arcade_spotify.tools.utils import get_url
 
@@ -140,12 +142,72 @@ async def test_adjust_playback_position_too_many_requests_error(
 
 @pytest.mark.asyncio
 async def test_skip_to_previous_track_success(tool_context, mock_httpx_client):
-    pass
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_httpx_client.request.return_value = mock_response
+
+    response = await skip_to_previous_track(context=tool_context)
+
+    assert response == RESPONSE_MSGS["playback_skipped_to_previous_track"]
+
+
+@pytest.mark.asyncio
+async def test_skip_to_previous_track_not_found_error(tool_context, mock_httpx_client):
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_httpx_client.request.return_value = mock_response
+
+    response = await skip_to_previous_track(context=tool_context)
+
+    assert response == RESPONSE_MSGS["no_track_to_go_back_to"]
+
+
+@pytest.mark.asyncio
+async def test_skip_to_previous_track_too_many_requests_error(tool_context, mock_httpx_client):
+    mock_response = MagicMock()
+    mock_response.status_code = 429
+    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
+    )
+    mock_httpx_client.request.return_value = mock_response
+
+    with pytest.raises(ToolExecutionError):
+        await skip_to_previous_track(context=tool_context)
 
 
 @pytest.mark.asyncio
 async def test_skip_to_next_track_success(tool_context, mock_httpx_client):
-    pass
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_httpx_client.request.return_value = mock_response
+
+    response = await skip_to_next_track(context=tool_context)
+
+    assert response == RESPONSE_MSGS["playback_skipped_to_next_track"]
+
+
+@pytest.mark.asyncio
+async def test_skip_to_next_track_not_found_error(tool_context, mock_httpx_client):
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_httpx_client.request.return_value = mock_response
+
+    response = await skip_to_next_track(context=tool_context)
+
+    assert response == RESPONSE_MSGS["no_track_to_skip"]
+
+
+@pytest.mark.asyncio
+async def test_skip_to_next_track_too_many_requests_error(tool_context, mock_httpx_client):
+    mock_response = MagicMock()
+    mock_response.status_code = 429
+    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
+    )
+    mock_httpx_client.request.return_value = mock_response
+
+    with pytest.raises(ToolExecutionError):
+        await skip_to_next_track(context=tool_context)
 
 
 @pytest.mark.asyncio

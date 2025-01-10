@@ -18,4 +18,12 @@ ENDPOINTS = {
 RESPONSE_MSGS = {
     "no_track_to_adjust_position": "No track to adjust position",
     "playback_position_adjusted": "Playback position adjusted",
+    "no_track_to_go_back_to": "No track to go back to",
+    "playback_skipped_to_previous_track": "Playback skipped to previous track",
+    "no_track_to_skip": "No track to skip",
+    "playback_skipped_to_next_track": "Playback skipped to next track",
+    "playback_paused": "Playback paused",
+    "playback_resumed": "Playback resumed",
+    "no_track_to_play": "No track to play",
+    "no_available_devices": "No available devices",
 }
