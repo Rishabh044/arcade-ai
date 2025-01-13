@@ -7,6 +7,7 @@ from arcade.sdk.errors import RetryableToolError, ToolExecutionError
 from arcade_spotify.tools.constants import RESPONSE_MSGS
 from arcade_spotify.tools.player import (
     adjust_playback_position,
+    get_playback_state,
     pause_playback,
     resume_playback,
     skip_to_next_track,
@@ -412,7 +413,40 @@ async def test_start_tracks_playback_by_id_too_many_requests_error(
 
 @pytest.mark.asyncio
 async def test_get_playback_state_success(tool_context, mock_httpx_client):
-    pass
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "device": {
+            "id": "1234567890",
+            "is_active": True,
+            "name": "Test Device",
+            "type": "Computer",
+        },
+        "currently_playing_type": "track",
+        "is_playing": True,
+        "progress_ms": 10000,
+        "message": "Playback started",
+    }
+    mock_httpx_client.request.return_value = mock_response
+
+    response = await get_playback_state(context=tool_context)
+
+    assert response["device_id"] == "1234567890"
+    assert response["device_name"] == "Test Device"
+    assert response["is_playing"] is True
+    assert response["progress_ms"] == 10000
+    assert response["message"] == "Playback started"
+
+
+@pytest.mark.asyncio
+async def test_get_playback_state_playback_not_active(tool_context, mock_httpx_client):
+    mock_response = MagicMock()
+    mock_response.status_code = 204
+    mock_httpx_client.request.return_value = mock_response
+
+    response = await get_playback_state(context=tool_context)
+
+    assert response["is_playing"] is False
 
 
 @pytest.mark.asyncio
