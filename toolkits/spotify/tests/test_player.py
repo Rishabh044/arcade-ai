@@ -275,7 +275,7 @@ async def test_pause_playback_too_many_requests_error(
 @pytest.mark.asyncio
 @patch("arcade_spotify.tools.player.get_playback_state")
 async def test_resume_playback_success(mock_get_playback_state, tool_context, mock_httpx_client):
-    mock_get_playback_state.return_value = {"device_id": "1234567890", "is_playing": True}
+    mock_get_playback_state.return_value = {"device_id": "1234567890", "is_playing": False}
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_httpx_client.request.return_value = mock_response
