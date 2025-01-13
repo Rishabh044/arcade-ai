@@ -30,4 +30,6 @@ RESPONSE_MSGS = {
     "no_available_devices": "No available devices",
     "track_is_already_paused": "Track is already paused",
     "track_is_already_playing": "Track is already playing",
+    "playback_started": "Playback started",
+    "no_active_device": "Cannot start playback because no active device is available",
 }

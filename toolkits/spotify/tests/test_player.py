@@ -11,6 +11,7 @@ from arcade_spotify.tools.player import (
     resume_playback,
     skip_to_next_track,
     skip_to_previous_track,
+    start_tracks_playback_by_id,
 )
 from arcade_spotify.tools.utils import get_url
 
@@ -333,8 +334,80 @@ async def test_resume_playback_too_many_requests_error(
 
 
 @pytest.mark.asyncio
-async def test_start_tracks_playback_by_id_success(tool_context, mock_httpx_client):
-    pass
+@patch("arcade_spotify.tools.player.get_available_devices")
+async def test_start_tracks_playback_by_id_success(
+    mock_get_available_devices, tool_context, mock_httpx_client
+):
+    mock_get_available_devices.return_value = {
+        "devices": [
+            {
+                "id": "1234567890",
+                "is_active": True,
+                "name": "Test Device",
+                "type": "Computer",
+                "is_private_session": False,
+                "is_restricted": False,
+                "supports_volume": True,
+                "volume_percent": 100,
+            }
+        ]
+    }
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_httpx_client.request.return_value = mock_response
+
+    response = await start_tracks_playback_by_id(
+        context=tool_context, track_ids=["1234567890"], position_ms=10000
+    )
+    assert response == RESPONSE_MSGS["playback_started"]
+
+
+@pytest.mark.asyncio
+@patch("arcade_spotify.tools.player.get_available_devices")
+async def test_start_tracks_playback_by_id_no_active_device(
+    mock_get_available_devices, tool_context, mock_httpx_client
+):
+    mock_get_available_devices.return_value = {"devices": []}
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_httpx_client.request.return_value = mock_response
+
+    response = await start_tracks_playback_by_id(
+        context=tool_context, track_ids=["1234567890"], position_ms=10000
+    )
+    assert response == RESPONSE_MSGS["no_active_device"]
+
+
+@pytest.mark.asyncio
+@patch("arcade_spotify.tools.player.get_available_devices")
+async def test_start_tracks_playback_by_id_too_many_requests_error(
+    mock_get_available_devices, tool_context, mock_httpx_client
+):
+    mock_get_available_devices.return_value = {
+        "devices": [
+            {
+                "id": "1234567890",
+                "is_active": True,
+                "name": "Test Device",
+                "type": "Computer",
+                "is_private_session": False,
+                "is_restricted": False,
+                "supports_volume": True,
+                "volume_percent": 100,
+            }
+        ]
+    }
+    mock_response = MagicMock()
+    mock_response.status_code = 429
+    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
+    )
+    mock_httpx_client.request.return_value = mock_response
+
+    with pytest.raises(ToolExecutionError):
+        await start_tracks_playback_by_id(
+            context=tool_context, track_ids=["1234567890"], position_ms=10000
+        )
 
 
 @pytest.mark.asyncio

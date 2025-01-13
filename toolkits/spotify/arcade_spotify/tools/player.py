@@ -200,11 +200,11 @@ async def start_tracks_playback_by_id(
     response = await send_spotify_request(context, "PUT", url, params=params, json_data=body)
 
     if response.status_code == 404:
-        return "Cannot start playback because no active device is available"
+        return RESPONSE_MSGS["no_active_device"]
 
     response.raise_for_status()
 
-    return "Playback started"
+    return RESPONSE_MSGS["playback_started"]
 
 
 @tool(requires_auth=Spotify(scopes=["user-read-playback-state"]))
