@@ -16,7 +16,8 @@ ENDPOINTS = {
 }
 
 RESPONSE_MSGS = {
-    "artist_not_found": "Artist {artist_name} not found",
+    "artist_not_found": "Artist '{artist_name}' not found",
+    "track_not_found": "Track '{track_name}' not found",
     "no_track_to_adjust_position": "No track to adjust position",
     "playback_position_adjusted": "Playback position adjusted",
     "no_track_to_go_back_to": "No track to go back to",
