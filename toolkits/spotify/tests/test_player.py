@@ -8,6 +8,7 @@ from arcade_spotify.tools.constants import RESPONSE_MSGS
 from arcade_spotify.tools.models import SearchType
 from arcade_spotify.tools.player import (
     adjust_playback_position,
+    get_available_devices,
     get_currently_playing,
     get_playback_state,
     pause_playback,
@@ -627,4 +628,25 @@ async def test_play_track_by_name_no_tracks_found(
 
 @pytest.mark.asyncio
 async def test_get_available_devices_success(tool_context, mock_httpx_client):
-    pass
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "devices": [{"id": "1234567890", "name": "Test Device", "type": "Computer"}]
+    }
+    mock_httpx_client.request.return_value = mock_response
+
+    response = await get_available_devices(context=tool_context)
+    assert response == dict(mock_response.json())
+
+
+@pytest.mark.asyncio
+async def test_get_available_devices_too_many_requests(tool_context, mock_httpx_client):
+    mock_response = MagicMock()
+    mock_response.status_code = 429
+    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
+    )
+    mock_httpx_client.request.return_value = mock_response
+
+    with pytest.raises(ToolExecutionError):
+        await get_available_devices(context=tool_context)
