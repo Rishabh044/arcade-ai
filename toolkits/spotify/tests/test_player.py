@@ -5,11 +5,13 @@ import pytest
 from arcade.sdk.errors import RetryableToolError, ToolExecutionError
 
 from arcade_spotify.tools.constants import RESPONSE_MSGS
+from arcade_spotify.tools.models import SearchType
 from arcade_spotify.tools.player import (
     adjust_playback_position,
     get_currently_playing,
     get_playback_state,
     pause_playback,
+    play_artist_by_name,
     resume_playback,
     skip_to_next_track,
     skip_to_previous_track,
@@ -515,8 +517,70 @@ async def test_get_currently_playing_too_many_requests_error(tool_context, mock_
 
 
 @pytest.mark.asyncio
-async def test_play_artist_by_name_success(tool_context, mock_httpx_client):
-    pass
+@patch("arcade_spotify.tools.player.start_tracks_playback_by_id")
+@patch("arcade_spotify.tools.player.search")
+async def test_play_artist_by_name_success(
+    mock_search, mock_start_tracks_playback_by_id, tool_context, mock_httpx_client
+):
+    track_id = "1234567890"
+    mock_search.return_value = {"tracks": {"items": [{"id": track_id, "name": "Test Track"}]}}
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_httpx_client.request.return_value = mock_response
+
+    mock_start_tracks_playback_by_id.return_value = RESPONSE_MSGS["playback_started"]
+
+    response = await play_artist_by_name(context=tool_context, name="Test Artist")
+
+    assert response == RESPONSE_MSGS["playback_started"]
+
+    mock_search.assert_called_once_with(tool_context, "artist:Test Artist", [SearchType.TRACK], 5)
+    mock_start_tracks_playback_by_id.assert_called_once_with(tool_context, [track_id])
+
+
+@pytest.mark.asyncio
+@patch("arcade_spotify.tools.player.start_tracks_playback_by_id")
+@patch("arcade_spotify.tools.player.search")
+async def test_play_artist_by_name_no_tracks_found(
+    mock_search, mock_start_tracks_playback_by_id, tool_context, mock_httpx_client
+):
+    mock_search.return_value = {"tracks": {"items": []}}
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_httpx_client.request.return_value = mock_response
+
+    mock_start_tracks_playback_by_id.return_value = RESPONSE_MSGS["playback_started"]
+
+    artist_name = "Test Artist"
+
+    with pytest.raises(RetryableToolError) as e:
+        await play_artist_by_name(context=tool_context, name=artist_name)
+        assert e.value.message == RESPONSE_MSGS["artist_not_found"].format(artist_name=artist_name)
+
+    mock_search.assert_called_once_with(tool_context, "artist:Test Artist", [SearchType.TRACK], 5)
+    mock_start_tracks_playback_by_id.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch("arcade_spotify.tools.player.start_tracks_playback_by_id")
+@patch("arcade_spotify.tools.player.search")
+async def test_play_artist_by_name_too_many_requests_error(
+    mock_search, mock_start_tracks_playback_by_id, tool_context, mock_httpx_client
+):
+    track_id = "1234567890"
+    mock_search.return_value = {"tracks": {"items": [{"id": track_id, "name": "Test Track"}]}}
+    mock_response = MagicMock()
+    mock_response.status_code = 429
+    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
+    )
+    mock_httpx_client.request.return_value = mock_response
+
+    with pytest.raises(ToolExecutionError):
+        await play_artist_by_name(context=tool_context, name="Test Artist")
+
+    mock_search.assert_called_once_with(tool_context, "artist:Test Artist", [SearchType.TRACK], 5)
+    mock_start_tracks_playback_by_id.assert_called_once_with(tool_context, [track_id])
 
 
 @pytest.mark.asyncio
