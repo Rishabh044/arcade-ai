@@ -5,7 +5,9 @@ from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import X
 from arcade.sdk.errors import RetryableToolError
 
+from arcade_x.tools.constants import TWEETS_URL
 from arcade_x.tools.utils import (
+    expand_attached_media,
     expand_long_tweet,
     expand_urls_in_tweets,
     get_headers_with_token,
@@ -13,9 +15,6 @@ from arcade_x.tools.utils import (
     parse_search_recent_tweets_response,
     remove_none_values,
 )
-
-TWEETS_URL = "https://api.x.com/2/tweets"
-
 
 # Manage Tweets Tools. See developer docs for additional available parameters:
 # https://developer.x.com/en/docs/x-api/tweets/manage-tweets/api-reference
@@ -81,13 +80,13 @@ async def search_recent_tweets_by_username(
             max(max_results, 10), 100
         ),  # X API does not allow 'max_results' less than 10 or greater than 100
         "next_token": next_token,
+        "expansions": "author_id",
+        "user.fields": "id,name,username,entities",
+        "tweet.fields": "entities,note_tweet",
     }
-    params = remove_none_values(params)
+    params = expand_attached_media(remove_none_values(params))
 
-    url = (
-        "https://api.x.com/2/tweets/search/recent?"
-        "expansions=author_id&user.fields=id,name,username,entities&tweet.fields=entities,note_tweet"
-    )
+    url = f"{TWEETS_URL}/search/recent"
 
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers, params=params, timeout=10)
@@ -151,13 +150,13 @@ async def search_recent_tweets_by_keywords(
             max(max_results, 10), 100
         ),  # X API does not allow 'max_results' less than 10 or greater than 100
         "next_token": next_token,
+        "expansions": "author_id",
+        "user.fields": "id,name,username,entities",
+        "tweet.fields": "entities,note_tweet",
     }
-    params = remove_none_values(params)
+    params = expand_attached_media(remove_none_values(params))
 
-    url = (
-        "https://api.x.com/2/tweets/search/recent?"
-        "expansions=author_id&user.fields=id,name,username,entities&tweet.fields=entities,note_tweet"
-    )
+    url = f"{TWEETS_URL}/search/recent"
 
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers, params=params, timeout=10)
@@ -192,6 +191,8 @@ async def lookup_tweet_by_id(
         "user.fields": "id,name,username,entities",
         "tweet.fields": "entities,note_tweet",
     }
+    params = expand_attached_media(params)
+
     url = f"{TWEETS_URL}/{tweet_id}"
 
     async with httpx.AsyncClient() as client:

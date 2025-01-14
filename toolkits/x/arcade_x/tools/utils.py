@@ -137,3 +137,24 @@ def remove_none_values(params: dict) -> dict:
         A new dictionary with None values removed
     """
     return {k: v for k, v in params.items() if v is not None}
+
+
+def expand_attached_media(params: dict) -> dict:
+    """
+    Include attached media metadata in the request parameters.
+    """
+    params["expansions"] += ",attachments.media_keys"
+    params["tweet.fields"] += ",attachments"
+    params["media.fields"] = ",".join([
+        # media_key, url and type are returned by default, added here for clarity
+        "media_key",
+        "url",
+        "type",
+        "duration_ms",
+        "height",
+        "width",
+        "preview_image_url",
+        "alt_text",
+        "public_metrics",
+    ])
+    return params

@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from bs4 import BeautifulSoup
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import Resource, build
+from googleapiclient.errors import HttpError
 
 from arcade_google.tools.models import Day, TimeSlot
 
@@ -70,6 +71,18 @@ class DateRange(Enum):
             )
 
         return result + comparison_date.strftime("%Y/%m/%d")
+
+
+def process_email_messages(service: Any, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    emails = []
+    for msg in messages:
+        try:
+            email_data = service.users().messages().get(userId="me", id=msg["id"]).execute()
+            email_details = parse_email(email_data)
+            emails += [email_details] if email_details else []
+        except HttpError as e:
+            print(f"Error reading email {msg['id']}: {e}")
+    return emails
 
 
 def parse_email(email_data: dict[str, Any]) -> dict[str, Any]:

@@ -117,7 +117,12 @@ async def test_search_recent_tweets_by_username_success(tool_context, mock_httpx
                 },
             }
         ],
-        "includes": {"users": [{"id": "0987654321", "name": "Test User", "username": "testuser"}]},
+        "includes": {
+            "users": [{"id": "0987654321", "name": "Test User", "username": "testuser"}],
+            "media": [
+                {"media_key": "1234567890", "type": "photo", "url": "https://example.com/photo.jpg"}
+            ],
+        },
     }
     mock_httpx_client.get.return_value = mock_response
 
@@ -127,6 +132,12 @@ async def test_search_recent_tweets_by_username_success(tool_context, mock_httpx
     assert "data" in result
     assert len(result["data"]) == 1
     assert result["data"][0]["text"] == full_tweet_text
+
+    assert "includes" in result
+    assert "media" in result["includes"]
+    assert len(result["includes"]["media"]) == 1
+    assert result["includes"]["media"][0]["url"] == "https://example.com/photo.jpg"
+
     mock_httpx_client.get.assert_called_once()
 
 
@@ -168,16 +179,27 @@ async def test_search_recent_tweets_by_keywords_success(tool_context, mock_httpx
                 "entities": {},
             }
         ],
-        "includes": {"users": [{"id": "0987654321", "name": "Test User", "username": "testuser"}]},
+        "includes": {
+            "users": [{"id": "0987654321", "name": "Test User", "username": "testuser"}],
+            "media": [
+                {"media_key": "1234567890", "type": "photo", "url": "https://example.com/photo.jpg"}
+            ],
+        },
     }
     mock_httpx_client.get.return_value = mock_response
 
     keywords = ["test", "keyword"]
-    result = await search_recent_tweets_by_keywords(tool_context, keywords=keywords)
+    result = await search_recent_tweets_by_keywords(context=tool_context, keywords=keywords)
 
     assert "data" in result
     assert len(result["data"]) == 1
     assert result["data"][0]["text"] == full_tweet_text
+
+    assert "includes" in result
+    assert "media" in result["includes"]
+    assert len(result["includes"]["media"]) == 1
+    assert result["includes"]["media"][0]["url"] == "https://example.com/photo.jpg"
+
     mock_httpx_client.get.assert_called_once()
 
 
@@ -207,7 +229,12 @@ async def test_lookup_tweet_by_id_success(tool_context, mock_httpx_client):
             },
             "text": truncated_tweet_text,
             "entities": {},
-        }
+        },
+        "includes": {
+            "media": [
+                {"media_key": "1234567890", "type": "photo", "url": "https://example.com/photo.jpg"}
+            ]
+        },
     }
     mock_httpx_client.get.return_value = mock_response
 
@@ -216,6 +243,12 @@ async def test_lookup_tweet_by_id_success(tool_context, mock_httpx_client):
 
     assert "data" in result
     assert result["data"]["text"] == full_tweet_text
+
+    assert "includes" in result
+    assert "media" in result["includes"]
+    assert len(result["includes"]["media"]) == 1
+    assert result["includes"]["media"][0]["url"] == "https://example.com/photo.jpg"
+
     mock_httpx_client.get.assert_called_once()
 
 
