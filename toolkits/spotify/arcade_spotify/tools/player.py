@@ -279,7 +279,7 @@ async def play_track_by_name(
     search_results = await search(context, q, [SearchType.TRACK], 1)
 
     if not search_results["tracks"]["items"]:
-        message = f"No track exists with name '{track_name}'"
+        message = RESPONSE_MSGS["track_not_found"].format(track_name=track_name)
         if artist_name:
             message += f" by '{artist_name}'"
         raise RetryableToolError(
