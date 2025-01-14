@@ -1,9 +1,7 @@
 from typing import Annotated
 
-import httpx
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Spotify
-from arcade.sdk.errors import ToolExecutionError
 
 from arcade_spotify.tools.models import SearchType
 from arcade_spotify.tools.utils import (
@@ -40,11 +38,8 @@ async def search(
 
     url = get_url("search", q=q)
 
-    try:
-        response = await send_spotify_request(
-            context, "GET", url, params={"q": q, "type": ",".join(types), "limit": limit}
-        )
-        response.raise_for_status()
-        return dict(response.json())
-    except httpx.HTTPStatusError as e:
-        raise ToolExecutionError(f"Failed to search Spotify: {e}") from e
+    response = await send_spotify_request(
+        context, "GET", url, params={"q": q, "type": ",".join(types), "limit": limit}
+    )
+    response.raise_for_status()
+    return dict(response.json())
