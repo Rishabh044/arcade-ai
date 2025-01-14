@@ -99,26 +99,27 @@ async def test_adjust_playback_position_relative_success(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_function, tool_kwargs",
+    [
+        # Both arguments provided
+        (
+            adjust_playback_position,
+            {"absolute_position_ms": 10000, "relative_position_ms": 10000},
+        ),
+        # No arguments provided
+        (
+            adjust_playback_position,
+            {},
+        ),
+    ],
+)
 @patch("arcade_spotify.tools.player.get_playback_state")
-async def test_adjust_playback_position_both_arguments_error(
-    mock_get_playback_state, tool_context, mock_httpx_client
+async def test_adjust_playback_position_wrong_arguments_error(
+    mock_get_playback_state, tool_context, mock_httpx_client, tool_function, tool_kwargs
 ):
     with pytest.raises(RetryableToolError):
-        await adjust_playback_position(
-            context=tool_context, absolute_position_ms=10000, relative_position_ms=10000
-        )
-
-    mock_get_playback_state.assert_not_called()
-    mock_httpx_client.assert_not_called()
-
-
-@pytest.mark.asyncio
-@patch("arcade_spotify.tools.player.get_playback_state")
-async def test_adjust_playback_position_no_arguments_error(
-    mock_get_playback_state, tool_context, mock_httpx_client
-):
-    with pytest.raises(RetryableToolError):
-        await adjust_playback_position(context=tool_context)
+        await tool_function(context=tool_context, **tool_kwargs)
 
     mock_get_playback_state.assert_not_called()
     mock_httpx_client.assert_not_called()
