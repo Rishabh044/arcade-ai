@@ -23,6 +23,35 @@ from arcade_spotify.tools.utils import get_url
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_function, tool_kwargs",
+    [
+        (adjust_playback_position, {"absolute_position_ms": 10000}),
+        (get_available_devices, {}),
+        (get_currently_playing, {}),
+        (get_playback_state, {}),
+        (pause_playback, {}),
+        (resume_playback, {}),
+        (start_tracks_playback_by_id, {"track_ids": ["1234567890"], "position_ms": 10000}),
+        (skip_to_previous_track, {}),
+        (skip_to_next_track, {}),
+    ],
+)
+async def test_too_many_requests_http_error(
+    tool_function, tool_kwargs, tool_context, mock_httpx_client
+):
+    mock_response = MagicMock()
+    mock_response.status_code = 429
+    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
+    )
+    mock_httpx_client.request.return_value = mock_response
+
+    with pytest.raises(ToolExecutionError):
+        await tool_function(context=tool_context, **tool_kwargs)
+
+
+@pytest.mark.asyncio
 @patch("arcade_spotify.tools.player.get_playback_state")
 async def test_adjust_playback_position_absolute_success(
     mock_get_playback_state, tool_context, mock_httpx_client
@@ -134,22 +163,6 @@ async def test_adjust_playback_position_not_found_error(
 
 
 @pytest.mark.asyncio
-@patch("arcade_spotify.tools.player.get_playback_state")
-async def test_adjust_playback_position_too_many_requests_error(
-    mock_get_playback_state, tool_context, mock_httpx_client
-):
-    mock_response = MagicMock()
-    mock_response.status_code = 429
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
-    )
-    mock_httpx_client.request.return_value = mock_response
-
-    with pytest.raises(ToolExecutionError):
-        await adjust_playback_position(context=tool_context, absolute_position_ms=10000)
-
-
-@pytest.mark.asyncio
 async def test_skip_to_previous_track_success(tool_context, mock_httpx_client):
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -172,19 +185,6 @@ async def test_skip_to_previous_track_not_found_error(tool_context, mock_httpx_c
 
 
 @pytest.mark.asyncio
-async def test_skip_to_previous_track_too_many_requests_error(tool_context, mock_httpx_client):
-    mock_response = MagicMock()
-    mock_response.status_code = 429
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
-    )
-    mock_httpx_client.request.return_value = mock_response
-
-    with pytest.raises(ToolExecutionError):
-        await skip_to_previous_track(context=tool_context)
-
-
-@pytest.mark.asyncio
 async def test_skip_to_next_track_success(tool_context, mock_httpx_client):
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -204,19 +204,6 @@ async def test_skip_to_next_track_not_found_error(tool_context, mock_httpx_clien
     response = await skip_to_next_track(context=tool_context)
 
     assert response == RESPONSE_MSGS["no_track_to_skip"]
-
-
-@pytest.mark.asyncio
-async def test_skip_to_next_track_too_many_requests_error(tool_context, mock_httpx_client):
-    mock_response = MagicMock()
-    mock_response.status_code = 429
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
-    )
-    mock_httpx_client.request.return_value = mock_response
-
-    with pytest.raises(ToolExecutionError):
-        await skip_to_next_track(context=tool_context)
 
 
 @pytest.mark.asyncio
@@ -263,24 +250,6 @@ async def test_pause_playback_already_paused_success(
 
 @pytest.mark.asyncio
 @patch("arcade_spotify.tools.player.get_playback_state")
-async def test_pause_playback_too_many_requests_error(
-    mock_get_playback_state, tool_context, mock_httpx_client
-):
-    mock_get_playback_state.return_value = {"device_id": "1234567890", "is_playing": True}
-
-    mock_response = MagicMock()
-    mock_response.status_code = 429
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
-    )
-    mock_httpx_client.request.return_value = mock_response
-
-    with pytest.raises(ToolExecutionError):
-        await pause_playback(context=tool_context)
-
-
-@pytest.mark.asyncio
-@patch("arcade_spotify.tools.player.get_playback_state")
 async def test_resume_playback_success(mock_get_playback_state, tool_context, mock_httpx_client):
     mock_get_playback_state.return_value = {"device_id": "1234567890", "is_playing": False}
     mock_response = MagicMock()
@@ -319,24 +288,6 @@ async def test_resume_playback_already_playing_success(
     response = await resume_playback(context=tool_context)
     assert response == RESPONSE_MSGS["track_is_already_playing"]
     mock_httpx_client.assert_not_called()
-
-
-@pytest.mark.asyncio
-@patch("arcade_spotify.tools.player.get_playback_state")
-async def test_resume_playback_too_many_requests_error(
-    mock_get_playback_state, tool_context, mock_httpx_client
-):
-    mock_get_playback_state.return_value = {"device_id": "1234567890", "is_playing": False}
-
-    mock_response = MagicMock()
-    mock_response.status_code = 429
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
-    )
-    mock_httpx_client.request.return_value = mock_response
-
-    with pytest.raises(ToolExecutionError):
-        await resume_playback(context=tool_context)
 
 
 @pytest.mark.asyncio
@@ -385,38 +336,6 @@ async def test_start_tracks_playback_by_id_no_active_device(
 
 
 @pytest.mark.asyncio
-@patch("arcade_spotify.tools.player.get_available_devices")
-async def test_start_tracks_playback_by_id_too_many_requests_error(
-    mock_get_available_devices, tool_context, mock_httpx_client
-):
-    mock_get_available_devices.return_value = {
-        "devices": [
-            {
-                "id": "1234567890",
-                "is_active": True,
-                "name": "Test Device",
-                "type": "Computer",
-                "is_private_session": False,
-                "is_restricted": False,
-                "supports_volume": True,
-                "volume_percent": 100,
-            }
-        ]
-    }
-    mock_response = MagicMock()
-    mock_response.status_code = 429
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
-    )
-    mock_httpx_client.request.return_value = mock_response
-
-    with pytest.raises(ToolExecutionError):
-        await start_tracks_playback_by_id(
-            context=tool_context, track_ids=["1234567890"], position_ms=10000
-        )
-
-
-@pytest.mark.asyncio
 async def test_get_playback_state_success(tool_context, mock_httpx_client):
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -452,19 +371,6 @@ async def test_get_playback_state_playback_not_active(tool_context, mock_httpx_c
     response = await get_playback_state(context=tool_context)
 
     assert response["is_playing"] is False
-
-
-@pytest.mark.asyncio
-async def test_get_playback_state_too_many_requests_error(tool_context, mock_httpx_client):
-    mock_response = MagicMock()
-    mock_response.status_code = 429
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
-    )
-    mock_httpx_client.request.return_value = mock_response
-
-    with pytest.raises(ToolExecutionError):
-        await get_playback_state(context=tool_context)
 
 
 @pytest.mark.asyncio
@@ -506,23 +412,24 @@ async def test_get_currently_playing_playback_not_active(tool_context, mock_http
 
 
 @pytest.mark.asyncio
-async def test_get_currently_playing_too_many_requests_error(tool_context, mock_httpx_client):
-    mock_response = MagicMock()
-    mock_response.status_code = 429
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
-    )
-    mock_httpx_client.request.return_value = mock_response
-
-    with pytest.raises(ToolExecutionError):
-        await get_currently_playing(context=tool_context)
-
-
-@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_function, tool_kwargs, expected_search_query, expected_limit",
+    [
+        (play_artist_by_name, {"name": "Test Artist"}, "artist:Test Artist", 5),
+        (play_track_by_name, {"track_name": "Test Track"}, "track:Test Track", 1),
+    ],
+)
 @patch("arcade_spotify.tools.player.start_tracks_playback_by_id")
 @patch("arcade_spotify.tools.player.search")
-async def test_play_artist_by_name_success(
-    mock_search, mock_start_tracks_playback_by_id, tool_context, mock_httpx_client
+async def test_play_by_name_success(
+    mock_search,
+    mock_start_tracks_playback_by_id,
+    tool_context,
+    tool_function,
+    tool_kwargs,
+    expected_search_query,
+    expected_limit,
+    mock_httpx_client,
 ):
     track_id = "1234567890"
     mock_search.return_value = {"tracks": {"items": [{"id": track_id, "name": "Test Track"}]}}
@@ -532,19 +439,51 @@ async def test_play_artist_by_name_success(
 
     mock_start_tracks_playback_by_id.return_value = RESPONSE_MSGS["playback_started"]
 
-    response = await play_artist_by_name(context=tool_context, name="Test Artist")
+    response = await tool_function(context=tool_context, **tool_kwargs)
 
     assert response == RESPONSE_MSGS["playback_started"]
 
-    mock_search.assert_called_once_with(tool_context, "artist:Test Artist", [SearchType.TRACK], 5)
+    mock_search.assert_called_once_with(
+        tool_context,
+        expected_search_query,
+        [SearchType.TRACK],
+        expected_limit,
+    )
     mock_start_tracks_playback_by_id.assert_called_once_with(tool_context, [track_id])
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_function, tool_kwargs, expected_search_query, expected_limit, expected_message",
+    [
+        (
+            play_artist_by_name,
+            {"name": "Test Artist"},
+            "artist:Test Artist",
+            5,
+            RESPONSE_MSGS["artist_not_found"].format(artist_name="Test Artist"),
+        ),
+        (
+            play_track_by_name,
+            {"track_name": "Test Track"},
+            "track:Test Track",
+            1,
+            RESPONSE_MSGS["track_not_found"].format(track_name="Test Track"),
+        ),
+    ],
+)
 @patch("arcade_spotify.tools.player.start_tracks_playback_by_id")
 @patch("arcade_spotify.tools.player.search")
-async def test_play_artist_by_name_no_tracks_found(
-    mock_search, mock_start_tracks_playback_by_id, tool_context, mock_httpx_client
+async def test_play_by_name_no_tracks_found(
+    mock_search,
+    mock_start_tracks_playback_by_id,
+    tool_context,
+    tool_function,
+    tool_kwargs,
+    expected_search_query,
+    expected_limit,
+    expected_message,
+    mock_httpx_client,
 ):
     mock_search.return_value = {"tracks": {"items": []}}
     mock_response = MagicMock()
@@ -553,34 +492,14 @@ async def test_play_artist_by_name_no_tracks_found(
 
     mock_start_tracks_playback_by_id.return_value = RESPONSE_MSGS["playback_started"]
 
-    artist_name = "Test Artist"
-
     with pytest.raises(RetryableToolError) as e:
-        await play_artist_by_name(context=tool_context, name=artist_name)
-        assert e.value.message == RESPONSE_MSGS["artist_not_found"].format(artist_name=artist_name)
+        await tool_function(context=tool_context, **tool_kwargs)
+        assert e.value.message == expected_message
 
-    mock_search.assert_called_once_with(tool_context, "artist:Test Artist", [SearchType.TRACK], 5)
+    mock_search.assert_called_once_with(
+        tool_context, expected_search_query, [SearchType.TRACK], expected_limit
+    )
     mock_start_tracks_playback_by_id.assert_not_called()
-
-
-@pytest.mark.asyncio
-@patch("arcade_spotify.tools.player.start_tracks_playback_by_id")
-@patch("arcade_spotify.tools.player.search")
-async def test_play_track_by_name_success(
-    mock_search, mock_start_tracks_playback_by_id, tool_context, mock_httpx_client
-):
-    track_id = "1234567890"
-    mock_search.return_value = {"tracks": {"items": [{"id": track_id, "name": "Test Track"}]}}
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_httpx_client.request.return_value = mock_response
-
-    response = await play_track_by_name(context=tool_context, track_name="Test Track")
-
-    assert response == str(mock_start_tracks_playback_by_id.return_value)
-
-    mock_search.assert_called_once_with(tool_context, "track:Test Track", [SearchType.TRACK], 1)
-    mock_start_tracks_playback_by_id.assert_called_once_with(tool_context, [track_id])
 
 
 @pytest.mark.asyncio
@@ -637,16 +556,3 @@ async def test_get_available_devices_success(tool_context, mock_httpx_client):
 
     response = await get_available_devices(context=tool_context)
     assert response == dict(mock_response.json())
-
-
-@pytest.mark.asyncio
-async def test_get_available_devices_too_many_requests(tool_context, mock_httpx_client):
-    mock_response = MagicMock()
-    mock_response.status_code = 429
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "Too Many Requests", request=MagicMock(), response=MagicMock(status_code=429)
-    )
-    mock_httpx_client.request.return_value = mock_response
-
-    with pytest.raises(ToolExecutionError):
-        await get_available_devices(context=tool_context)
