@@ -333,7 +333,19 @@ async def test_start_tracks_playback_by_id_no_active_device(
 
 
 @pytest.mark.asyncio
-async def test_get_playback_state_success(tool_context, mock_httpx_client):
+@pytest.mark.parametrize(
+    "tool_function, expected_message",
+    [
+        (get_playback_state, RESPONSE_MSGS["playback_started"]),
+        (get_currently_playing, RESPONSE_MSGS["playback_started"]),
+    ],
+)
+async def test_get_state_success(
+    tool_context,
+    mock_httpx_client,
+    tool_function,
+    expected_message,
+):
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
@@ -350,7 +362,7 @@ async def test_get_playback_state_success(tool_context, mock_httpx_client):
     }
     mock_httpx_client.request.return_value = mock_response
 
-    response = await get_playback_state(context=tool_context)
+    response = await tool_function(context=tool_context)
 
     assert response["device_id"] == "1234567890"
     assert response["device_name"] == "Test Device"
@@ -360,50 +372,16 @@ async def test_get_playback_state_success(tool_context, mock_httpx_client):
 
 
 @pytest.mark.asyncio
-async def test_get_playback_state_playback_not_active(tool_context, mock_httpx_client):
+@pytest.mark.parametrize(
+    "tool_function",
+    [get_playback_state, get_currently_playing],
+)
+async def test_get_state_playback_not_active(tool_context, mock_httpx_client, tool_function):
     mock_response = MagicMock()
     mock_response.status_code = 204
     mock_httpx_client.request.return_value = mock_response
 
-    response = await get_playback_state(context=tool_context)
-
-    assert response["is_playing"] is False
-
-
-@pytest.mark.asyncio
-async def test_get_currently_playing_success(tool_context, mock_httpx_client):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "device": {
-            "id": "1234567890",
-            "is_active": True,
-            "name": "Test Device",
-            "type": "Computer",
-        },
-        "currently_playing_type": "track",
-        "is_playing": True,
-        "progress_ms": 10000,
-        "message": "Playback started",
-    }
-    mock_httpx_client.request.return_value = mock_response
-
-    response = await get_currently_playing(context=tool_context)
-
-    assert response["device_id"] == "1234567890"
-    assert response["device_name"] == "Test Device"
-    assert response["is_playing"] is True
-    assert response["progress_ms"] == 10000
-    assert response["message"] == "Playback started"
-
-
-@pytest.mark.asyncio
-async def test_get_currently_playing_playback_not_active(tool_context, mock_httpx_client):
-    mock_response = MagicMock()
-    mock_response.status_code = 204
-    mock_httpx_client.request.return_value = mock_response
-
-    response = await get_currently_playing(context=tool_context)
+    response = await tool_function(context=tool_context)
 
     assert response["is_playing"] is False
 
