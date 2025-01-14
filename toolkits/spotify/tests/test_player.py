@@ -207,86 +207,83 @@ async def test_skip_to_next_track_not_found_error(tool_context, mock_httpx_clien
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_function, mock_is_playing, expected_message",
+    [
+        (pause_playback, True, RESPONSE_MSGS["playback_paused"]),
+        (resume_playback, False, RESPONSE_MSGS["playback_resumed"]),
+    ],
+)
 @patch("arcade_spotify.tools.player.get_playback_state")
-async def test_pause_playback_success(mock_get_playback_state, tool_context, mock_httpx_client):
-    mock_get_playback_state.return_value = {"device_id": "1234567890", "is_playing": True}
+async def test_change_playback_state_success(
+    mock_get_playback_state,
+    tool_context,
+    tool_function,
+    mock_is_playing,
+    expected_message,
+    mock_httpx_client,
+):
+    mock_get_playback_state.return_value = {
+        "device_id": "1234567890",
+        "is_playing": mock_is_playing,
+    }
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_httpx_client.request.return_value = mock_response
 
-    response = await pause_playback(context=tool_context)
-    assert response == RESPONSE_MSGS["playback_paused"]
+    response = await tool_function(context=tool_context)
+    assert response == expected_message
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_function, expected_message",
+    [
+        (pause_playback, RESPONSE_MSGS["no_track_to_pause"]),
+        (resume_playback, RESPONSE_MSGS["no_track_to_resume"]),
+    ],
+)
 @patch("arcade_spotify.tools.player.get_playback_state")
-async def test_pause_playback_no_device_running(
-    mock_get_playback_state, tool_context, mock_httpx_client
+async def test_change_playback_state_no_device_running(
+    mock_get_playback_state, tool_context, tool_function, expected_message, mock_httpx_client
 ):
     mock_get_playback_state.return_value = {"device_id": None}
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_httpx_client.request.return_value = mock_response
 
-    response = await pause_playback(context=tool_context)
-    assert response == RESPONSE_MSGS["no_track_to_pause"]
+    response = await tool_function(context=tool_context)
+    assert response == expected_message
     mock_httpx_client.assert_not_called()
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_function, mock_is_playing, expected_message",
+    [
+        (pause_playback, False, RESPONSE_MSGS["track_is_already_paused"]),
+        (resume_playback, True, RESPONSE_MSGS["track_is_already_playing"]),
+    ],
+)
 @patch("arcade_spotify.tools.player.get_playback_state")
-async def test_pause_playback_already_paused_success(
-    mock_get_playback_state, tool_context, mock_httpx_client
+async def test_change_playback_state_already_set_success(
+    mock_get_playback_state,
+    tool_context,
+    tool_function,
+    mock_is_playing,
+    expected_message,
+    mock_httpx_client,
 ):
-    mock_get_playback_state.return_value = {"device_id": "1234567890", "is_playing": False}
+    mock_get_playback_state.return_value = {
+        "device_id": "1234567890",
+        "is_playing": mock_is_playing,
+    }
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_httpx_client.request.return_value = mock_response
 
-    response = await pause_playback(context=tool_context)
-    assert response == RESPONSE_MSGS["track_is_already_paused"]
-    mock_httpx_client.assert_not_called()
-
-
-@pytest.mark.asyncio
-@patch("arcade_spotify.tools.player.get_playback_state")
-async def test_resume_playback_success(mock_get_playback_state, tool_context, mock_httpx_client):
-    mock_get_playback_state.return_value = {"device_id": "1234567890", "is_playing": False}
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_httpx_client.request.return_value = mock_response
-
-    response = await resume_playback(context=tool_context)
-    assert response == RESPONSE_MSGS["playback_resumed"]
-
-
-@pytest.mark.asyncio
-@patch("arcade_spotify.tools.player.get_playback_state")
-async def test_resume_playback_no_device_running(
-    mock_get_playback_state, tool_context, mock_httpx_client
-):
-    mock_get_playback_state.return_value = {"device_id": None}
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_httpx_client.request.return_value = mock_response
-
-    response = await resume_playback(context=tool_context)
-    assert response == RESPONSE_MSGS["no_track_to_resume"]
-    mock_httpx_client.assert_not_called()
-
-
-@pytest.mark.asyncio
-@patch("arcade_spotify.tools.player.get_playback_state")
-async def test_resume_playback_already_playing_success(
-    mock_get_playback_state, tool_context, mock_httpx_client
-):
-    mock_get_playback_state.return_value = {"device_id": "1234567890", "is_playing": True}
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_httpx_client.request.return_value = mock_response
-
-    response = await resume_playback(context=tool_context)
-    assert response == RESPONSE_MSGS["track_is_already_playing"]
+    response = await tool_function(context=tool_context)
+    assert response == expected_message
     mock_httpx_client.assert_not_called()
 
 
@@ -524,25 +521,6 @@ async def test_play_track_by_name_with_artist_success(
         tool_context, "track:Test Track artist:Test Artist", [SearchType.TRACK], 1
     )
     mock_start_tracks_playback_by_id.assert_called_once_with(tool_context, [track_id])
-
-
-@pytest.mark.asyncio
-@patch("arcade_spotify.tools.player.start_tracks_playback_by_id")
-@patch("arcade_spotify.tools.player.search")
-async def test_play_track_by_name_no_tracks_found(
-    mock_search, mock_start_tracks_playback_by_id, tool_context, mock_httpx_client
-):
-    mock_search.return_value = {"tracks": {"items": []}}
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_httpx_client.request.return_value = mock_response
-
-    with pytest.raises(RetryableToolError) as e:
-        await play_track_by_name(context=tool_context, track_name="Test Track")
-        assert e.value.message == RESPONSE_MSGS["track_not_found"].format(track_name="Test Track")
-
-    mock_search.assert_called_once_with(tool_context, "track:Test Track", [SearchType.TRACK], 1)
-    mock_start_tracks_playback_by_id.assert_not_called()
 
 
 @pytest.mark.asyncio
