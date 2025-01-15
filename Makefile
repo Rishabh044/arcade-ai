@@ -91,15 +91,32 @@ build-and-publish: build publish ## Build and publish.
 docker: ## Build and run the Docker container
 	@echo "🚀 Building arcade and toolkit wheels..."
 	@make full-dist
-	@echo "Writing extras [fastapi, evals] to requirements.txt"
-	@cd arcade && poetry export --extras "fastapi evals" --output ../dist/requirements.txt
+	@echo "Writing extras requirements.txt"
+	@cd arcade && poetry export --extras "fastapi" --output ../dist/requirements.txt
 	@echo "🚀 Building Docker image"
 	@cd docker && make docker-build
 	@cd docker && make docker-run
 
+.PHONY: docker-base
+docker-base: ## Build and run the Docker container
+	@echo "🚀 Building arcade and toolkit wheels..."
+	@make full-dist
+	@echo "Writing extras requirements.txt"
+	@cd arcade && poetry export --extras "fastapi" --output ../dist/requirements.txt
+	@echo "🚀 Building Docker image"
+	@cd docker && INSTALL_TOOLKITS=false make docker-build
+	@cd docker && INSTALL_TOOLKITS=false make docker-run
+
 .PHONY: publish-ecr
 publish-ecr: ## Publish to the ECR
 	@cd docker && make publish-ecr
+
+.PHONY: publish-ghcr
+publish-ghcr: ## Publish to the GHCR
+    # Publish the base image - ghcr.io/arcadeai/worker-base
+	@cd docker && INSTALL_TOOLKITS=false make publish-ghcr
+    # Publish the image with toolkits - ghcr.io/arcadeai/worker
+	@cd docker && INSTALL_TOOLKITS=true make publish-ghcr
 
 .PHONY: full-dist
 full-dist: clean-dist ## Build all projects and copy wheels to ./dist
@@ -121,19 +138,6 @@ full-dist: clean-dist ## Build all projects and copy wheels to ./dist
 	@echo "Reset version to default (0.1.0)"
 	@make unset-version
 
-	@echo "🛠️ Building all projects and copying wheels to ./dist"
-	# Build and copy wheels for each toolkit
-	# @for toolkit_dir in toolkits/*; do \
-	# 	if [ -d "$$toolkit_dir" ]; then \
-	# 		toolkit_name=$$(basename "$$toolkit_dir"); \
-	# 		echo "Building $$toolkit_name project..."; \
-    #         poetry build; \
-	# 		cp dist/*.whl ../../dist/toolkits; \
-	# 		cd -; \
-	# 	fi; \
-	# done
-
-	@echo "✅ All toolkits built and wheels copied to ./dist"
 
 .PHONY: clean-dist
 clean-dist: ## Clean all built distributions
