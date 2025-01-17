@@ -4,7 +4,7 @@ FROM python:3.10-slim
 ARG PORT=8001
 ARG HOST=0.0.0.0
 ARG VERSION=${VERSION:-0.1.0}
-ARG INSTALL_TOOLKITS=true  # New build argument
+ARG INSTALL_TOOLKITS=true 
 
 # Set environment variables using the build arguments
 ENV PORT=${PORT}

@@ -28,7 +28,7 @@ cd arcade-ai/docker
 Copy the example environment file to `.env`:
 
 ```bash
-cp .env.example .env
+cp env.example .env
 ```
 
 Open the `.env` file in your preferred text editor and fill in the required values. At a minimum, you **must** provide the `OPENAI_API_KEY`:
@@ -53,7 +53,7 @@ Start the Arcade AI services using Docker Compose:
 docker compose up -p arcade
 ```
 
-This command will build and start all the services defined in the `docker-compose.yml` file.
+This command will build and start all the services defined in the `docker-compose.yml` file and make their ports available to your host machine.
 
 ### 4. Verify the Engine is Running
 
@@ -81,8 +81,9 @@ Edit the `docker.engine.yaml` file to enable the desired auth provider. For exam
 
 ```yaml:docker.engine.yaml
 auth:
-  google:
-    enabled: true  # Change from false to true
+  providers:
+    - id: google
+      enabled: true  # Change from false to true
 ```
 
 ### 2. Add Client ID and Secret to the `.env` File
