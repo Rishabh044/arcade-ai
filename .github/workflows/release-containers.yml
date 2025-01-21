@@ -29,7 +29,7 @@ jobs:
           running-workflow-name: 'Main'
           repo-token: ${{ secrets.PAT }}
           wait-interval: 10
-          ignore-checks: "release-and-publish"
+          ignore-checks: "set-version"
 
       - name: Checkout code
         uses: actions/checkout@v3
