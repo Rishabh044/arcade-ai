@@ -46,7 +46,8 @@ RUN if [ ! "$(echo ${VERSION} | grep -E '\.dev0$')" ]; then \
     poetry version 0.1.0 && \
     pip install fastapi && \
     pip install -r requirements.txt && \
-    pip install .; \
+    pip install . && \
+    cd .. && rm -rf arcade; \
     fi
 
 # Expose the port
