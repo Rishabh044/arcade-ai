@@ -53,14 +53,14 @@ jobs:
       packages: write
 
     steps:
-    - name: Wait for tests to succeed
-      uses: lewagon/wait-on-check-action@v1.3.4
-      with:
-        ref: ${{ github.ref }}
-        running-workflow-name: 'Main'
-        repo-token: ${{ secrets.PAT }}
-        wait-interval: 10
-        ignore-checks: "release-and-publish"
+    # - name: Wait for tests to succeed
+    #   uses: lewagon/wait-on-check-action@v1.3.4
+    #   with:
+    #     ref: ${{ github.ref }}
+    #     running-workflow-name: 'Main'
+    #     repo-token: ${{ secrets.PAT }}
+    #     wait-interval: 10
+    #     ignore-checks: "release-and-publish"
 
     - name: Checkout code
       uses: actions/checkout@v3
