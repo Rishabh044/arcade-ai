@@ -95,6 +95,18 @@ publish-ecr:
 		docker push $(ECR_ENDPOINT)/$(REPOSITORY):latest-$(ARCH); \
 	}
 
+.PHONY: publish-ghcr
+publish-ecr:
+	@echo "🚚 Pushing the Agent image to GHCR.."
+	@docker tag $(REPOSITORY):$(VERSION) ghcr.io/$(REPOSITORY):$(VERSION)-$(ARCH)
+	@echo "- pushing ghcr.io/$(REPOSITORY):$(VERSION)-$(ARCH)"
+	@docker push ghcr.io/$(REPOSITORY):$(VERSION)-$(ARCH)
+	@echo $(VERSION) | grep -q $(RC_PART) || { \
+		docker tag $(REPOSITORY):$(VERSION) ghcr.io/$(REPOSITORY):latest-$(ARCH); \
+		echo "- pushing ghcr.io/$(REPOSITORY):latest-$(ARCH)"; \
+		docker push ghcr.io/$(REPOSITORY):latest-$(ARCH); \
+	}
+
 
 .PHONY: ecr-login
 ecr-login: # Login to ECR

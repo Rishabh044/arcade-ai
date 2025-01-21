@@ -95,11 +95,11 @@ jobs:
         make docker VERSION=${{ needs.set-version.outputs.version  }} ARCH=${{ matrix.arch }}
         make publish-ecr VERSION=${{ needs.set-version.outputs.version  }} ARCH=${{ matrix.arch }}
 
-    # - name: Push GHCR
-    #   if: github.event_name == 'push'
-    #   working-directory: ./docker
-    #   run: |
-    #     make publish-ghcr-alpine VERSION=${{ needs.set-version.outputs.version }} ARCH=${{ matrix.arch }}
+    - name: Push GHCR
+      if: github.event_name == 'push'
+      working-directory: ./docker
+      run: |
+        make publish-ghcr VERSION=${{ needs.set-version.outputs.version }} ARCH=${{ matrix.arch }}
 
 
   push-manifest:
@@ -139,10 +139,10 @@ jobs:
         working-directory: ./docker
         run: make ecr-manifest VERSION=${{ needs.set-version.outputs.version }}
 
-      # - name: Push manifest to GHCR
-      #   if: github.event_name == 'push'
-      #   working-directory: ./docker
-      #   run: make ghcr-manifest VERSION=${{ needs.set-version.outputs.version }}
+      - name: Push manifest to GHCR
+        if: github.event_name == 'push'
+        working-directory: ./docker
+        run: make ghcr-manifest VERSION=${{ needs.set-version.outputs.version }}
 
   # deploy:
   #   if: github.event_name == 'push'
