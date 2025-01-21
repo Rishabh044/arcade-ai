@@ -3,7 +3,7 @@ PROJECT ?= ArcadeAI
 SOURCE ?= https://github.com/ArcadeAI/arcade-ai
 LICENSE ?= MIT
 DESCRIPTION ?= "Arcade AI for LLM Tool Serving"
-REPOSITORY ?= arcadeai/arcade-ai
+REPOSITORY ?= arcadeai/worker
 ECR_ENDPOINT ?= 471112909428.dkr.ecr.us-east-1.amazonaws.com
 ARCH ?= arm64
 
