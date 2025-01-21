@@ -96,7 +96,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and push Actor image
+    - name: Build and push Worker image
       id: build
       run: |
         make docker VERSION=${{ needs.set-version.outputs.version  }} ARCH=${{ matrix.arch }}
