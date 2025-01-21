@@ -96,7 +96,7 @@ publish-ecr:
 	}
 
 .PHONY: publish-ghcr
-publish-ecr:
+publish-ghcr:
 	@echo "🚚 Pushing the Agent image to GHCR.."
 	@docker tag $(REPOSITORY):$(VERSION) ghcr.io/$(REPOSITORY):$(VERSION)-$(ARCH)
 	@echo "- pushing ghcr.io/$(REPOSITORY):$(VERSION)-$(ARCH)"
