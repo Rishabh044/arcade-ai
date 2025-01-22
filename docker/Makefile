@@ -23,7 +23,7 @@ else
     REPOSITORY := $(REPOSITORY)-base
 endif
 
-VERSION_TAG := $(VERSION)-$(PLATFORM)
+VERSION_TAG := $(VERSION)-$(ARCH)
 
 .PHONY: docker-build
 docker-build: ## Build the Docker container
@@ -100,9 +100,9 @@ docker-run: ## Run the Docker container
 .PHONY: publish-ecr
 publish-ecr:
 	@echo "🚚 Pushing the Agent image to ECR.."
-	@docker tag $(REPOSITORY):$(VERSION) $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION)-$(ARCH)
-	@echo "- pushing $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION)-$(ARCH)"
-	@docker push $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION)-$(ARCH)
+	@docker tag $(REPOSITORY):$(VERSION) $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION_TAG)
+	@echo "- pushing $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION_TAG)"
+	@docker push $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION_TAG)
 	@echo $(VERSION) | grep -q $(RC_PART) || { \
 		docker tag $(REPOSITORY):$(VERSION) $(ECR_ENDPOINT)/$(REPOSITORY):latest-$(ARCH); \
 		echo "- pushing $(ECR_ENDPOINT)/$(REPOSITORY):latest-$(ARCH)"; \
@@ -112,9 +112,9 @@ publish-ecr:
 .PHONY: publish-ghcr
 publish-ghcr:
 	@echo "🚚 Pushing the Agent image to GHCR.."
-	@docker tag $(REPOSITORY):$(VERSION) ghcr.io/$(REPOSITORY):$(VERSION)-$(ARCH)
-	@echo "- pushing ghcr.io/$(REPOSITORY):$(VERSION)-$(ARCH)"
-	@docker push ghcr.io/$(REPOSITORY):$(VERSION)-$(ARCH)
+	@docker tag $(REPOSITORY):$(VERSION) ghcr.io/$(REPOSITORY):$(VERSION_TAG)
+	@echo "- pushing ghcr.io/$(REPOSITORY):$(VERSION_TAG)"
+	@docker push ghcr.io/$(REPOSITORY):$(VERSION_TAG)
 	@echo $(VERSION) | grep -q $(RC_PART) || { \
 		docker tag $(REPOSITORY):$(VERSION) ghcr.io/$(REPOSITORY):latest-$(ARCH); \
 		echo "- pushing ghcr.io/$(REPOSITORY):latest-$(ARCH)"; \

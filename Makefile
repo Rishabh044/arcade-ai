@@ -109,7 +109,10 @@ docker-base: ## Build and run the Docker container
 
 .PHONY: publish-ecr
 publish-ecr: ## Publish to the ECR
-	@cd docker && make publish-ecr
+    # Publish the base image - <ECR_ENDPOINT>/arcadeai/worker-base
+	@cd docker && INSTALL_TOOLKITS=false make publish-ecr
+    # Publish the image with toolkits - <ECR_ENDPOINT>/arcadeai/worker
+	@cd docker && INSTALL_TOOLKITS=true make publish-ecr
 
 .PHONY: publish-ghcr
 publish-ghcr: ## Publish to the GHCR
