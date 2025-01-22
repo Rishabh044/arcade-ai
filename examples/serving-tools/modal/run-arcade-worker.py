@@ -21,8 +21,8 @@ image = (
 def fastapi_app():
     from fastapi import FastAPI
 
-    from arcade.worker.fastapi.worker import FastAPIWorker
     from arcade.sdk import Toolkit
+    from arcade.worker.fastapi.worker import FastAPIWorker
 
     web_app = FastAPI()
 
