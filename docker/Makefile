@@ -100,11 +100,11 @@ docker-run: ## Run the Docker container
 .PHONY: publish-ecr
 publish-ecr:
 	@echo "🚚 Pushing the Agent image to ECR.."
-	@docker tag $(REPOSITORY):$(VERSION) $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION_TAG)
+	@docker tag $(REPOSITORY):$(VERSION_TAG) $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION_TAG)
 	@echo "- pushing $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION_TAG)"
 	@docker push $(ECR_ENDPOINT)/$(REPOSITORY):$(VERSION_TAG)
-	@echo $(VERSION) | grep -q $(RC_PART) || { \
-		docker tag $(REPOSITORY):$(VERSION) $(ECR_ENDPOINT)/$(REPOSITORY):latest-$(ARCH); \
+	@echo $(VERSION_TAG) | grep -q $(RC_PART) || { \
+		docker tag $(REPOSITORY):$(VERSION_TAG) $(ECR_ENDPOINT)/$(REPOSITORY):latest-$(ARCH); \
 		echo "- pushing $(ECR_ENDPOINT)/$(REPOSITORY):latest-$(ARCH)"; \
 		docker push $(ECR_ENDPOINT)/$(REPOSITORY):latest-$(ARCH); \
 	}
