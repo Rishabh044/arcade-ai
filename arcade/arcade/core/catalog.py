@@ -202,6 +202,10 @@ class ToolCatalog(BaseModel):
             logger.info(f"Tool '{fully_qualified_name!s}' is disabled and will not be cataloged.")
             return
 
+        if str(toolkit_name).lower() in self._disabled_toolkits:
+            logger.info(f"Toolkit '{toolkit_name!s}' is disabled and will not be cataloged.")
+            return
+
         self._tools[fully_qualified_name] = MaterializedTool(
             definition=definition,
             tool=tool_func,
