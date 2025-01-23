@@ -106,7 +106,6 @@ jobs:
       # TODO: REVERT
     - name: Push GHCR
       if: github.event_name == 'push' || startsWith(github.ref, 'refs/tags/')
-      working-directory: ./docker
       run: |
         make publish-ghcr VERSION=${{ needs.set-version.outputs.version }} ARCH=${{ matrix.arch }}
 
