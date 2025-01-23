@@ -112,11 +112,11 @@ publish-ecr:
 .PHONY: publish-ghcr
 publish-ghcr:
 	@echo "🚚 Pushing the Agent image to GHCR.."
-	@docker tag $(REPOSITORY):$(VERSION) ghcr.io/$(REPOSITORY):$(VERSION_TAG)
+	@docker tag $(REPOSITORY):$(VERSION_TAG) ghcr.io/$(REPOSITORY):$(VERSION_TAG)
 	@echo "- pushing ghcr.io/$(REPOSITORY):$(VERSION_TAG)"
 	@docker push ghcr.io/$(REPOSITORY):$(VERSION_TAG)
 	@echo $(VERSION) | grep -q $(RC_PART) || { \
-		docker tag $(REPOSITORY):$(VERSION) ghcr.io/$(REPOSITORY):latest-$(ARCH); \
+		docker tag $(REPOSITORY):$(VERSION_TAG) ghcr.io/$(REPOSITORY):latest-$(ARCH); \
 		echo "- pushing ghcr.io/$(REPOSITORY):latest-$(ARCH)"; \
 		docker push ghcr.io/$(REPOSITORY):latest-$(ARCH); \
 	}
