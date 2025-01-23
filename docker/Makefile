@@ -48,7 +48,7 @@ docker-build: ## Build the Docker container
 
 
 ecr-manifest: ## Make a manifest file for the image
-	@echo "🛠️ Build manifest file ($(VERSION)).."
+	@echo "🛠️ Build manifest file for $(REPOSITORY):$(VERSION).."
 	@echo "- Commit: $(COMMIT)"
 	@echo "- Build Date: $(BUILD_DATE)"
 	@export DOCKER_CLI_EXPERIMENTAL=enabled
@@ -70,7 +70,7 @@ ecr-manifest: ## Make a manifest file for the image
 	@docker manifest push $(ECR_ENDPOINT)/$(REPOSITORY):latest
 
 ghcr-manifest: ## Make a manifest file for the image
-	@echo "🛠️ Build manifest file ($(VERSION)).."
+	@echo "🛠️ Build manifest file for $(REPOSITORY):$(VERSION).."
 	@echo "- Commit: $(COMMIT)"
 	@echo "- Build Date: $(BUILD_DATE)"
 	@export DOCKER_CLI_EXPERIMENTAL=enabled
