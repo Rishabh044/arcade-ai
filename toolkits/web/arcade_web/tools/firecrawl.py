@@ -96,10 +96,11 @@ async def crawl_website(
 
         if response["success"]:
             response["status"] = await get_crawl_status(response["id"])
-            response["user_instructions"] = (
-                "The crawl has started successfully and is running asynchronously. "
-                "If you want to check the status, get the data, or cancel the job, "
-                "just let me know, and I'll assist you with it."
+            response["llm_instructions"] = (
+                "You have the ability to get crawl status, cancel a crawl, "
+                "and get a crawl's data. Inform the user that you have these capabilities. "
+                "Inform the user that they should let you know if they want you to perform any "
+                "of these actions."
             )
 
     else:
@@ -121,8 +122,8 @@ async def get_crawl_status(
     app = FirecrawlApp(api_key=api_key)
     crawl_status = app.check_crawl_status(crawl_id)
 
-    if "data" in crawl_status:
-        del crawl_status["data"]
+    crawl_status.pop("data", None)  # Remove 'data' if it exists
+    crawl_status.pop("next", None)  # Remove 'next' as it's an API endpoint
 
     return dict(crawl_status)
 
