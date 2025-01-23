@@ -5,8 +5,7 @@ LICENSE ?= MIT
 DESCRIPTION ?= "Arcade AI Worker for LLM Tool Serving"
 REPOSITORY ?= arcadeai/worker
 ECR_ENDPOINT ?= 471112909428.dkr.ecr.us-east-1.amazonaws.com
-PLATFORM ?= $(shell uname -m)
-ARCH ?= arm64
+ARCH ?= $(shell uname -m)
 
 VERSION ?= 0.1.0.dev0
 COMMIT ?= $(shell git describe --dirty --always --abbrev=15)
@@ -96,7 +95,6 @@ docker-run: ## Run the Docker container
 	@echo "\n🚀 Run the container with the following ..."
 	@echo ">>> docker run -d -p $(PORT):$(PORT) $(REPOSITORY):$(VERSION_TAG)"
 
-## TODO: Check if platform will work
 .PHONY: publish-ecr
 publish-ecr:
 	@echo "🚚 Pushing the Agent image to ECR.."
