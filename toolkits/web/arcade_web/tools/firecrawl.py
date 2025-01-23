@@ -92,10 +92,16 @@ async def crawl_website(
 
     if async_crawl:
         response = app.async_crawl_url(url, params=params)
-        if (
-            "url" in response
-        ):  # Url isn't clickable, so removing it since only the ID is needed to check status
-            del response["url"]
+        response.pop("url", None)  # Remove 'url' as it's an API endpoint
+
+        if response["success"]:
+            response["status"] = await get_crawl_status(response["id"])
+            response["user_instructions"] = (
+                "The crawl has started successfully and is running asynchronously. "
+                "If you want to check the status, get the data, or cancel the job, "
+                "just let me know, and I'll assist you with it."
+            )
+
     else:
         response = app.crawl_url(url, params=params)
 
