@@ -176,10 +176,3 @@ auth:
       provider_id: zoom
       client_id: ${env:ZOOM_CLIENT_ID}
       client_secret: ${env:ZOOM_CLIENT_SECRET}
-
-cloud:
-  coordinator_url: ${env:ARCADE_COORDINATOR_URL}
-  identity_url: ${env:ARCADE_IDENTITY_URL}
-
-dashboard:
-  client_id: ${env:ARCADE_DASHBOARD_CLIENT_ID}
