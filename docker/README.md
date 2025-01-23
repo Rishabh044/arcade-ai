@@ -1,6 +1,6 @@
-# Arcade AI Docker Compose Guide
+# Arcade Docker Compose Guide
 
-This guide provides detailed instructions on how to set up and run Arcade AI using Docker Compose.
+This guide provides detailed instructions on how to set up and run Arcade using Docker Compose.
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ This guide provides detailed instructions on how to set up and run Arcade AI usi
 
 ### 1. Clone the Repository
 
-Begin by cloning the Arcade AI repository:
+Begin by cloning the Arcade repository:
 
 ```bash
 git clone https://github.com/ArcadeAI/arcade-ai.git
@@ -47,7 +47,7 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
 ### 3. Run Docker Compose
 
-Start the Arcade AI services using Docker Compose:
+Start the Arcade services using Docker Compose:
 
 ```bash
 docker compose up -p arcade
@@ -73,7 +73,7 @@ You can also view the swagger docs at `http://localhost:9099/swagger/index.html`
 
 ## Adding Authentication Providers
 
-Arcade AI supports various authentication providers. To add an auth provider, follow these steps:
+Arcade supports various authentication providers. To add an auth provider, follow these steps:
 
 ### 1. Enable the Auth Provider in the Configuration
 
