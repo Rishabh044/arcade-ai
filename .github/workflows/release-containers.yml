@@ -154,7 +154,9 @@ jobs:
       - name: Push manifest to GHCR
         if: github.event_name == 'push' || startsWith(github.ref, 'refs/tags/')
         working-directory: ./docker
-        run: make ghcr-manifest VERSION=${{ needs.set-version.outputs.version }}
+        run: |
+          make ghcr-manifest VERSION=${{ needs.set-version.outputs.version }}
+          make ghcr-manifest INSTALL_TOOLKITS=false VERSION=${{ needs.set-version.outputs.version }}
 
   # Currently broken: workflow deploy requires all versions
   # deploy:
