@@ -11,11 +11,6 @@ api:
   port: 9099
   analytics:
     enabled: false
-    # Uncomment to customize analytics
-    # max_buffer_size_mb: 10
-    # flush_size_mb: 0.5
-    # flush_interval_sec: 30
-    # target_url: "https://cloud.arcade-ai.com/analytics"
   # Uncomment to enable rate limiter
   # rate_limit:
   #   redis:
