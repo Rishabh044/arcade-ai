@@ -126,17 +126,6 @@ publish-ghcr:
 ecr-login: ## Login to ECR
 	@aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(ECR_ENDPOINT)
 
-.PHONY: publish-ghcr
-publish-ghcr: ## Publish the Worker image to GHCR
-	@echo "🚚 Pushing the Docker image to GHCR..."
-	@docker tag $(REPOSITORY):$(VERSION_TAG) ghcr.io/$(REPOSITORY):$(VERSION_TAG)
-	@echo "- pushing $(REPOSITORY):$(VERSION_TAG)"
-	@docker push ghcr.io/$(REPOSITORY):$(VERSION_TAG)
-	@echo $(VERSION) | grep -q $(RC_PART) || { \
-		docker tag $(REPOSITORY):$(VERSION_TAG) ghcr.io/$(REPOSITORY):latest; \
-		echo "- pushing $(REPOSITORY):latest"; \
-		docker push ghcr.io/$(REPOSITORY):latest; \
-	}
 
 .PHONY: gh-login
 gh-login: ## Login to GHCR
