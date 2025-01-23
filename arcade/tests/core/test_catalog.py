@@ -180,3 +180,11 @@ def test_add_tool_with_whitespace_disabled_tools(monkeypatch):
     catalog = ToolCatalog()
     catalog.add_tool(sample_tool, "SampleToolkitOne")
     assert len(catalog._tools) == 1
+
+
+def test_add_tool_with_disabled_toolkit(monkeypatch):
+    monkeypatch.setenv("ARCADE_DISABLED_TOOLKITS", "SampleToolkitOne")
+    catalog = ToolCatalog()
+
+    catalog.add_tool(sample_tool, "SampleToolkitOne")
+    assert len(catalog._tools) == 0
