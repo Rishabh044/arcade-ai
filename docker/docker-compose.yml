@@ -7,7 +7,7 @@ services:
     volumes:
       - ./docker.engine.yaml:/bin/engine.yaml
       - ./.env:/bin/.env
-      - ./arcade-engine.sqlite3:/app/arcade-engine.sqlite3
+      - ./db/:/app/
     ports:
       - "9099:9099"
     depends_on:
@@ -20,8 +20,7 @@ services:
     command: /bin/arcade-engine --config /bin/engine.yaml --env /bin/.env --migrate
 
   worker:
-#    image: ghcr.io/arcadeai/arcade-ai:latest
-    image: arcade-worker:0.1.0
+    image: ghcr.io/arcadeai/worker:latest
     container_name: arcade-worker
     ports:
       - "8002:8002"

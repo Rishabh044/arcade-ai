@@ -50,7 +50,7 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 Start the Arcade services using Docker Compose:
 
 ```bash
-docker compose up -p arcade
+docker compose up
 ```
 
 This command will build and start all the services defined in the `docker-compose.yml` file and make their ports available to your host machine.
@@ -103,7 +103,7 @@ After making changes to the configuration, restart the services:
 
 ```bash
 docker compose down
-docker compose up -p arcade
+docker compose up
 ```
 
 ## Troubleshooting
