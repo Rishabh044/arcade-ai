@@ -489,7 +489,7 @@ async def get_conversation_metadata_by_name(
 
         while should_continue:
             response = await list_conversations_metadata(context, next_cursor=next_cursor)
-            next_cursor = response.get("response_metadata", {}).get("next_cursor")
+            next_cursor = response["next_cursor"]
 
             for conversation in response["conversations"]:
                 response_conversation_name = (

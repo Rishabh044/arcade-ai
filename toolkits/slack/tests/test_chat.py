@@ -316,7 +316,7 @@ async def test_get_conversation_metadata_by_name(
     sample_conversation = extract_conversation_metadata(mock_channel_info)
     mock_list_conversations_metadata.return_value = {
         "conversations": [sample_conversation],
-        "response_metadata": {"next_cursor": None},
+        "next_cursor": None,
     }
 
     response = await get_conversation_metadata_by_name(mock_context, sample_conversation["name"])
@@ -336,11 +336,11 @@ async def test_get_conversation_metadata_by_name_triggering_pagination(
     mock_list_conversations_metadata.side_effect = [
         {
             "conversations": [another_conversation],
-            "response_metadata": {"next_cursor": "123"},
+            "next_cursor": "123",
         },
         {
             "conversations": [target_conversation],
-            "response_metadata": {"next_cursor": None},
+            "next_cursor": None,
         },
     ]
 
@@ -365,11 +365,11 @@ async def test_get_conversation_metadata_by_name_not_found(
     mock_list_conversations_metadata.side_effect = [
         {
             "conversations": [second_conversation],
-            "response_metadata": {"next_cursor": "123"},
+            "next_cursor": "123",
         },
         {
             "conversations": [first_conversation],
-            "response_metadata": {"next_cursor": None},
+            "next_cursor": None,
         },
     ]
 
@@ -505,11 +505,11 @@ async def test_get_members_in_conversation_by_name_triggering_pagination(
     mock_list_conversations_metadata.side_effect = [
         {
             "conversations": [extract_conversation_metadata(conversation1)],
-            "response_metadata": {"next_cursor": "123"},
+            "next_cursor": "123",
         },
         {
             "conversations": [extract_conversation_metadata(conversation2)],
-            "response_metadata": {"next_cursor": None},
+            "next_cursor": None,
         },
     ]
 
