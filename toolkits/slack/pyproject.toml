@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "arcade_slack"
-version = "0.2.0"
+version = "0.2.1"
 description = "Slack tools for LLMs"
-authors = ["Arcade AI <dev@arcade-ai.com>"]
+authors = ["Arcade <dev@arcade.dev>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"

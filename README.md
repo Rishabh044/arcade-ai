@@ -43,7 +43,7 @@
 
 [Arcade](https://arcade.dev?ref=github) provides developer-focused tooling and APIs designed to improve the capabilities of LLM applications and agents.
 
-By removing the complexity of connecting agentic applications with your users' data and services, Arcade AI enables developers to focus on building their agentic applications.
+By removing the complexity of connecting agentic applications with your users' data and services, Arcade enables developers to focus on building their agentic applications.
 
 To learn more, check out our [documentation](https://docs.arcade.dev/home).
 
@@ -57,7 +57,7 @@ _Pst. hey, you, give us a star if you like it!_
 
 ### Requirements
 
-1. An **[Arcade AI account](https://arcade-ai.typeform.com/early-access)** (currently a waitlist)
+1. An **[Arcade account]([https://arcade-ai.typeform.com/early-access](https://account.arcade.dev/registerOrRedirect?return_to=https%3A%2F%2Fapi.arcade.dev%2Fdashboard&new_user_return_to=https%3A%2F%2Fapi.arcade.dev%2Fdashboard%2Fwelcome))**
 2. **Python 3.10+** and **pip**
 
 ### Installation
@@ -68,7 +68,7 @@ Install the package:
 pip install 'arcade-ai[fastapi]'
 ```
 
-Log in to your account:
+Log in to your account via the CLI:
 
 ```bash
 arcade login
@@ -93,7 +93,7 @@ User (dev@arcade.dev):
 > star the ArcadeAI/arcade-ai repo on Github
 ```
 
-Arcade AI will prompt you to authorize with GitHub and will star the [ArcadeAI/arcade-ai](https://github.com/ArcadeAI/arcade-ai) repo on your behalf.
+Arcade will prompt you to authorize with GitHub and will star the [ArcadeAI/arcade-ai](https://github.com/ArcadeAI/arcade-ai) repo on your behalf.
 
 You'll see:
 
@@ -106,11 +106,11 @@ Press `Ctrl-C` to exit the chat.
 
 ## Arcade Cloud
 
-Arcade Cloud is a hosted version of the Arcade AI engine that hosts a number of prebuilt toolkits for interacting with a variety of services.
+Arcade Cloud is a hosted version of the Arcade engine that hosts a number of prebuilt toolkits for interacting with a variety of services.
 
 ### Prebuilt Toolkits
 
-Arcade AI offers a number of prebuilt toolkits that can be used by agents to interact with a variety of services.
+Arcade offers a number of prebuilt toolkits that can be used by agents to interact with a variety of services.
 
 <table>
   <thead>
@@ -300,13 +300,17 @@ The LLM API supports a variety of language models. Currently, the ones supported
 
 For more information, refer to the [supported models documentation](https://docs.arcade.dev/home/supported-models).
 
+### Get Started with Arcade
+
+To get started with Arcade, check out our [quickstart guide](https://docs.arcade.dev/home/quickstart).
+
 ### Building Your Own Tools
 
 Learn how to build your own tools by following our [creating a custom toolkit guide](https://docs.arcade.dev/home/build-tools/create-a-toolkit).
 
 ### Evaluating Tools
 
-Arcade AI enables you to evaluate your custom tools to ensure they function correctly with the AI assistant, including defining evaluation cases and using different critics.
+Arcade enables you to evaluate your custom tools to ensure they function correctly with the AI assistant, including defining evaluation cases and using different critics.
 
 Learn how to evaluate your tools by following our [evaluating tools guide](https://docs.arcade.dev/home/evaluate-tools/create-an-evaluation-suite).
 
