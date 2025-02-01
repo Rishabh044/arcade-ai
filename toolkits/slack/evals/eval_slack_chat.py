@@ -15,8 +15,8 @@ from arcade.sdk.eval import (
 
 import arcade_slack
 from arcade_slack.tools.chat import (
+    get_channel_metadata_by_name,
     get_conversation_metadata_by_id,
-    get_conversation_metadata_by_name,
     get_members_in_conversation_by_id,
     get_members_in_conversation_by_name,
     get_messages_in_channel_by_name,
@@ -476,7 +476,7 @@ def get_conversations_metadata_eval_suite() -> EvalSuite:
         user_message="Get the metadata of the #general channel",
         expected_tool_calls=[
             ExpectedToolCall(
-                func=get_conversation_metadata_by_name,
+                func=get_channel_metadata_by_name,
                 args={
                     "conversation_name": "general",
                 },

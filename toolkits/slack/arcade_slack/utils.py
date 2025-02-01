@@ -2,17 +2,22 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
+from arcade.sdk import ToolContext
 from arcade.sdk.errors import RetryableToolError
 
 from arcade_slack.constants import MAX_PAGINATION_SIZE_LIMIT, MAX_PAGINATION_TIMEOUT_SECONDS
 from arcade_slack.custom_types import SlackPaginationNextCursor
-from arcade_slack.exceptions import PaginationTimeoutError
+from arcade_slack.exceptions import (
+    PaginationTimeoutError,
+    UsernameNotFoundError,
+)
 from arcade_slack.models import (
     BasicUserInfo,
     ConversationMetadata,
     ConversationType,
     ConversationTypeSlackName,
     Message,
+    NextCursorContainer,
     SlackConversation,
     SlackConversationPurpose,
     SlackMessage,
@@ -88,6 +93,18 @@ def get_slack_conversation_type_as_str(channel: SlackConversation) -> str:
     if channel.get("is_mpim"):
         return ConversationTypeSlackName.MPIM.value
     raise ValueError(f"Invalid conversation type in channel {channel.get('name')}")
+
+
+def get_user_by_username(username: str, users_list: list[dict]) -> SlackUser:
+    usernames_found = []
+    for user in users_list:
+        if user.get("name"):
+            usernames_found.append(user["name"])
+        username_found = user.get("name") or ""
+        if username.lower() == username_found.lower():
+            return SlackUser(**user)
+
+    raise UsernameNotFoundError(usernames_found)
 
 
 def convert_conversation_type_to_slack_name(
@@ -172,6 +189,110 @@ def extract_basic_user_info(user_info: SlackUser) -> BasicUserInfo:
         real_name=user_info.get("real_name"),
         timezone=user_info.get("tz"),
     )
+
+
+async def retrieve_conversations_by_user_ids(
+    list_conversations_func: Callable,
+    get_members_in_conversation_func: Callable,
+    context: ToolContext,
+    conversation_types: list[ConversationType],
+    user_ids: list[str],
+    exact_match: bool = False,
+    limit: Optional[int] = None,
+    next_cursor_container: Optional[NextCursorContainer] = None,
+    timeout: Optional[int] = MAX_PAGINATION_TIMEOUT_SECONDS,
+) -> list[dict]:
+    """Retrieve conversations by the members' user IDs.
+
+    We use dependency injection with `list_conversations_func` and
+    `get_members_in_conversation_func` to avoid circular import errors with
+    arcade_slack.tools.chat and streamline unit testing.
+
+    Args:
+        list_conversations_func: tool to list conversations.
+        get_members_in_conversation_func: tool to get the members in a conversation.
+        context: The tool context.
+        conversation_types: The conversation types to retrieve.
+        user_ids: The user IDs to retrieve conversations for.
+        exact_match: Whether to match the exact number of members in the conversations.
+        limit: The maximum number of conversations to retrieve.
+        next_cursor_container: The container for the next cursor.
+        timeout: The timeout for the pagination loop.
+
+    Returns:
+        The list of conversations found.
+    """
+    next_cursor_container = next_cursor_container or NextCursorContainer()
+
+    async def retrieve_conversations_pagination_loop() -> list[dict]:
+        conversations_found: list[dict] = []
+        should_continue = True
+
+        while should_continue:
+            request_limit = None if not isinstance(limit, int) else limit - len(conversations_found)
+            response = await list_conversations_func(
+                context=context,
+                conversation_types=conversation_types,
+                limit=request_limit,
+                next_cursor=next_cursor_container.next_cursor,
+            )
+            next_cursor_container.next_cursor = response.get("next_cursor")
+
+            async def associate_members(conversation: dict) -> dict:
+                response = await get_members_in_conversation_func(context, conversation["id"])
+                conversation["members"] = response["members"]
+                return conversation
+
+            conversations_with_members = await asyncio.gather(*[
+                associate_members(conversation) for conversation in response["conversations"]
+            ])
+
+            conversations_found.extend(
+                filter_conversations_by_user_ids(conversations_with_members, user_ids, exact_match)
+            )
+
+            exceeds_limit = False if not limit else len(conversations_found) >= limit
+
+            if not next_cursor_container.next_cursor or exceeds_limit:
+                should_continue = False
+
+        if isinstance(limit, int):
+            conversations_found = conversations_found[:limit]
+
+        return conversations_found
+
+    return await asyncio.wait_for(retrieve_conversations_pagination_loop(), timeout=timeout)
+
+
+def filter_conversations_by_user_ids(
+    conversations: list[dict],
+    user_ids: list[str],
+    exact_match: bool = False,
+) -> list[dict]:
+    """
+    Filter conversations by the members' user IDs.
+
+    Args:
+        conversations: The list of conversations to filter.
+        user_ids: The user IDs to filter conversations for.
+        exact_match: Whether to match the exact number of members in the conversations.
+
+    Returns:
+        The list of conversations found.
+    """
+    matches = []
+    for conversation in conversations:
+        member_ids = [member["id"] for member in conversation["members"]]
+        if exact_match:
+            same_length = len(user_ids) == len(member_ids)
+            has_all_members = all(user_id in member_ids for user_id in user_ids)
+            if same_length and has_all_members:
+                matches.append(conversation)
+        else:
+            if all(user_id in member_ids for user_id in user_ids):
+                matches.append(conversation)
+
+    return matches
 
 
 def is_user_a_bot(user: SlackUser) -> bool:

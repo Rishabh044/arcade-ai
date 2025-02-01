@@ -9,9 +9,16 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from arcade_slack.constants import MAX_PAGINATION_TIMEOUT_SECONDS
-from arcade_slack.exceptions import ItemNotFoundError
-from arcade_slack.models import ConversationType, SlackUserList
-from arcade_slack.tools.users import get_user_info_by_id
+from arcade_slack.exceptions import (
+    ItemNotFoundError,
+    UsernameNotFoundError,
+)
+from arcade_slack.models import (
+    ConversationType,
+    NextCursorContainer,
+    SlackUserList,
+)
+from arcade_slack.tools.users import get_user_info_by_id, list_users
 from arcade_slack.utils import (
     async_paginate,
     convert_conversation_type_to_slack_name,
@@ -21,6 +28,8 @@ from arcade_slack.utils import (
     extract_conversation_metadata,
     format_conversations_as_csv,
     format_users,
+    get_user_by_username,
+    retrieve_conversations_by_user_ids,
 )
 
 
@@ -211,8 +220,8 @@ async def get_members_in_conversation_by_name(
     next_cursor: Annotated[Optional[str], "The cursor to use for pagination."] = None,
 ) -> Annotated[dict, "The conversation members' IDs and Names"]:
     """Get the members of a conversation in Slack by the conversation's name."""
-    conversation_metadata = await get_conversation_metadata_by_name(
-        context=context, conversation_name=conversation_name, next_cursor=next_cursor
+    conversation_metadata = await get_channel_metadata_by_name(
+        context=context, channel_name=conversation_name, next_cursor=next_cursor
     )
 
     return await get_members_in_conversation_by_id(  # type: ignore[no-any-return]
@@ -410,8 +419,8 @@ async def get_messages_in_channel_by_name(
     'latest_relative'.
 
     Leave all arguments with the default None to get messages without date/time filtering"""
-    conversation_metadata = await get_conversation_metadata_by_name(
-        context=context, conversation_name=channel_name
+    conversation_metadata = await get_channel_metadata_by_name(
+        context=context, channel_name=channel_name
     )
     return await get_messages_in_conversation_by_id(  # type: ignore[no-any-return]
         context=context,
@@ -423,6 +432,66 @@ async def get_messages_in_channel_by_name(
         limit=limit,
         next_cursor=next_cursor,
     )
+
+
+@tool(requires_auth=Slack(scopes=["im:history"]))
+async def get_messages_in_direct_conversation_by_name(
+    context: ToolContext,
+    user_name: Annotated[str, "The name of the user to get messages from"],
+    oldest_relative: Annotated[
+        Optional[str],
+        (
+            "The oldest message to include in the results, specified as a time offset from the "
+            "current time in the format 'DD:HH:MM'"
+        ),
+    ] = None,
+    latest_relative: Annotated[
+        Optional[str],
+        (
+            "The latest message to include in the results, specified as a time offset from the "
+            "current time in the format 'DD:HH:MM'"
+        ),
+    ] = None,
+    oldest_datetime: Annotated[
+        Optional[str],
+        (
+            "The oldest message to include in the results, specified as a datetime object in the "
+            "format 'YYYY-MM-DD HH:MM:SS'"
+        ),
+    ] = None,
+    latest_datetime: Annotated[
+        Optional[str],
+        (
+            "The latest message to include in the results, specified as a datetime object in the "
+            "format 'YYYY-MM-DD HH:MM:SS'"
+        ),
+    ] = None,
+    limit: Annotated[Optional[int], "The maximum number of messages to return."] = None,
+    next_cursor: Annotated[Optional[str], "The cursor to use for pagination."] = None,
+) -> Annotated[
+    dict,
+    (
+        "The messages in a channel and next cursor for paginating results (when "
+        "there are additional messages to retrieve)."
+    ),
+]:
+    """Get the messages in a direct conversation by the user's name.
+
+    To filter messages by an absolute datetime, use 'oldest_datetime' and/or 'latest_datetime'. If
+    only 'oldest_datetime' is provided, it will return messages from the oldest_datetime to the
+    current time. If only 'latest_datetime' is provided, it will return messages since the
+    beginning of the conversation to the latest_datetime.
+
+    To filter messages by a relative datetime (e.g. 3 days ago, 1 hour ago, etc.), use
+    'oldest_relative' and/or 'latest_relative'. If only 'oldest_relative' is provided, it will
+    return messages from the oldest_relative to the current time. If only 'latest_relative' is
+    provided, it will return messages from the current time to the latest_relative.
+
+    Do not provide both 'oldest_datetime' and 'oldest_relative' or both 'latest_datetime' and
+    'latest_relative'.
+
+    Leave all arguments with the default None to get messages without date/time filtering"""
+    pass
 
 
 @tool(
@@ -467,39 +536,34 @@ async def get_conversation_metadata_by_id(
     return dict(**extract_conversation_metadata(response["channel"]))
 
 
-@tool(
-    requires_auth=Slack(
-        scopes=["channels:read", "groups:read", "im:read", "mpim:read"],
-    )
-)
-async def get_conversation_metadata_by_name(
+@tool(requires_auth=Slack(scopes=["channels:read"]))
+async def get_channel_metadata_by_name(
     context: ToolContext,
-    conversation_name: Annotated[str, "The name of the conversation to get metadata for"],
+    channel_name: Annotated[str, "The name of the channel to get metadata for"],
     next_cursor: Annotated[
         Optional[str],
         "The cursor to use for pagination, if continuing from a previous search.",
     ] = None,
-) -> Annotated[dict, "The conversation metadata"]:
-    """Get the metadata of a conversation in Slack searching by its name."""
-    conversation_names: list[str] = []
+) -> Annotated[dict, "The channel metadata"]:
+    """Get the metadata of a channel in Slack searching by its name."""
+    channel_names: list[str] = []
 
-    async def find_conversation() -> dict:
-        nonlocal conversation_names, conversation_name, next_cursor
+    async def find_channel() -> dict:
+        nonlocal channel_names, channel_name
         should_continue = True
+        next_cursor = None
 
         while should_continue:
             response = await list_conversations_metadata(context, next_cursor=next_cursor)
-            next_cursor = response.get("response_metadata", {}).get("next_cursor")
+            next_cursor = response.get("next_cursor")
 
-            for conversation in response["conversations"]:
-                response_conversation_name = (
-                    ""
-                    if not isinstance(conversation.get("name"), str)
-                    else conversation["name"].lower()
+            for channel in response["conversations"]:
+                response_channel_name = (
+                    "" if not isinstance(channel.get("name"), str) else channel["name"].lower()
                 )
-                if response_conversation_name == conversation_name.lower():
-                    return conversation  # type: ignore[no-any-return]
-                conversation_names.append(conversation["name"])
+                if response_channel_name == channel_name.lower():
+                    return channel  # type: ignore[no-any-return]
+                channel_names.append(channel["name"])
 
             if not next_cursor:
                 should_continue = False
@@ -507,27 +571,99 @@ async def get_conversation_metadata_by_name(
         raise ItemNotFoundError()
 
     try:
-        return await asyncio.wait_for(find_conversation(), timeout=MAX_PAGINATION_TIMEOUT_SECONDS)
+        return await asyncio.wait_for(find_channel(), timeout=MAX_PAGINATION_TIMEOUT_SECONDS)
     except ItemNotFoundError:
         raise RetryableToolError(
-            "Conversation not found",
-            developer_message=f"Conversation with name '{conversation_name}' not found.",
-            additional_prompt_content=f"Available conversation names: {conversation_names}",
+            "Channel not found",
+            developer_message=f"Channel with name '{channel_name}' not found.",
+            additional_prompt_content=f"Available channel names: {channel_names}",
             retry_after_ms=500,
         )
     except TimeoutError:
         raise RetryableToolError(
-            "Conversation not found, search timed out.",
+            "Channel not found, search timed out.",
             developer_message=(
-                f"Conversation with name '{conversation_name}' not found. "
+                f"Channel with name '{channel_name}' not found. "
                 f"Search timed out after {MAX_PAGINATION_TIMEOUT_SECONDS} seconds."
             ),
             additional_prompt_content=(
-                f"Other conversation names found are: {conversation_names}. "
+                f"Other channel names found are: {channel_names}. "
                 "The list is potentially non-exhaustive, since the search process timed out. "
-                f"Use the '{list_conversations_metadata.__name__}' tool to get a comprehensive "
-                "list of conversations."
+                f"Use the '{list_conversations_metadata.__tool_name__}' tool to get"
+                "a comprehensive list of channels."
             ),
+            retry_after_ms=500,
+        )
+
+
+@tool(requires_auth=Slack(scopes=["im:read"]))
+async def get_direct_message_conversation_metadata_by_username(
+    context: ToolContext,
+    username: Annotated[str, "The username of the user/person to get messages with"],
+    next_cursor: Annotated[
+        Optional[str],
+        "The cursor to use for pagination, if continuing from a previous search.",
+    ] = None,
+) -> Annotated[
+    Optional[dict],
+    "The direct message conversation metadata or None if no conversation is found.",
+]:
+    """Get the metadata of a direct message conversation in Slack by the username."""
+    next_cursor_container = NextCursorContainer(next_cursor)
+
+    try:
+        token = (
+            context.authorization.token
+            if context.authorization and context.authorization.token
+            else ""
+        )
+        slack_client = AsyncWebClient(token=token)
+
+        current_user_response, list_users_response = await asyncio.gather(
+            slack_client.users_identity(), list_users(context)
+        )
+
+        current_user = current_user_response["user"]
+        other_user = get_user_by_username(username, list_users_response)
+
+        conversations_found = await retrieve_conversations_by_user_ids(
+            list_conversations_func=list_conversations_metadata,
+            get_members_in_conversation_func=get_members_in_conversation_by_id,
+            context=context,
+            conversation_types=[ConversationType.DIRECT_MESSAGE],
+            user_ids=[current_user["id"], other_user["id"]],
+            exact_match=True,
+            limit=1,
+            next_cursor_container=next_cursor_container,
+            timeout=MAX_PAGINATION_TIMEOUT_SECONDS,
+        )
+
+        return conversations_found[0] if conversations_found else None
+
+    except UsernameNotFoundError as e:
+        raise RetryableToolError(
+            f"Username '{username}' not found",
+            developer_message=f"User with username '{username}' not found.",
+            additional_prompt_content=f"Available users: {e.usernames_found}",
+            retry_after_ms=500,
+        )
+
+    except TimeoutError:
+        if next_cursor_container.has_new_cursor:
+            additional_prompt_context = (
+                f"Call {get_direct_message_conversation_metadata_by_username.__tool_name__} "
+                f'tool again providing `"next_cursor": "{next_cursor_container.next_cursor}"` to '
+                "continue the search."
+            )
+        else:
+            additional_prompt_context = None
+
+        raise RetryableToolError(
+            (
+                f"No conversation found with '{username}'. "
+                f"Search timed out after {MAX_PAGINATION_TIMEOUT_SECONDS}"
+            ),
+            additional_prompt_content=additional_prompt_context,
             retry_after_ms=500,
         )
 

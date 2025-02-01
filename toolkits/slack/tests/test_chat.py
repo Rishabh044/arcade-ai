@@ -10,8 +10,8 @@ from slack_sdk.web.async_slack_response import AsyncSlackResponse
 from arcade_slack.constants import MAX_PAGINATION_SIZE_LIMIT
 from arcade_slack.models import ConversationType, ConversationTypeSlackName
 from arcade_slack.tools.chat import (
+    get_channel_metadata_by_name,
     get_conversation_metadata_by_id,
-    get_conversation_metadata_by_name,
     get_members_in_conversation_by_id,
     get_members_in_conversation_by_name,
     get_messages_in_channel_by_name,
@@ -316,37 +316,37 @@ async def test_get_conversation_metadata_by_name(
     sample_conversation = extract_conversation_metadata(mock_channel_info)
     mock_list_conversations_metadata.return_value = {
         "conversations": [sample_conversation],
-        "response_metadata": {"next_cursor": None},
+        "next_cursor": None,
     }
 
-    response = await get_conversation_metadata_by_name(mock_context, sample_conversation["name"])
+    response = await get_channel_metadata_by_name(mock_context, sample_conversation["name"])
 
     assert response == sample_conversation
     mock_list_conversations_metadata.assert_called_once_with(mock_context, next_cursor=None)
 
 
 @pytest.mark.asyncio
-async def test_get_conversation_metadata_by_name_triggering_pagination(
+async def test_get_channel_metadata_by_name_triggering_pagination(
     mock_context, mock_list_conversations_metadata, mock_channel_info
 ):
-    target_conversation = extract_conversation_metadata(mock_channel_info)
-    another_conversation = extract_conversation_metadata(mock_channel_info)
-    another_conversation["name"] = "another_conversation"
+    target_channel = extract_conversation_metadata(mock_channel_info)
+    another_channel = extract_conversation_metadata(mock_channel_info)
+    another_channel["name"] = "another_channel"
 
     mock_list_conversations_metadata.side_effect = [
         {
-            "conversations": [another_conversation],
-            "response_metadata": {"next_cursor": "123"},
+            "conversations": [another_channel],
+            "next_cursor": "123",
         },
         {
-            "conversations": [target_conversation],
-            "response_metadata": {"next_cursor": None},
+            "conversations": [target_channel],
+            "next_cursor": None,
         },
     ]
 
-    response = await get_conversation_metadata_by_name(mock_context, target_conversation["name"])
+    response = await get_channel_metadata_by_name(mock_context, target_channel["name"])
 
-    assert response == target_conversation
+    assert response == target_channel
     assert mock_list_conversations_metadata.call_count == 2
     mock_list_conversations_metadata.assert_has_calls([
         call(mock_context, next_cursor=None),
@@ -355,26 +355,26 @@ async def test_get_conversation_metadata_by_name_triggering_pagination(
 
 
 @pytest.mark.asyncio
-async def test_get_conversation_metadata_by_name_not_found(
+async def test_get_channel_metadata_by_name_not_found(
     mock_context, mock_list_conversations_metadata, mock_channel_info
 ):
-    first_conversation = extract_conversation_metadata(mock_channel_info)
-    second_conversation = extract_conversation_metadata(mock_channel_info)
-    second_conversation["name"] = "second_conversation"
+    first_channel = extract_conversation_metadata(mock_channel_info)
+    second_channel = extract_conversation_metadata(mock_channel_info)
+    second_channel["name"] = "second_channel"
 
     mock_list_conversations_metadata.side_effect = [
         {
-            "conversations": [second_conversation],
-            "response_metadata": {"next_cursor": "123"},
+            "conversations": [second_channel],
+            "next_cursor": "123",
         },
         {
-            "conversations": [first_conversation],
-            "response_metadata": {"next_cursor": None},
+            "conversations": [first_channel],
+            "next_cursor": None,
         },
     ]
 
     with pytest.raises(RetryableToolError):
-        await get_conversation_metadata_by_name(mock_context, "inexistent_conversation")
+        await get_channel_metadata_by_name(mock_context, "inexistent_channel")
 
     assert mock_list_conversations_metadata.call_count == 2
     mock_list_conversations_metadata.assert_has_calls([
@@ -505,11 +505,11 @@ async def test_get_members_in_conversation_by_name_triggering_pagination(
     mock_list_conversations_metadata.side_effect = [
         {
             "conversations": [extract_conversation_metadata(conversation1)],
-            "response_metadata": {"next_cursor": "123"},
+            "next_cursor": "123",
         },
         {
             "conversations": [extract_conversation_metadata(conversation2)],
-            "response_metadata": {"next_cursor": None},
+            "next_cursor": None,
         },
     ]
 
