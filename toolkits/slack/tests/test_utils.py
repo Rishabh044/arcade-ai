@@ -437,7 +437,10 @@ async def test_retrieve_conversations_by_user_ids(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "search_user_ids, conversation_types, exact_match, limit, expected_conversation_ids",
+    (
+        "search_user_ids, conversation_types, exact_match, limit, "
+        "expected_conversation_ids, expected_conversations_list_calls"
+    ),
     [
         (
             ["U1", "U2", "U3"],
@@ -445,6 +448,7 @@ async def test_retrieve_conversations_by_user_ids(
             False,
             None,
             ["C1", "C3"],
+            2,
         ),
         (
             ["U1", "U2", "U3"],
@@ -452,14 +456,32 @@ async def test_retrieve_conversations_by_user_ids(
             True,
             None,
             ["C1"],
+            2,
         ),
-        (["U1", "U2", "U99"], [ConversationType.MULTI_PERSON_DIRECT_MESSAGE], False, None, []),
+        (["U1", "U2", "U99"], [ConversationType.MULTI_PERSON_DIRECT_MESSAGE], False, None, [], 2),
         (
             ["U1", "U2"],
             [ConversationType.MULTI_PERSON_DIRECT_MESSAGE, ConversationType.PUBLIC_CHANNEL],
             False,
-            10,
+            None,
             ["C1", "C3", "C4", "C6"],
+            2,
+        ),
+        (
+            ["U1", "U2"],
+            [ConversationType.MULTI_PERSON_DIRECT_MESSAGE, ConversationType.PUBLIC_CHANNEL],
+            False,
+            1,
+            ["C1"],
+            1,
+        ),
+        (
+            ["U1", "U2"],
+            [ConversationType.MULTI_PERSON_DIRECT_MESSAGE, ConversationType.PUBLIC_CHANNEL],
+            False,
+            3,
+            ["C1", "C3", "C4"],
+            2,
         ),
         (
             ["U1", "U2"],
@@ -467,6 +489,7 @@ async def test_retrieve_conversations_by_user_ids(
             True,
             None,
             ["C4"],
+            2,
         ),
     ],
 )
@@ -478,6 +501,7 @@ async def test_retrieve_conversations_by_user_ids_with_pagination(
     exact_match,
     limit,
     expected_conversation_ids,
+    expected_conversations_list_calls,
 ):
     context = MagicMock(spec=ToolContext)
     context.authorization = MagicMock()
@@ -658,12 +682,4 @@ async def test_retrieve_conversations_by_user_ids_with_pagination(
     )
 
     assert [conversation["id"] for conversation in conversations_found] == expected_conversation_ids
-    assert mock_chat_slack_client.conversations_list.call_count == 2
-
-
-def test_retrieve_conversations_by_user_ids_limit_exceeded_before_pagination_ends():
-    pass
-
-
-def test_retrieve_conversations_by_user_ids_with_initial_next_cursor():
-    pass
+    assert mock_chat_slack_client.conversations_list.call_count == expected_conversations_list_calls
