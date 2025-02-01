@@ -624,7 +624,7 @@ async def get_direct_message_conversation_metadata_by_username(
         )
 
         current_user = current_user_response["user"]
-        other_user = get_user_by_username(username, list_users_response)
+        other_user = get_user_by_username(username, list_users_response["users"])
 
         conversations_found = await retrieve_conversations_by_user_ids(
             list_conversations_func=list_conversations_metadata,
@@ -638,7 +638,7 @@ async def get_direct_message_conversation_metadata_by_username(
             timeout=MAX_PAGINATION_TIMEOUT_SECONDS,
         )
 
-        return conversations_found[0] if conversations_found else None
+        return None if not conversations_found else conversations_found[0]
 
     except UsernameNotFoundError as e:
         raise RetryableToolError(

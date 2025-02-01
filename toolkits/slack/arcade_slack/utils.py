@@ -98,7 +98,7 @@ def get_slack_conversation_type_as_str(channel: SlackConversation) -> str:
 def get_user_by_username(username: str, users_list: list[dict]) -> SlackUser:
     usernames_found = []
     for user in users_list:
-        if user.get("name"):
+        if isinstance(user.get("name"), str):
             usernames_found.append(user["name"])
         username_found = user.get("name") or ""
         if username.lower() == username_found.lower():
