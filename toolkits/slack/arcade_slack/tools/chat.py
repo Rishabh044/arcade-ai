@@ -569,9 +569,8 @@ async def get_channel_metadata_by_name(
     channel_names: list[str] = []
 
     async def find_channel() -> dict:
-        nonlocal channel_names, channel_name
+        nonlocal channel_names, channel_name, next_cursor
         should_continue = True
-        next_cursor = None
 
         while should_continue:
             response = await list_conversations_metadata(context, next_cursor=next_cursor)
