@@ -17,6 +17,7 @@ from arcade_slack.tools.chat import (
     get_members_in_conversation_by_name,
     get_messages_in_channel_by_name,
     get_messages_in_conversation_by_id,
+    get_messages_in_direct_conversation_by_username,
     list_conversations_metadata,
     list_direct_message_conversations_metadata,
     list_group_direct_message_conversations_metadata,
@@ -803,4 +804,50 @@ async def test_get_direct_message_conversation_metadata_by_username_username_not
     with pytest.raises(RetryableToolError):
         await get_direct_message_conversation_metadata_by_username(
             context=mock_context, username="user999"
+        )
+
+
+@pytest.mark.asyncio
+@patch("arcade_slack.tools.chat.get_messages_in_conversation_by_id")
+@patch("arcade_slack.tools.chat.get_direct_message_conversation_metadata_by_username")
+async def test_get_messages_in_direct_conversation_by_username(
+    mock_get_direct_message_conversation_metadata_by_username,
+    mock_get_messages_in_conversation_by_id,
+    mock_context,
+):
+    mock_get_direct_message_conversation_metadata_by_username.return_value = {
+        "id": "C12345",
+    }
+
+    response = await get_messages_in_direct_conversation_by_username(
+        context=mock_context, username="user2"
+    )
+
+    assert response == mock_get_messages_in_conversation_by_id.return_value
+    mock_get_direct_message_conversation_metadata_by_username.assert_called_once_with(
+        context=mock_context, username="user2"
+    )
+    mock_get_messages_in_conversation_by_id.assert_called_once_with(
+        context=mock_context,
+        conversation_id="C12345",
+        oldest_relative=None,
+        latest_relative=None,
+        oldest_datetime=None,
+        latest_datetime=None,
+        limit=None,
+        next_cursor=None,
+    )
+
+
+@pytest.mark.asyncio
+@patch("arcade_slack.tools.chat.get_direct_message_conversation_metadata_by_username")
+async def test_get_messages_in_direct_conversation_by_username_not_found(
+    mock_get_direct_message_conversation_metadata_by_username,
+    mock_context,
+):
+    mock_get_direct_message_conversation_metadata_by_username.return_value = None
+
+    with pytest.raises(ToolExecutionError):
+        await get_messages_in_direct_conversation_by_username(
+            context=mock_context, username="user2"
         )

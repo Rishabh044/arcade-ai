@@ -435,9 +435,9 @@ async def get_messages_in_channel_by_name(
 
 
 @tool(requires_auth=Slack(scopes=["im:history"]))
-async def get_messages_in_direct_conversation_by_name(
+async def get_messages_in_direct_conversation_by_username(
     context: ToolContext,
-    user_name: Annotated[str, "The name of the user to get messages from"],
+    username: Annotated[str, "The username of the user to get messages from"],
     oldest_relative: Annotated[
         Optional[str],
         (
@@ -491,7 +491,27 @@ async def get_messages_in_direct_conversation_by_name(
     'latest_relative'.
 
     Leave all arguments with the default None to get messages without date/time filtering"""
-    pass
+    conversation_metadata = await get_direct_message_conversation_metadata_by_username(
+        context=context, username=username
+    )
+
+    if not conversation_metadata:
+        raise ToolExecutionError(
+            "Conversation not found",
+            developer_message=f"Direct Message conversation with username '{username}' not found.",
+            retry_after_ms=500,
+        )
+
+    return await get_messages_in_conversation_by_id(  # type: ignore[no-any-return]
+        context=context,
+        conversation_id=conversation_metadata["id"],
+        oldest_relative=oldest_relative,
+        latest_relative=latest_relative,
+        oldest_datetime=oldest_datetime,
+        latest_datetime=latest_datetime,
+        limit=limit,
+        next_cursor=next_cursor,
+    )
 
 
 @tool(
