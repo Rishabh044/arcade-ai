@@ -522,7 +522,6 @@ async def get_messages_in_direct_conversation_by_username(
         raise ToolExecutionError(
             "Conversation not found",
             developer_message=f"Direct Message conversation with username '{username}' not found.",
-            retry_after_ms=500,
         )
 
     return await get_messages_in_conversation_by_id(  # type: ignore[no-any-return]
