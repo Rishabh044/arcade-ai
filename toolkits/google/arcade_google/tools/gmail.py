@@ -9,6 +9,7 @@ from arcade.sdk.errors import RetryableToolError
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
+from arcade_google.models import GmailFolder, GmailMessageReadStatus
 from arcade_google.tools.utils import (
     DateRange,
     build_query_string,
@@ -368,6 +369,10 @@ async def list_emails_by_header(
 async def list_emails(
     context: ToolContext,
     n_emails: Annotated[int, "Number of emails to read"] = 5,
+    read_status: Annotated[
+        Optional[GmailMessageReadStatus], "The read status of the emails to filter by"
+    ] = GmailMessageReadStatus.ALL,
+    folders: Annotated[Optional[list[GmailFolder]], "Filter messages by folders"] = None,
 ) -> Annotated[dict, "A dictionary containing a list of email details"]:
     """
     Read emails from a Gmail account and extract plain text content.
@@ -383,7 +388,23 @@ async def list_emails(
         ),
     )
 
-    messages = service.users().messages().list(userId="me").execute().get("messages", [])
+    query = []
+
+    if read_status != GmailMessageReadStatus.ALL:
+        query.append(f"is:{read_status.value}")
+
+    if isinstance(folders, GmailFolder):
+        folders = [folders]
+
+    if folders:
+        for folder in folders:
+            query.append(f"is:{folder.value}")
+
+    query_string = " ".join(query)
+
+    messages = (
+        service.users().messages().list(userId="me", q=query_string).execute().get("messages", [])
+    )
 
     if not messages:
         return {"emails": []}
