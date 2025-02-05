@@ -457,7 +457,7 @@ async def get_messages_in_channel_by_name(
     )
 
 
-@tool(requires_auth=Slack(scopes=["im:history"]))
+@tool(requires_auth=Slack(scopes=["im:history", "im:read"]))
 async def get_messages_in_direct_conversation_by_username(
     context: ToolContext,
     username: Annotated[str, "The username of the user to get messages from"],
@@ -661,11 +661,10 @@ async def get_direct_message_conversation_metadata_by_username(
         )
         slack_client = AsyncWebClient(token=token)
 
-        current_user_response, list_users_response = await asyncio.gather(
-            slack_client.users_identity(), list_users(context)
+        current_user, list_users_response = await asyncio.gather(
+            slack_client.auth_test(), list_users(context)
         )
 
-        current_user = current_user_response["user"]
         other_user = get_user_by_username(username, list_users_response["users"])
 
         conversations_found = await retrieve_conversations_by_user_ids(
@@ -673,7 +672,7 @@ async def get_direct_message_conversation_metadata_by_username(
             get_members_in_conversation_func=get_members_in_conversation_by_id,
             context=context,
             conversation_types=[ConversationType.DIRECT_MESSAGE],
-            user_ids=[current_user["id"], other_user["id"]],
+            user_ids=[current_user["user_id"], other_user["id"]],
             exact_match=True,
             limit=1,
             next_cursor_container=next_cursor_container,

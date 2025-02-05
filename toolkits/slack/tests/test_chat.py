@@ -703,10 +703,11 @@ async def test_get_direct_message_conversation_metadata_by_username(
     mock_chat_slack_client,
     mock_users_slack_client,
 ):
-    mock_chat_slack_client.users_identity.return_value = {
+    mock_chat_slack_client.auth_test.return_value = {
         "ok": True,
-        "user": {"id": "U1", "name": "user1"},
-        "team": {"id": "T1", "name": "team1"},
+        "user_id": "U1",
+        "team_id": "T1",
+        "user": "user1",
     }
 
     mock_users_slack_client.users_list.return_value = {
