@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Annotated, Any
+from zoneinfo import ZoneInfo
 
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Google
@@ -9,7 +10,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from arcade_google.tools.models import EventVisibility, SendUpdatesOptions
-from arcade_google.tools.utils import parse_datetime
+from arcade_google.tools.utils import find_free_times, get_now, parse_datetime
 
 
 @tool(
@@ -356,3 +357,156 @@ async def delete_event(
         f"Event with ID '{event_id}' successfully deleted from calendar '{calendar_id}'. "
         f"{notification_message}"
     )
+
+
+@tool(
+    requires_auth=Google(
+        scopes=["https://www.googleapis.com/auth/calendar.readonly"],
+    ),
+)
+async def get_busy_slots(
+    context: ToolContext,
+    start_datetime: Annotated[
+        str,
+        "The datetime to start searching for free/busy slots in RFC3339 format, "
+        "e.g., '2024-12-31T15:30:00.000Z'.",
+    ],
+    end_datetime: Annotated[
+        str,
+        "The datetime to end searching for free/busy slots in RFC3339 format, "
+        "e.g., '2024-12-31T17:30:00.000Z'.",
+    ],
+    email_addresses: Annotated[
+        list[str],
+        "The list of email addresses to search for free/busy slots in.",
+    ],
+    include_current_user: Annotated[
+        bool,
+        "Whether to include the current user's email address in the slot search results.",
+    ] = True,
+) -> Annotated[dict, "A dictionary of free/busy slots"]:
+    """Returns free/busy slots in the specified calendars within the given datetime range."""
+
+    credentials = Credentials(
+        context.authorization.token if context.authorization and context.authorization.token else ""
+    )
+
+    if isinstance(email_addresses, str):
+        email_addresses = [email_addresses]
+
+    if include_current_user:
+        oauth_service = build("oauth2", "v2", credentials=credentials)
+        user_info = oauth_service.userinfo().get().execute()
+        if user_info["email"] not in email_addresses:
+            email_addresses.append(user_info["email"])
+
+    calendar_service = build("calendar", "v3", credentials=credentials)
+    calendar = calendar_service.calendars().get(calendarId="primary").execute()
+
+    items = [{"id": email_address} for email_address in email_addresses]
+
+    free_busy_result = (
+        calendar_service.freebusy()
+        .query(
+            body={
+                "timeMin": start_datetime,
+                "timeMax": end_datetime,
+                "timeZone": calendar["timeZone"],
+                "items": items,
+            }
+        )
+        .execute()
+    )
+    import json
+
+    with open("free_busy_result.json", "w") as f:
+        json.dump(free_busy_result.get("calendars"), f)
+
+    return {
+        "calendars": free_busy_result.get("calendars", {}),
+        "timezone": calendar["timeZone"],
+    }
+
+
+@tool(
+    requires_auth=Google(
+        scopes=["https://www.googleapis.com/auth/calendar.readonly"],
+    ),
+)
+async def find_free_slots_across_calendars(
+    context: ToolContext,
+    email_addresses: Annotated[
+        list[str],
+        "The list of email addresses to search for free slots in.",
+    ],
+    include_current_user: Annotated[
+        bool,
+        "Whether to include the current user's calendar in the slot search results.",
+    ] = True,
+    start_datetime: Annotated[
+        str | None,
+        "The datetime to start searching for free slots in RFC3339 format, "
+        "e.g., '2024-12-31T15:30:00.000Z'.",
+    ] = None,
+    end_datetime: Annotated[
+        str | None,
+        "The datetime to end searching for free slots in RFC3339 format, "
+        "e.g., '2024-12-31T17:30:00.000Z'.",
+    ] = None,
+    start_relative: Annotated[
+        str | None,
+        (
+            "The oldest message to include in the results, specified as a time offset from the "
+            "current time in the format 'DD:HH:MM', where DD is the number of days, HH is the "
+            "number of hours, and MM is the number of minutes."
+        ),
+    ] = None,
+    end_relative: Annotated[
+        str | None,
+        (
+            "The latest message to include in the results, specified as a time offset from the "
+            "current time in the format 'DD:HH:MM', where DD is the number of days, HH is the "
+            "number of hours, and MM is the number of minutes."
+        ),
+    ] = None,
+) -> Annotated[dict, "A dictionary of free slots"]:
+    """Returns time slots that are free across all calendars within a given datetime range.
+
+    Must provide either start_datetime or start_relative, and either end_datetime or end_relative.
+    """
+    now = get_now()
+
+    if start_relative:
+        days = timedelta(days=int(start_relative.split(":")[0]))
+        hours = timedelta(hours=int(start_relative.split(":")[1]))
+        minutes = timedelta(minutes=int(start_relative.split(":")[2]))
+        start_datetime = (now + days + hours + minutes).isoformat()
+
+    if not start_datetime:
+        start_datetime = now.isoformat()
+
+    if end_relative:
+        days = timedelta(days=int(end_relative.split(":")[0]))
+        hours = timedelta(hours=int(end_relative.split(":")[1]))
+        minutes = timedelta(minutes=int(end_relative.split(":")[2]))
+        end_datetime = (now + days + hours + minutes).isoformat()
+
+    if not end_datetime:
+        five_days_from_now = now + timedelta(days=5)
+        end_datetime = five_days_from_now.isoformat()
+
+    response = await get_busy_slots(
+        context=context,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime,
+        email_addresses=email_addresses,
+        include_current_user=include_current_user,
+    )
+
+    busy_slots = response["calendars"]
+    tz = ZoneInfo(response["timezone"])
+
+    return {
+        "free_slots": find_free_times(busy_slots, start_datetime, end_datetime, tz),
+        "timezone": response["timezone"],
+    }

@@ -1,6 +1,6 @@
 import re
 from base64 import urlsafe_b64decode
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
@@ -302,3 +302,156 @@ def build_docs_service(auth_token: Optional[str]) -> Resource:  # type: ignore[n
     """
     auth_token = auth_token or ""
     return build("docs", "v1", credentials=Credentials(auth_token))
+
+
+def parse_rfc3339(dt_str: str, tz: timezone = timezone.utc) -> datetime:
+    """
+    Parse an RFC3339 datetime string into a timezone-aware datetime.
+    Converts a trailing 'Z' (UTC) into +00:00.
+    If the parsed datetime is naive, assume it is in the provided timezone.
+    """
+    if dt_str.endswith("Z"):
+        dt_str = dt_str[:-1] + "+00:00"
+    dt = datetime.fromisoformat(dt_str)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=tz)
+    return dt
+
+
+def merge_intervals(intervals: list[tuple[datetime, datetime]]) -> list[tuple[datetime, datetime]]:
+    """
+    Given a list of (start, end) tuples, merge overlapping or adjacent intervals.
+    """
+    merged = []
+    for start, end in sorted(intervals, key=lambda x: x[0]):
+        if not merged:
+            merged.append((start, end))
+        else:
+            last_start, last_end = merged[-1]
+            if start <= last_end:
+                merged[-1] = (last_start, max(last_end, end))
+            else:
+                merged.append((start, end))
+    return merged
+
+
+def get_business_hours_for_day(
+    current_date: datetime,
+    business_tz: timezone,
+    global_start: datetime,
+    global_end: datetime,
+) -> tuple[datetime, datetime]:
+    """
+    Compute the allowed business hours for the given day, adjusting for global bounds.
+
+    Business hours are defined as 08:00 to 19:00 in the business_tz timezone.
+    On the first and last day, the business hours are trimmed to the global_start/global_end.
+    """
+    day_business_start = datetime(
+        current_date.year, current_date.month, current_date.day, 8, 0, tzinfo=business_tz
+    )
+    day_business_end = datetime(
+        current_date.year, current_date.month, current_date.day, 19, 0, tzinfo=business_tz
+    )
+    if current_date == global_start.date():
+        day_business_start = max(day_business_start, global_start)
+    if current_date == global_end.date():
+        day_business_end = min(day_business_end, global_end)
+    return day_business_start, day_business_end
+
+
+def gather_busy_intervals(
+    busy_data: dict[str, Any],
+    day_start: datetime,
+    day_end: datetime,
+    business_tz: timezone,
+) -> list[tuple[datetime, datetime]]:
+    """
+    Collect busy intervals from all calendars that intersect with the day's business hours.
+    Busy intervals are clipped to lie within [day_start, day_end].
+    """
+    busy_intervals = []
+    for calendar in busy_data:
+        for slot in busy_data[calendar].get("busy", []):
+            slot_start = parse_rfc3339(slot["start"]).astimezone(business_tz)
+            slot_end = parse_rfc3339(slot["end"]).astimezone(business_tz)
+            if slot_end > day_start and slot_start < day_end:
+                busy_intervals.append((max(slot_start, day_start), min(slot_end, day_end)))
+    return busy_intervals
+
+
+def subtract_busy_intervals(
+    business_start: datetime,
+    business_end: datetime,
+    busy_intervals: list[tuple[datetime, datetime]],
+) -> list[dict[str, Any]]:
+    """
+    Subtract the merged busy intervals from the business hours and return free time slots.
+    """
+    free_slots = []
+    merged_busy = merge_intervals(busy_intervals)
+    current_free_start = business_start
+    for busy_start, busy_end in merged_busy:
+        if current_free_start < busy_start:
+            free_slots.append({
+                "start": current_free_start.isoformat(),
+                "end": busy_start.isoformat(),
+            })
+        current_free_start = max(current_free_start, busy_end)
+    if current_free_start < business_end:
+        free_slots.append({
+            "start": current_free_start.isoformat(),
+            "end": business_end.isoformat(),
+        })
+    return free_slots
+
+
+def find_free_times(
+    busy_data: dict[str, Any],
+    global_start_str: str,
+    global_end_str: str,
+    tz: timezone = timezone.utc,
+) -> list[dict[str, Any]]:
+    """
+    Returns the free time slots across all calendars within the global bounds,
+    ensuring that the global start is not in the past.
+
+    Only considers business days (Monday to Friday) and business hours (08:00-19:00)
+    in the provided timezone.
+    """
+    # Parse the global boundaries and convert them to the business timezone.
+    global_start = parse_rfc3339(global_start_str).astimezone(tz)
+    global_end = parse_rfc3339(global_end_str).astimezone(tz)
+
+    # Ensure global_start is never in the past relative to now.
+    now = get_now(tz)
+    if now > global_start:
+        global_start = now
+
+    # If after adjusting the start, there's no interval left, return empty.
+    if global_start >= global_end:
+        return []
+
+    free_slots = []
+    current_date = global_start.date()
+
+    while current_date <= global_end.date():
+        # Only consider weekdays (Monday=0 to Friday=4)
+        if current_date.weekday() < 5:
+            day_start, day_end = get_business_hours_for_day(
+                current_date, tz, global_start, global_end
+            )
+            # Skip if the day's business window is empty.
+            if day_start >= day_end:
+                current_date += timedelta(days=1)
+                continue
+
+            busy_intervals = gather_busy_intervals(busy_data, day_start, day_end, tz)
+            free_slots.extend(subtract_busy_intervals(day_start, day_end, busy_intervals))
+        current_date += timedelta(days=1)
+
+    return free_slots
+
+
+def get_now(tz: timezone = timezone.utc) -> datetime:
+    return datetime.now(tz)
