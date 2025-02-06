@@ -1,10 +1,12 @@
 import asyncio
+import warnings
 from datetime import datetime, timezone
 from typing import Annotated, Optional, cast
 
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Slack
 from arcade.sdk.errors import RetryableToolError, ToolExecutionError
+from arcade.sdk.warnings import deprecated
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
@@ -576,6 +578,45 @@ async def get_conversation_metadata_by_id(
         raise
 
     return dict(**extract_conversation_metadata(response["channel"]))
+
+
+@tool(
+    requires_auth=Slack(
+        scopes=["channels:read", "groups:read"],
+    )
+)
+@deprecated(
+    "This tool is deprecated and will be removed in a future release. Please use "
+    "`get_channel_metadata_by_name` or `get_direct_message_conversation_metadata_by_username`.",
+    stacklevel=2,
+)
+async def get_conversation_metadata_by_name(
+    context: ToolContext,
+    conversation_name: Annotated[str, "The name of the channel to get metadata for"],
+    next_cursor: Annotated[
+        Optional[str],
+        "The cursor to use for pagination, if continuing from a previous search.",
+    ] = None,
+) -> Annotated[dict, "The channel metadata"]:
+    """Get the metadata of a channel in Slack searching by its name.
+
+    DEPRECATED: This tool is deprecated and will be removed in a future release.
+    Please use one of the following replacements:
+
+    - `get_channel_metadata_by_name`
+    - `get_direct_message_conversation_metadata_by_username`
+    """
+    warnings.warn(
+        "get_conversation_metadata_by_name is deprecated and will be removed in a future release. "
+        "Please use get_channel_metadata_by_name instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return await get_channel_metadata_by_name(
+        context=context,
+        channel_name=conversation_name,
+        next_cursor=next_cursor,
+    )
 
 
 @tool(requires_auth=Slack(scopes=["channels:read"]))
