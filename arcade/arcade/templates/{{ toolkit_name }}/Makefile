@@ -9,7 +9,7 @@ install: ## Install the poetry environment and install the pre-commit hooks
 	@echo "📦 Checking if Poetry is installed"
 	@if ! command -v poetry &> /dev/null; then \
 		echo "📦 Installing Poetry with pip"; \
-		pip install poetry; \
+		pip install poetry==1.8.5; \
 	else \
 		echo "📦 Poetry is already installed"; \
 	fi
@@ -51,3 +51,4 @@ check: ## Run code quality tools.
 	@poetry run pre-commit run -a
 	@echo "🚀 Static type checking: Running mypy"
 	@poetry run mypy --config-file=pyproject.toml
+

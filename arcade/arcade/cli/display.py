@@ -16,6 +16,10 @@ def display_tools_table(tools: list[ToolDefinition]) -> None:
     """
     Display a table of tools with their name, description, package, and version.
     """
+    if not tools:
+        console.print("No tools found.", style="bold")
+        return
+
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Name")
     table.add_column("Description")
@@ -45,7 +49,7 @@ def display_tool_details(tool: ToolDefinition) -> None:
     )
 
     # Inputs Panel
-    inputs = tool.inputs.parameters
+    inputs = tool.input.parameters
     if inputs:
         inputs_table = Table(show_header=True, header_style="bold green")
         inputs_table.add_column("Name", style="cyan")
@@ -202,20 +206,31 @@ def _format_evaluation(evaluation: "EvaluationResult") -> str:
         result_lines.append(f"[bold red]Failure Reason:[/bold red] {evaluation.failure_reason}")
     else:
         for critic_result in evaluation.results:
-            match_color = "green" if critic_result["match"] else "red"
+            is_criticized = critic_result.get("is_criticized", True)
+            match_color = (
+                "yellow" if not is_criticized else "green" if critic_result["match"] else "red"
+            )
             field = critic_result["field"]
             score = critic_result["score"]
             weight = critic_result["weight"]
             expected = critic_result["expected"]
             actual = critic_result["actual"]
 
-            result_lines.append(
-                f"[bold]{field}:[/bold] "
-                f"[{match_color}]Match: {critic_result['match']}"
-                f"\n     Score: {score:.2f}/{weight:.2f}[/{match_color}]"
-                f"\n     Expected: {expected}"
-                f"\n     Actual: {actual}"
-            )
+            if is_criticized:
+                result_lines.append(
+                    f"[bold]{field}:[/bold] "
+                    f"[{match_color}]Match: {critic_result['match']}"
+                    f"\n     Score: {score:.2f}/{weight:.2f}[/{match_color}]"
+                    f"\n     Expected: {expected}"
+                    f"\n     Actual: {actual}"
+                )
+            else:
+                result_lines.append(
+                    f"[bold]{field}:[/bold] "
+                    f"[{match_color}]Un-criticized[/{match_color}]"
+                    f"\n     Expected: {expected}"
+                    f"\n     Actual: {actual}"
+                )
     return "\n".join(result_lines)
 
 
@@ -223,7 +238,7 @@ def display_arcade_chat_header(base_url: str, stream: bool) -> None:
     chat_header = Text.assemble(
         "\n",
         (
-            "=== Arcade AI Chat ===",
+            "=== Arcade Chat ===",
             "bold magenta underline",
         ),
         "\n",

@@ -198,9 +198,14 @@ def get_tools_from_engine(
     client = Arcade(api_key=config.api.key, base_url=base_url)
 
     tools = []
-    page_iterator = client.tools.list(toolkit=toolkit or NOT_GIVEN)
-    for tool in page_iterator:
-        tools.append(ToolDefinition.model_validate(tool.model_dump()))
+    try:
+        page_iterator = client.tools.list(toolkit=toolkit or NOT_GIVEN)
+        for tool in page_iterator:
+            tools.append(ToolDefinition.model_validate(tool.model_dump()))
+    except APIConnectionError:
+        console.print(
+            f"❌ Can't connect to Arcade Engine at {base_url}. (Is it running?)", style="bold red"
+        )
 
     return tools
 
@@ -407,8 +412,8 @@ def handle_tool_authorization(
     stream: bool,
 ) -> ChatInteractionResult:
     with Live(console=console, refresh_per_second=4) as live:
-        if tool_authorization.authorization_url:
-            authorization_url = str(tool_authorization.authorization_url)
+        if tool_authorization.url:
+            authorization_url = str(tool_authorization.url)
             webbrowser.open(authorization_url)
             message = (
                 "You'll need to authorize this action in your browser.\n\n"
@@ -441,8 +446,7 @@ def wait_for_authorization_completion(
     while auth_response.status != "completed":
         try:
             auth_response = client.auth.status(
-                authorization_id=cast(str, auth_response.authorization_id),
-                scopes=" ".join(auth_response.scopes) if auth_response.scopes else NOT_GIVEN,
+                id=cast(str, auth_response.id),
                 wait=59,
             )
         except APITimeoutError:
@@ -574,33 +578,6 @@ def create_new_env_file() -> None:
         console.print(f"Created new environment file at {env_file}", style="bold green")
 
 
-def is_config_file_deprecated() -> bool:
-    """
-    Check if the user is using the deprecated config file.
-
-    Returns:
-        bool: True if the user is using the deprecated config file, False otherwise.
-    """
-    deprecated_config_file_path = os.path.expanduser("~/.arcade/arcade.toml")
-    if os.path.exists(deprecated_config_file_path):
-        console.print(
-            f"Deprecation Notice: You are using a deprecated config file at {deprecated_config_file_path}. Please migrate to the new format by running,\n\n\t$ arcade logout && arcade login\n",
-            style="bold yellow",
-        )
-        return True
-    return False
-
-
-def delete_deprecated_config_file() -> None:
-    """
-    Delete the deprecated config file if it exists.
-    """
-    deprecated_config_file_path = os.path.expanduser("~/.arcade/arcade.toml")
-
-    if os.path.exists(deprecated_config_file_path):
-        os.remove(deprecated_config_file_path)
-
-
 def get_user_input() -> str:
     """
     Get input from the user, handling multi-line input.
@@ -690,3 +667,13 @@ def parse_user_command(user_input: str) -> ChatCommand | None:
         return ChatCommand(user_input)
     except ValueError:
         return None
+
+
+def version_callback(value: bool) -> None:
+    """Callback implementation for the `arcade --version`.
+    Prints the version of Arcade and exit.
+    """
+    if value:
+        version = importlib.import_module("arcade").__version__
+        console.print(f"[bold]Arcade[/bold] (version {version})")
+        exit()
