@@ -644,7 +644,7 @@ async def get_direct_message_conversation_metadata_by_username(
     ] = None,
 ) -> Annotated[
     Optional[dict],
-    "The direct message conversation metadata or None if no conversation is found.",
+    "The direct message conversation metadata.",
 ]:
     """Get the metadata of a direct message conversation in Slack by the username."""
     next_cursor_container = NextCursorContainer(next_cursor)
