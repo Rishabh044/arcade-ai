@@ -1,12 +1,10 @@
 import asyncio
-import warnings
 from datetime import datetime, timezone
 from typing import Annotated, Optional, cast
 
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Slack
 from arcade.sdk.errors import RetryableToolError, ToolExecutionError
-from arcade.sdk.warnings import deprecated
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
@@ -229,20 +227,24 @@ async def get_members_in_conversation_by_id(
         ],
     )
 )
-async def get_members_in_conversation_by_name(
+async def get_members_in_channel_by_name(
     context: ToolContext,
-    conversation_name: Annotated[str, "The name of the conversation to get members for"],
+    channel_name: Annotated[str, "The name of the channel to get members for"],
     limit: Annotated[Optional[int], "The maximum number of members to return."] = None,
     next_cursor: Annotated[Optional[str], "The cursor to use for pagination."] = None,
-) -> Annotated[dict, "The conversation members' IDs and Names"]:
+) -> Annotated[dict, "The channel members' IDs and Names"]:
     """Get the members of a conversation in Slack by the conversation's name."""
-    conversation_metadata = await get_channel_metadata_by_name(
-        context=context, channel_name=conversation_name, next_cursor=next_cursor
-    )
+    channel = await get_channel_metadata_by_name(context=context, channel_name=channel_name)
+
+    if not channel:
+        raise ToolExecutionError(
+            "Channel not found",
+            developer_message=f"Channel with name '{channel_name}' not found.",
+        )
 
     return await get_members_in_conversation_by_id(  # type: ignore[no-any-return]
         context=context,
-        conversation_id=conversation_metadata["id"],
+        conversation_id=channel["id"],
         limit=limit,
         next_cursor=next_cursor,
     )
@@ -444,12 +446,11 @@ async def get_messages_in_channel_by_name(
     'latest_relative'.
 
     Leave all arguments with the default None to get messages without date/time filtering"""
-    conversation_metadata = await get_channel_metadata_by_name(
-        context=context, channel_name=channel_name
-    )
+    channel = await get_channel_metadata_by_name(context=context, channel_name=channel_name)
+
     return await get_messages_in_conversation_by_id(  # type: ignore[no-any-return]
         context=context,
-        conversation_id=conversation_metadata["id"],
+        conversation_id=channel["id"],
         oldest_relative=oldest_relative,
         latest_relative=latest_relative,
         oldest_datetime=oldest_datetime,
@@ -516,19 +517,13 @@ async def get_messages_in_direct_conversation_by_username(
     'latest_relative'.
 
     Leave all arguments with the default None to get messages without date/time filtering"""
-    conversation_metadata = await get_direct_message_conversation_metadata_by_username(
+    direct_conversation = await get_direct_message_conversation_metadata_by_username(
         context=context, username=username
     )
 
-    if not conversation_metadata:
-        raise ToolExecutionError(
-            "Conversation not found",
-            developer_message=f"Direct Message conversation with username '{username}' not found.",
-        )
-
     return await get_messages_in_conversation_by_id(  # type: ignore[no-any-return]
         context=context,
-        conversation_id=conversation_metadata["id"],
+        conversation_id=direct_conversation["id"],
         oldest_relative=oldest_relative,
         latest_relative=latest_relative,
         oldest_datetime=oldest_datetime,
@@ -578,45 +573,6 @@ async def get_conversation_metadata_by_id(
         raise
 
     return dict(**extract_conversation_metadata(response["channel"]))
-
-
-@tool(
-    requires_auth=Slack(
-        scopes=["channels:read", "groups:read"],
-    )
-)
-@deprecated(
-    "This tool is deprecated and will be removed in a future release. Please use "
-    "`get_channel_metadata_by_name` or `get_direct_message_conversation_metadata_by_username`.",
-    stacklevel=2,
-)
-async def get_conversation_metadata_by_name(
-    context: ToolContext,
-    conversation_name: Annotated[str, "The name of the channel to get metadata for"],
-    next_cursor: Annotated[
-        Optional[str],
-        "The cursor to use for pagination, if continuing from a previous search.",
-    ] = None,
-) -> Annotated[dict, "The channel metadata"]:
-    """Get the metadata of a channel in Slack searching by its name.
-
-    DEPRECATED: This tool is deprecated and will be removed in a future release.
-    Please use one of the following replacements:
-
-    - `get_channel_metadata_by_name`
-    - `get_direct_message_conversation_metadata_by_username`
-    """
-    warnings.warn(
-        "get_conversation_metadata_by_name is deprecated and will be removed in a future release. "
-        "Please use get_channel_metadata_by_name instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return await get_channel_metadata_by_name(
-        context=context,
-        channel_name=conversation_name,
-        next_cursor=next_cursor,
-    )
 
 
 @tool(requires_auth=Slack(scopes=["channels:read"]))

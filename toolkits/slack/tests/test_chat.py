@@ -13,8 +13,8 @@ from arcade_slack.tools.chat import (
     get_channel_metadata_by_name,
     get_conversation_metadata_by_id,
     get_direct_message_conversation_metadata_by_username,
+    get_members_in_channel_by_name,
     get_members_in_conversation_by_id,
-    get_members_in_conversation_by_name,
     get_messages_in_channel_by_name,
     get_messages_in_conversation_by_id,
     get_messages_in_direct_conversation_by_username,
@@ -461,7 +461,7 @@ async def test_get_members_from_conversation_id_channel_not_found(
 @pytest.mark.asyncio
 @patch("arcade_slack.tools.chat.list_conversations_metadata")
 @patch("arcade_slack.tools.chat.get_members_in_conversation_by_id")
-async def test_get_members_in_conversation_by_name(
+async def test_get_members_in_channel_by_name(
     mock_get_members_in_conversation_by_id,
     mock_list_conversations_metadata,
     mock_context,
@@ -472,7 +472,7 @@ async def test_get_members_in_conversation_by_name(
         "next_cursor": None,
     }
 
-    response = await get_members_in_conversation_by_name(
+    response = await get_members_in_channel_by_name(
         mock_context, mock_channel_info["name"], limit=2
     )
 
@@ -489,7 +489,7 @@ async def test_get_members_in_conversation_by_name(
 @pytest.mark.asyncio
 @patch("arcade_slack.tools.chat.list_conversations_metadata")
 @patch("arcade_slack.tools.chat.get_members_in_conversation_by_id")
-async def test_get_members_in_conversation_by_name_triggering_pagination(
+async def test_get_members_in_channel_by_name_triggering_pagination(
     mock_get_members_in_conversation_by_id,
     mock_list_conversations_metadata,
     mock_context,
@@ -511,9 +511,7 @@ async def test_get_members_in_conversation_by_name_triggering_pagination(
         },
     ]
 
-    response = await get_members_in_conversation_by_name(
-        mock_context, conversation2["name"], limit=2
-    )
+    response = await get_members_in_channel_by_name(mock_context, conversation2["name"], limit=2)
 
     assert response == mock_get_members_in_conversation_by_id.return_value
     mock_list_conversations_metadata.assert_has_calls([

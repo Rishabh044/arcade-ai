@@ -18,8 +18,8 @@ from arcade_slack.tools.chat import (
     get_channel_metadata_by_name,
     get_conversation_metadata_by_id,
     get_direct_message_conversation_metadata_by_username,
+    get_members_in_channel_by_name,
     get_members_in_conversation_by_id,
-    get_members_in_conversation_by_name,
     get_messages_in_channel_by_name,
     get_messages_in_conversation_by_id,
     get_messages_in_direct_conversation_by_username,
@@ -518,13 +518,13 @@ def get_conversations_members_eval_suite() -> EvalSuite:
 
     for user_message in user_messages:
         suite.add_case(
-            name=f"Get conversation members by name: {user_message}",
+            name=f"Get channel members by name: {user_message}",
             user_message=user_message,
             expected_tool_calls=[
                 ExpectedToolCall(
-                    func=get_members_in_conversation_by_name,
+                    func=get_members_in_channel_by_name,
                     args={
-                        "conversation_name": "general",
+                        "channel_name": "general",
                     },
                 ),
             ],
