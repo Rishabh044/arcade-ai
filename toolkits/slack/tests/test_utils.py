@@ -473,7 +473,7 @@ async def test_retrieve_conversations_by_user_ids(
             False,
             1,
             ["C1"],
-            1,
+            2,
         ),
         (
             ["U1", "U2"],

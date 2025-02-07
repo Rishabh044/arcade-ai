@@ -191,6 +191,28 @@ def extract_basic_user_info(user_info: SlackUser) -> BasicUserInfo:
     )
 
 
+async def associate_members_of_multiple_conversations(
+    get_members_in_conversation_func: Callable,
+    conversations: list[dict],
+    context: ToolContext,
+) -> list[dict]:
+    """Associate members to each conversation, returning the updated list."""
+    return await asyncio.gather(*[
+        associate_members_of_conversation(get_members_in_conversation_func, context, conv)
+        for conv in conversations
+    ])
+
+
+async def associate_members_of_conversation(
+    get_members_in_conversation_func: Callable,
+    context: ToolContext,
+    conversation: dict,
+) -> dict:
+    response = await get_members_in_conversation_func(context, conversation["id"])
+    conversation["members"] = response["members"]
+    return conversation
+
+
 async def retrieve_conversations_by_user_ids(
     list_conversations_func: Callable,
     get_members_in_conversation_func: Callable,
@@ -202,66 +224,29 @@ async def retrieve_conversations_by_user_ids(
     next_cursor_container: Optional[NextCursorContainer] = None,
     timeout: Optional[int] = MAX_PAGINATION_TIMEOUT_SECONDS,
 ) -> list[dict]:
-    """Retrieve conversations by the members' user IDs.
-
-    We use dependency injection with `list_conversations_func` and
-    `get_members_in_conversation_func` to avoid circular import errors with
-    arcade_slack.tools.chat and streamline unit testing.
-
-    Args:
-        list_conversations_func: tool to list conversations.
-        get_members_in_conversation_func: tool to get the members in a conversation.
-        context: The tool context.
-        conversation_types: The conversation types to retrieve.
-        user_ids: The user IDs to retrieve conversations for.
-        exact_match: Whether to match the exact number of members in the conversations.
-        limit: The maximum number of conversations to retrieve.
-        next_cursor_container: The container for the next cursor.
-        timeout: The timeout for the pagination loop.
-
-    Returns:
-        The list of conversations found.
+    """
+    Retrieve conversations filtered by the given user IDs. Includes pagination support
+    and optionally limits the number of returned conversations.
     """
     next_cursor_container = next_cursor_container or NextCursorContainer()
+    conversations_found: list[dict] = []
 
-    async def retrieve_conversations_pagination_loop() -> list[dict]:
-        conversations_found: list[dict] = []
-        should_continue = True
+    response = await list_conversations_func(
+        context=context,
+        conversation_types=conversation_types,
+        next_cursor=next_cursor_container.next_cursor,
+    )
 
-        while should_continue:
-            request_limit = None if not isinstance(limit, int) else limit - len(conversations_found)
-            response = await list_conversations_func(
-                context=context,
-                conversation_types=conversation_types,
-                limit=request_limit,
-                next_cursor=next_cursor_container.next_cursor,
-            )
-            next_cursor_container.next_cursor = response.get("next_cursor")
+    # Associate members to each conversation
+    conversations_with_members = await associate_members_of_multiple_conversations(
+        get_members_in_conversation_func, response["conversations"], context
+    )
 
-            async def associate_members(conversation: dict) -> dict:
-                response = await get_members_in_conversation_func(context, conversation["id"])
-                conversation["members"] = response["members"]
-                return conversation
+    conversations_found.extend(
+        filter_conversations_by_user_ids(conversations_with_members, user_ids, exact_match)
+    )
 
-            conversations_with_members = await asyncio.gather(*[
-                associate_members(conversation) for conversation in response["conversations"]
-            ])
-
-            conversations_found.extend(
-                filter_conversations_by_user_ids(conversations_with_members, user_ids, exact_match)
-            )
-
-            exceeds_limit = False if not limit else len(conversations_found) >= limit
-
-            if not next_cursor_container.next_cursor or exceeds_limit:
-                should_continue = False
-
-        if isinstance(limit, int):
-            conversations_found = conversations_found[:limit]
-
-        return conversations_found
-
-    return await asyncio.wait_for(retrieve_conversations_pagination_loop(), timeout=timeout)
+    return conversations_found[:limit]
 
 
 def filter_conversations_by_user_ids(
