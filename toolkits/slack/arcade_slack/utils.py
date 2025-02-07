@@ -17,7 +17,6 @@ from arcade_slack.models import (
     ConversationType,
     ConversationTypeSlackName,
     Message,
-    NextCursorContainer,
     SlackConversation,
     SlackConversationPurpose,
     SlackMessage,
@@ -221,20 +220,18 @@ async def retrieve_conversations_by_user_ids(
     user_ids: list[str],
     exact_match: bool = False,
     limit: Optional[int] = None,
-    next_cursor_container: Optional[NextCursorContainer] = None,
-    timeout: Optional[int] = MAX_PAGINATION_TIMEOUT_SECONDS,
+    next_cursor: Optional[str] = None,
 ) -> list[dict]:
     """
     Retrieve conversations filtered by the given user IDs. Includes pagination support
     and optionally limits the number of returned conversations.
     """
-    next_cursor_container = next_cursor_container or NextCursorContainer()
     conversations_found: list[dict] = []
 
     response = await list_conversations_func(
         context=context,
         conversation_types=conversation_types,
-        next_cursor=next_cursor_container.next_cursor,
+        next_cursor=next_cursor,
     )
 
     # Associate members to each conversation

@@ -10,7 +10,6 @@ from arcade_slack.exceptions import PaginationTimeoutError
 from arcade_slack.models import (
     ConversationType,
     ConversationTypeSlackName,
-    NextCursorContainer,
 )
 from arcade_slack.tools.chat import (
     get_members_in_conversation_by_id,
@@ -429,7 +428,7 @@ async def test_retrieve_conversations_by_user_ids(
         user_ids=search_user_ids,
         exact_match=exact_match,
         limit=limit,
-        next_cursor_container=NextCursorContainer(None),
+        next_cursor=None,
     )
 
     assert [conversation["id"] for conversation in conversations_found] == expected_conversation_ids
@@ -678,7 +677,7 @@ async def test_retrieve_conversations_by_user_ids_with_pagination(
         user_ids=search_user_ids,
         exact_match=exact_match,
         limit=limit,
-        next_cursor_container=NextCursorContainer(None),
+        next_cursor=None,
     )
 
     assert [conversation["id"] for conversation in conversations_found] == expected_conversation_ids

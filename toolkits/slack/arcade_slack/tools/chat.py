@@ -15,7 +15,6 @@ from arcade_slack.exceptions import (
 )
 from arcade_slack.models import (
     ConversationType,
-    NextCursorContainer,
     SlackUserList,
 )
 from arcade_slack.tools.users import get_user_info_by_id, list_users
@@ -641,8 +640,6 @@ async def get_direct_message_conversation_metadata_by_username(
     "The direct message conversation metadata.",
 ]:
     """Get the metadata of a direct message conversation in Slack by the username."""
-    next_cursor_container = NextCursorContainer(next_cursor)
-
     try:
         token = (
             context.authorization.token
@@ -665,8 +662,7 @@ async def get_direct_message_conversation_metadata_by_username(
             user_ids=[current_user["user_id"], other_user["id"]],
             exact_match=True,
             limit=1,
-            next_cursor_container=next_cursor_container,
-            timeout=MAX_PAGINATION_TIMEOUT_SECONDS,
+            next_cursor=next_cursor,
         )
 
         return None if not conversations_found else conversations_found[0]
@@ -676,25 +672,6 @@ async def get_direct_message_conversation_metadata_by_username(
             f"Username '{username}' not found",
             developer_message=f"User with username '{username}' not found.",
             additional_prompt_content=f"Available users: {e.usernames_found}",
-            retry_after_ms=500,
-        )
-
-    except TimeoutError:
-        if next_cursor_container.has_new_cursor:
-            additional_prompt_context = (
-                f"Call {get_direct_message_conversation_metadata_by_username.__tool_name__} "
-                f'tool again providing `"next_cursor": "{next_cursor_container.next_cursor}"` to '
-                "continue the search."
-            )
-        else:
-            additional_prompt_context = None
-
-        raise RetryableToolError(
-            (
-                f"No conversation found with '{username}'. "
-                f"Search timed out after {MAX_PAGINATION_TIMEOUT_SECONDS}"
-            ),
-            additional_prompt_content=additional_prompt_context,
             retry_after_ms=500,
         )
 

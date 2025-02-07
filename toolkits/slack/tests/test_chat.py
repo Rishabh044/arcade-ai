@@ -7,8 +7,8 @@ from arcade.sdk.errors import RetryableToolError, ToolExecutionError
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
 
-from arcade_slack.constants import MAX_PAGINATION_SIZE_LIMIT, MAX_PAGINATION_TIMEOUT_SECONDS
-from arcade_slack.models import ConversationType, ConversationTypeSlackName, NextCursorContainer
+from arcade_slack.constants import MAX_PAGINATION_SIZE_LIMIT
+from arcade_slack.models import ConversationType, ConversationTypeSlackName
 from arcade_slack.tools.chat import (
     get_channel_metadata_by_name,
     get_conversation_metadata_by_id,
@@ -739,8 +739,7 @@ async def test_get_direct_message_conversation_metadata_by_username(
         user_ids=["U1", "U2"],
         exact_match=True,
         limit=1,
-        next_cursor_container=NextCursorContainer(None),
-        timeout=MAX_PAGINATION_TIMEOUT_SECONDS,
+        next_cursor=None,
     )
 
 

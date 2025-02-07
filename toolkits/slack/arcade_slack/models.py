@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
@@ -207,37 +206,3 @@ class SlackConversationsToolResponse(TypedDict, total=True):
 
     conversations: list[ConversationMetadata]
     next_cursor: SlackPaginationNextCursor | None
-
-
-@dataclass
-class NextCursorContainer:
-    """Type definition for the next cursor container.
-
-    Sometimes we want to pass the next cursor to an utility function that will
-    abstract pagination, and we want the caller function to access the latest
-    next cursor value, even in the event of a timeout or exception raised by the
-    utility function.
-
-    Passing this container class to the utility function, instead of the next_cursor
-    string value directly, allows us to accomplish that.
-    """
-
-    next_cursor_init: SlackPaginationNextCursor | None = None
-    _next_cursor: SlackPaginationNextCursor | None = None
-
-    def __post_init__(self) -> None:
-        self._next_cursor = self.next_cursor_init
-
-    @property
-    def next_cursor(self) -> SlackPaginationNextCursor:
-        if not self._next_cursor:
-            self._next_cursor = self.next_cursor_init
-        return self._next_cursor
-
-    @next_cursor.setter
-    def next_cursor(self, value: SlackPaginationNextCursor) -> None:
-        self._next_cursor = value
-
-    @property
-    def has_new_cursor(self) -> bool:
-        return self._next_cursor is not None and self._next_cursor != self.next_cursor_init
