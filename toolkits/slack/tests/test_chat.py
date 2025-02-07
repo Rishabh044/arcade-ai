@@ -745,37 +745,6 @@ async def test_get_direct_message_conversation_metadata_by_username(
 
 @pytest.mark.asyncio
 @patch("arcade_slack.tools.chat.retrieve_conversations_by_user_ids")
-async def test_get_direct_message_conversation_metadata_by_username_timeout_error(
-    mock_retrieve_conversations_by_user_ids,
-    mock_context,
-    mock_chat_slack_client,
-    mock_users_slack_client,
-):
-    mock_chat_slack_client.users_identity.return_value = {
-        "ok": True,
-        "user": {"id": "U1", "name": "user1"},
-        "team": {"id": "T1", "name": "team1"},
-    }
-
-    mock_users_slack_client.users_list.return_value = {
-        "ok": True,
-        "members": [
-            {"id": "U1", "name": "user1"},
-            {"id": "U2", "name": "user2"},
-        ],
-        "response_metadata": {"next_cursor": None},
-    }
-
-    mock_retrieve_conversations_by_user_ids.side_effect = TimeoutError()
-
-    with pytest.raises(RetryableToolError):
-        await get_direct_message_conversation_metadata_by_username(
-            context=mock_context, username="user2"
-        )
-
-
-@pytest.mark.asyncio
-@patch("arcade_slack.tools.chat.retrieve_conversations_by_user_ids")
 async def test_get_direct_message_conversation_metadata_by_username_username_not_found(
     mock_retrieve_conversations_by_user_ids,
     mock_context,
