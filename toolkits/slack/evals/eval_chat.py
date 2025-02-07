@@ -22,7 +22,7 @@ from arcade_slack.tools.chat import (
     get_members_in_conversation_by_id,
     get_messages_in_channel_by_name,
     get_messages_in_conversation_by_id,
-    get_messages_in_direct_conversation_by_username,
+    get_messages_in_direct_message_conversation_by_username,
     list_conversations_metadata,
     list_direct_message_conversations_metadata,
     list_group_direct_message_conversations_metadata,
@@ -1032,7 +1032,7 @@ def get_messages_in_direct_message_eval_suite() -> EvalSuite:
             user_message=user_message,
             expected_tool_calls=[
                 ExpectedToolCall(
-                    func=get_messages_in_direct_conversation_by_username,
+                    func=get_messages_in_direct_message_conversation_by_username,
                     args={
                         "username": "jane.doe",
                     },
@@ -1048,7 +1048,7 @@ def get_messages_in_direct_message_eval_suite() -> EvalSuite:
         user_message="get the messages I exchanged with jane.doe on 2025-01-31",
         expected_tool_calls=[
             ExpectedToolCall(
-                func=get_messages_in_direct_conversation_by_username,
+                func=get_messages_in_direct_message_conversation_by_username,
                 args={
                     "username": "jane.doe",
                     "oldest_datetime": "2025-01-31 00:00:00",
@@ -1072,7 +1072,7 @@ def get_messages_in_direct_message_eval_suite() -> EvalSuite:
         user_message="Get the messages I exchanged with jane.doe starting 2 days ago",
         expected_tool_calls=[
             ExpectedToolCall(
-                func=get_messages_in_direct_conversation_by_username,
+                func=get_messages_in_direct_message_conversation_by_username,
                 args={
                     "username": "jane.doe",
                     "oldest_relative": "02:00:00",

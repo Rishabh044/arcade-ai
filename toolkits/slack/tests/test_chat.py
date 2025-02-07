@@ -17,7 +17,7 @@ from arcade_slack.tools.chat import (
     get_members_in_conversation_by_id,
     get_messages_in_channel_by_name,
     get_messages_in_conversation_by_id,
-    get_messages_in_direct_conversation_by_username,
+    get_messages_in_direct_message_conversation_by_username,
     list_conversations_metadata,
     list_direct_message_conversations_metadata,
     list_group_direct_message_conversations_metadata,
@@ -818,7 +818,7 @@ async def test_get_messages_in_direct_conversation_by_username(
         "id": "C12345",
     }
 
-    response = await get_messages_in_direct_conversation_by_username(
+    response = await get_messages_in_direct_message_conversation_by_username(
         context=mock_context, username="user2"
     )
 
@@ -847,6 +847,6 @@ async def test_get_messages_in_direct_conversation_by_username_not_found(
     mock_get_direct_message_conversation_metadata_by_username.return_value = None
 
     with pytest.raises(ToolExecutionError):
-        await get_messages_in_direct_conversation_by_username(
+        await get_messages_in_direct_message_conversation_by_username(
             context=mock_context, username="user2"
         )

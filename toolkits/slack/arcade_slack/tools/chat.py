@@ -455,7 +455,7 @@ async def get_messages_in_channel_by_name(
 
 
 @tool(requires_auth=Slack(scopes=["im:history", "im:read"]))
-async def get_messages_in_direct_conversation_by_username(
+async def get_messages_in_direct_message_conversation_by_username(
     context: ToolContext,
     username: Annotated[str, "The username of the user to get messages from"],
     oldest_relative: Annotated[
