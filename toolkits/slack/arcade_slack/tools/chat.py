@@ -236,12 +236,6 @@ async def get_members_in_channel_by_name(
     """Get the members of a conversation in Slack by the conversation's name."""
     channel = await get_channel_metadata_by_name(context=context, channel_name=channel_name)
 
-    if not channel:
-        raise ToolExecutionError(
-            "Channel not found",
-            developer_message=f"Channel with name '{channel_name}' not found.",
-        )
-
     return await get_members_in_conversation_by_id(  # type: ignore[no-any-return]
         context=context,
         conversation_id=channel["id"],
