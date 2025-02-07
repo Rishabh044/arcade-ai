@@ -490,8 +490,8 @@ async def get_messages_in_direct_message_conversation_by_username(
 ) -> Annotated[
     dict,
     (
-        "The messages in a channel and next cursor for paginating results (when "
-        "there are additional messages to retrieve)."
+        "The messages in a direct message conversation and next cursor for paginating results "
+        "(when there are additional messages to retrieve)."
     ),
 ]:
     """Get the messages in a direct conversation by the user's name.
