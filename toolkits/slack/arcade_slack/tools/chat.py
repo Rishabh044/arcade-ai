@@ -583,7 +583,7 @@ async def get_messages_in_multi_person_dm_conversation_by_usernames(
     'latest_relative'.
 
     Leave all arguments with the default None to get messages without date/time filtering"""
-    direct_conversation = await get_direct_message_conversation_metadata_by_username(
+    direct_conversation = await get_multi_person_dm_conversation_metadata_by_usernames(
         context=context, usernames=usernames
     )
 
