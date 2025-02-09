@@ -490,8 +490,8 @@ async def get_messages_in_direct_message_conversation_by_username(
 ) -> Annotated[
     dict,
     (
-        "The messages in a channel and next cursor for paginating results (when "
-        "there are additional messages to retrieve)."
+        "The messages in a direct message conversation and next cursor for paginating results "
+        "when there are additional messages to retrieve."
     ),
 ]:
     """Get the messages in a direct conversation by the user's name.
@@ -512,6 +512,79 @@ async def get_messages_in_direct_message_conversation_by_username(
     Leave all arguments with the default None to get messages without date/time filtering"""
     direct_conversation = await get_direct_message_conversation_metadata_by_username(
         context=context, username=username
+    )
+
+    return await get_messages_in_conversation_by_id(  # type: ignore[no-any-return]
+        context=context,
+        conversation_id=direct_conversation["id"],
+        oldest_relative=oldest_relative,
+        latest_relative=latest_relative,
+        oldest_datetime=oldest_datetime,
+        latest_datetime=latest_datetime,
+        limit=limit,
+        next_cursor=next_cursor,
+    )
+
+
+@tool(requires_auth=Slack(scopes=["im:history", "im:read"]))
+async def get_messages_in_multi_person_dm_conversation_by_usernames(
+    context: ToolContext,
+    usernames: Annotated[list[str], "The usernames of the users to get messages from"],
+    oldest_relative: Annotated[
+        Optional[str],
+        (
+            "The oldest message to include in the results, specified as a time offset from the "
+            "current time in the format 'DD:HH:MM'"
+        ),
+    ] = None,
+    latest_relative: Annotated[
+        Optional[str],
+        (
+            "The latest message to include in the results, specified as a time offset from the "
+            "current time in the format 'DD:HH:MM'"
+        ),
+    ] = None,
+    oldest_datetime: Annotated[
+        Optional[str],
+        (
+            "The oldest message to include in the results, specified as a datetime object in the "
+            "format 'YYYY-MM-DD HH:MM:SS'"
+        ),
+    ] = None,
+    latest_datetime: Annotated[
+        Optional[str],
+        (
+            "The latest message to include in the results, specified as a datetime object in the "
+            "format 'YYYY-MM-DD HH:MM:SS'"
+        ),
+    ] = None,
+    limit: Annotated[Optional[int], "The maximum number of messages to return."] = None,
+    next_cursor: Annotated[Optional[str], "The cursor to use for pagination."] = None,
+) -> Annotated[
+    dict,
+    (
+        "The messages in a multi-person direct message conversation and next cursor for "
+        "paginating results (when there are additional messages to retrieve)."
+    ),
+]:
+    """Get the messages in a multi-person direct message conversation by the usernames.
+
+    To filter messages by an absolute datetime, use 'oldest_datetime' and/or 'latest_datetime'. If
+    only 'oldest_datetime' is provided, it will return messages from the oldest_datetime to the
+    current time. If only 'latest_datetime' is provided, it will return messages since the
+    beginning of the conversation to the latest_datetime.
+
+    To filter messages by a relative datetime (e.g. 3 days ago, 1 hour ago, etc.), use
+    'oldest_relative' and/or 'latest_relative'. If only 'oldest_relative' is provided, it will
+    return messages from the oldest_relative to the current time. If only 'latest_relative' is
+    provided, it will return messages from the current time to the latest_relative.
+
+    Do not provide both 'oldest_datetime' and 'oldest_relative' or both 'latest_datetime' and
+    'latest_relative'.
+
+    Leave all arguments with the default None to get messages without date/time filtering"""
+    direct_conversation = await get_direct_message_conversation_metadata_by_username(
+        context=context, usernames=usernames
     )
 
     return await get_messages_in_conversation_by_id(  # type: ignore[no-any-return]
@@ -669,8 +742,62 @@ async def get_direct_message_conversation_metadata_by_username(
 
     except UsernameNotFoundError as e:
         raise RetryableToolError(
-            f"Username '{username}' not found",
-            developer_message=f"User with username '{username}' not found.",
+            f"Username '{e.username_not_found}' not found",
+            developer_message=f"User with username '{e.username_not_found}' not found.",
+            additional_prompt_content=f"Available users: {e.usernames_found}",
+            retry_after_ms=500,
+        )
+
+
+@tool(requires_auth=Slack(scopes=["im:read"]))
+async def get_multi_person_dm_conversation_metadata_by_usernames(
+    context: ToolContext,
+    usernames: Annotated[list[str], "The usernames of the users/people to get messages with"],
+    next_cursor: Annotated[
+        Optional[str],
+        "The cursor to use for pagination, if continuing from a previous search.",
+    ] = None,
+) -> Annotated[
+    Optional[dict],
+    "The multi-person direct message conversation metadata.",
+]:
+    """Get the metadata of a multi-person direct message conversation in Slack by the usernames."""
+    try:
+        token = (
+            context.authorization.token
+            if context.authorization and context.authorization.token
+            else ""
+        )
+        slack_client = AsyncWebClient(token=token)
+
+        current_user, list_users_response = await asyncio.gather(
+            slack_client.auth_test(), list_users(context)
+        )
+
+        other_users = [
+            get_user_by_username(username, list_users_response["users"]) for username in usernames
+        ]
+
+        conversations_found = await retrieve_conversations_by_user_ids(
+            list_conversations_func=list_conversations_metadata,
+            get_members_in_conversation_func=get_members_in_conversation_by_id,
+            context=context,
+            conversation_types=[ConversationType.MULTI_PERSON_DIRECT_MESSAGE],
+            user_ids=[
+                current_user["user_id"],
+                *[user["id"] for user in other_users if user["id"] != current_user["user_id"]],
+            ],
+            exact_match=True,
+            limit=1,
+            next_cursor=next_cursor,
+        )
+
+        return None if not conversations_found else conversations_found[0]
+
+    except UsernameNotFoundError as e:
+        raise RetryableToolError(
+            f"Username '{e.username_not_found}' not found",
+            developer_message=f"User with username '{e.username_not_found}' not found.",
             additional_prompt_content=f"Available users: {e.usernames_found}",
             retry_after_ms=500,
         )

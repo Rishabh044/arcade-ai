@@ -18,6 +18,7 @@ from arcade_slack.tools.chat import (
     get_messages_in_channel_by_name,
     get_messages_in_conversation_by_id,
     get_messages_in_direct_message_conversation_by_username,
+    get_multi_person_dm_conversation_metadata_by_usernames,
     list_conversations_metadata,
     list_direct_message_conversations_metadata,
     list_group_direct_message_conversations_metadata,
@@ -817,4 +818,88 @@ async def test_get_messages_in_direct_conversation_by_username_not_found(
     with pytest.raises(ToolExecutionError):
         await get_messages_in_direct_message_conversation_by_username(
             context=mock_context, username="user2"
+        )
+
+
+@pytest.mark.asyncio
+@patch("arcade_slack.tools.chat.retrieve_conversations_by_user_ids")
+async def test_get_multi_person_direct_message_conversation_metadata_by_username(
+    mock_retrieve_conversations_by_user_ids,
+    mock_context,
+    mock_chat_slack_client,
+    mock_users_slack_client,
+):
+    mock_chat_slack_client.auth_test.return_value = {
+        "ok": True,
+        "user_id": "U1",
+        "team_id": "T1",
+        "user": "user1",
+    }
+
+    mock_users_slack_client.users_list.return_value = {
+        "ok": True,
+        "members": [
+            {"id": "U1", "name": "user1"},
+            {"id": "U2", "name": "user2"},
+            {"id": "U3", "name": "user3"},
+            {"id": "U4", "name": "user4"},
+            {"id": "U5", "name": "user5"},
+        ],
+        "response_metadata": {"next_cursor": None},
+    }
+
+    conversation = {
+        "id": "C12345",
+        "type": ConversationTypeSlackName.MPIM.value,
+        "is_mpim": True,
+        "members": ["U1", "U4", "U5"],
+    }
+
+    mock_retrieve_conversations_by_user_ids.return_value = [conversation]
+
+    response = await get_multi_person_dm_conversation_metadata_by_usernames(
+        context=mock_context, usernames=["user1", "user4", "user5"]
+    )
+
+    assert response == conversation
+    mock_retrieve_conversations_by_user_ids.assert_called_once_with(
+        list_conversations_func=list_conversations_metadata,
+        get_members_in_conversation_func=get_members_in_conversation_by_id,
+        context=mock_context,
+        conversation_types=[ConversationType.MULTI_PERSON_DIRECT_MESSAGE],
+        user_ids=["U1", "U4", "U5"],
+        exact_match=True,
+        limit=1,
+        next_cursor=None,
+    )
+
+
+@pytest.mark.asyncio
+@patch("arcade_slack.tools.chat.retrieve_conversations_by_user_ids")
+async def test_get_multi_person_direct_message_conversation_metadata_by_username_username_not_found(
+    mock_retrieve_conversations_by_user_ids,
+    mock_context,
+    mock_chat_slack_client,
+    mock_users_slack_client,
+):
+    mock_chat_slack_client.users_identity.return_value = {
+        "ok": True,
+        "user": {"id": "U1", "name": "user1"},
+        "team": {"id": "T1", "name": "team1"},
+    }
+
+    mock_users_slack_client.users_list.return_value = {
+        "ok": True,
+        "members": [
+            {"id": "U1", "name": "user1"},
+            {"id": "U2", "name": "user2"},
+        ],
+        "response_metadata": {"next_cursor": None},
+    }
+
+    mock_retrieve_conversations_by_user_ids.side_effect = TimeoutError()
+
+    with pytest.raises(RetryableToolError):
+        await get_multi_person_dm_conversation_metadata_by_usernames(
+            context=mock_context, usernames=["user999", "user1", "user2"]
         )
