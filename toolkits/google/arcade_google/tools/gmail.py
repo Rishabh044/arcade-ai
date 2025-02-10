@@ -1,7 +1,6 @@
 import base64
 import json
 import logging
-from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Annotated, Any, Optional
@@ -16,6 +15,7 @@ from googleapiclient.errors import HttpError
 from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError
 from arcade_google.tools.utils import (
     DateRange,
+    build_email_message,
     build_query_string,
     fetch_messages,
     get_draft_url,
@@ -67,6 +67,9 @@ async def send_email(
     subject: Annotated[str, "The subject of the email"],
     body: Annotated[str, "The body of the email"],
     recipient: Annotated[str, "The recipient of the email"],
+    reply_to_message_id: Annotated[
+        Optional[str], "The ID of the message to reply to, if replying to an existing email"
+    ] = None,
     cc: Annotated[Optional[list[str]], "CC recipients of the email"] = None,
     bcc: Annotated[Optional[list[str]], "BCC recipients of the email"] = None,
 ) -> Annotated[dict, "A dictionary containing the sent email details"]:
@@ -75,22 +78,8 @@ async def send_email(
     """
     service = _build_gmail_service(context)
 
-    message = EmailMessage()
-    message.set_content(body)
-    message["To"] = recipient
-    message["Subject"] = subject
-    if cc:
-        message["Cc"] = ", ".join(cc)
-    if bcc:
-        message["Bcc"] = ", ".join(bcc)
+    email = build_email_message(recipient, subject, body, cc, bcc)
 
-    # Encode the message in base64
-    encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
-
-    # Create the email
-    email = {"raw": encoded_message}
-
-    # Send the email
     sent_message = service.users().messages().send(userId="me", body=email).execute()
 
     email = parse_plain_text_email(sent_message)
@@ -131,6 +120,9 @@ async def write_draft_email(
     subject: Annotated[str, "The subject of the draft email"],
     body: Annotated[str, "The body of the draft email"],
     recipient: Annotated[str, "The recipient of the draft email"],
+    reply_to_message_id: Annotated[
+        Optional[str], "The Gmail message ID of the message to respond to"
+    ] = None,
     cc: Annotated[Optional[list[str]], "CC recipients of the draft email"] = None,
     bcc: Annotated[Optional[list[str]], "BCC recipients of the draft email"] = None,
 ) -> Annotated[dict, "A dictionary containing the created draft email details"]:
@@ -142,19 +134,7 @@ async def write_draft_email(
 
     logger.debug(f"Writing draft email to {recipient} with subject {subject}")
 
-    message = MIMEText(body)
-    message["to"] = recipient
-    message["subject"] = subject
-    if cc:
-        message["Cc"] = ", ".join(cc)
-    if bcc:
-        message["Bcc"] = ", ".join(bcc)
-
-    # Encode the message in base64
-    raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
-
-    # Create the draft
-    draft = {"message": {"raw": raw_message}}
+    draft = build_email_message(recipient, subject, body, cc, bcc)
 
     draft_message = service.users().drafts().create(userId="me", body=draft).execute()
     email = parse_draft_email(draft_message)
@@ -167,7 +147,7 @@ async def write_draft_email(
         scopes=["https://www.googleapis.com/auth/gmail.compose"],
     )
 )
-async def write_draft_response_email(
+async def write_draft_reply_email(
     context: ToolContext,
     message_id: Annotated[str, "The Gmail message ID of the message to respond to"],
     body: Annotated[str, "The body of the draft email"],

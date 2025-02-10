@@ -1,7 +1,8 @@
 import logging
 import re
-from base64 import urlsafe_b64decode
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import datetime, timedelta
+from email.message import EmailMessage
 from enum import Enum
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
@@ -80,6 +81,27 @@ class DateRange(Enum):
             )
 
         return result + comparison_date.strftime("%Y/%m/%d")
+
+
+def build_email_message(
+    recipient: str,
+    subject: str,
+    body: str,
+    cc: Optional[list[str]] = None,
+    bcc: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    message = EmailMessage()
+    message.set_content(body)
+    message["To"] = recipient
+    message["Subject"] = subject
+    if cc:
+        message["Cc"] = ", ".join(cc)
+    if bcc:
+        message["Bcc"] = ", ".join(bcc)
+
+    encoded_message = urlsafe_b64encode(message.as_bytes()).decode()
+
+    return {"raw": encoded_message}
 
 
 def parse_plain_text_email(email_data: dict[str, Any]) -> dict[str, Any]:
