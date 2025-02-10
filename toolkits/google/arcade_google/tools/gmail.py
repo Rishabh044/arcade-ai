@@ -159,17 +159,18 @@ async def write_draft_reply_email(
 
     service = _build_gmail_service(context)
 
-    logger.debug(f"Drafting response email to Message ID: {message_id}")
-
     try:
         original_message = service.users().messages().get(userId="me", id=message_id).execute()
-        logger.debug(f"Message retrieved with ID: {original_message.get('id')}")
-    except HttpError:
-        logger.exception("Error retrieving the original message.")
-        raise RetryableToolError(message="The Gmail message ID is invalid.")
+    except HttpError as e:
+        raise RetryableToolError(
+            message="Could not retrieve the message to respond to.",
+            developer_message=(
+                "Could not retrieve the message to respond to. "
+                f"Reason: '{e.reason}'. Error details: '{e.error_details}'"
+            ),
+        )
 
     message = parse_multipart_email(original_message)
-    logger.debug(f"\nMessage Dump: {json.dumps(message, indent=2)}\n")
 
     # build the plain text body with quoted message
     attribution_line = f"On {message['date']}, {message['from']} wrote:"
@@ -184,7 +185,6 @@ async def write_draft_reply_email(
             f"<div>{body}</div><br>{attribution_line}"
             f'<blockquote class="gmail_quote">\n\n{message["html_body"]}\n</blockquote>'
         )
-        logger.debug(f"Quoted HTML Message: {json.dumps(html_body, indent=2)}")
         html_part = MIMEText(html_body, "html")
 
     reply_mime = MIMEMultipart("alternative")
@@ -203,13 +203,17 @@ async def write_draft_reply_email(
 
     raw_message = base64.urlsafe_b64encode(reply_mime.as_bytes()).decode()
     draft = {"message": {"raw": raw_message, "threadId": message["thread_id"]}}
-    logger.debug(f"Drafted message to thread: {message['thread_id']}")
 
     try:
         draft_message = service.users().drafts().create(userId="me", body=draft).execute()
     except Exception as e:
-        logger.exception("Error creating draft in Gmail.")
-        raise GmailToolError(message="Failed to create draft email.", developer_message=str(e))
+        raise GmailToolError(
+            message="Failed to create draft email.",
+            developer_message=(
+                f"Failed to create draft email. Reason: '{e.reason}'. "
+                f"Error details: '{e.error_details}'"
+            ),
+        )
 
     email = parse_draft_email(draft_message)
     email["url"] = get_draft_url(draft_message["id"])
