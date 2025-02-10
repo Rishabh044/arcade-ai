@@ -169,22 +169,6 @@ async def write_draft_reply_email(
         raise RetryableToolError(message="The Gmail message ID is invalid.")
 
     message = parse_multipart_email(original_message)
-    required_fields = [
-        "date",
-        "from",
-        "to",
-        "subject",
-        "plain_text_body",
-        "thread_id",
-        "header_message_id",
-        "references",
-    ]
-    if not message or not all(field in message for field in required_fields):
-        logger.error("Parsed message is incomplete.")
-        raise GmailToolError(
-            message="Parsed message is incomplete.",
-            developer_message="Missing required fields in the parsed message.",
-        )
     logger.debug(f"\nMessage Dump: {json.dumps(message, indent=2)}\n")
 
     # build the plain text body with quoted message
