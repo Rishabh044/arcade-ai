@@ -89,19 +89,39 @@ def build_email_message(
     body: str,
     cc: Optional[list[str]] = None,
     bcc: Optional[list[str]] = None,
+    replying_to: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
+    if replying_to:
+        body = build_reply_body(body, replying_to)
+
     message = EmailMessage()
     message.set_content(body)
     message["To"] = recipient
     message["Subject"] = subject
+
     if cc:
         message["Cc"] = ", ".join(cc)
     if bcc:
         message["Bcc"] = ", ".join(bcc)
+    if replying_to:
+        message["In-Reply-To"] = replying_to["header_message_id"]
+        message["References"] = f"{replying_to['header_message_id']}, {replying_to['references']}"
 
     encoded_message = urlsafe_b64encode(message.as_bytes()).decode()
 
-    return {"raw": encoded_message}
+    data = {"raw": encoded_message}
+
+    if replying_to:
+        data["threadId"] = replying_to["thread_id"]
+
+    return data
+
+
+def build_reply_body(body: str, replying_to: dict[str, Any]) -> str:
+    attribution = f"On {replying_to['date']}, {replying_to['from']} wrote:"
+    lines = replying_to["plain_text_body"].split("\n")
+    quoted_plain = "\n".join([f"> {line}" for line in lines])
+    return f"{body}\n\n{attribution}\n\n{quoted_plain}"
 
 
 def parse_plain_text_email(email_data: dict[str, Any]) -> dict[str, Any]:

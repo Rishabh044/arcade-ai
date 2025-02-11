@@ -67,17 +67,13 @@ async def send_email(
     subject: Annotated[str, "The subject of the email"],
     body: Annotated[str, "The body of the email"],
     recipient: Annotated[str, "The recipient of the email"],
-    reply_to_message_id: Annotated[
-        Optional[str], "The ID of the message to reply to, if replying to an existing email"
-    ] = None,
     cc: Annotated[Optional[list[str]], "CC recipients of the email"] = None,
     bcc: Annotated[Optional[list[str]], "BCC recipients of the email"] = None,
 ) -> Annotated[dict, "A dictionary containing the sent email details"]:
     """
-    Send an email using the Gmail API.
+    Send or reply to an email using the Gmail API.
     """
     service = _build_gmail_service(context)
-
     email = build_email_message(recipient, subject, body, cc, bcc)
 
     sent_message = service.users().messages().send(userId="me", body=email).execute()
@@ -109,6 +105,46 @@ async def send_draft_email(
     return email
 
 
+@tool(
+    requires_auth=Google(
+        scopes=["https://www.googleapis.com/auth/gmail.send"],
+    )
+)
+async def reply_to_email(
+    context: ToolContext,
+    body: Annotated[str, "The body of the email"],
+    reply_to_message_id: Annotated[str, "The ID of the message to reply to"],
+    recipient: Annotated[Optional[str], "The recipient of the email"] = None,
+    cc: Annotated[Optional[list[str]], "CC recipients of the email"] = None,
+    bcc: Annotated[Optional[list[str]], "BCC recipients of the email"] = None,
+) -> Annotated[dict, "A dictionary containing the sent email details"]:
+    """
+    Send a reply to an email using the Gmail API.
+    """
+    service = _build_gmail_service(context)
+
+    replying_to = service.users().messages().get(userId="me", id=reply_to_message_id).execute()
+
+    if not replying_to:
+        raise RetryableToolError(
+            message=f"Could not retrieve the message with id {reply_to_message_id}.",
+        )
+
+    replying_to = parse_multipart_email(replying_to)
+
+    subject = f"Re: {replying_to['subject']}"
+    recipient = recipient or f"{replying_to['to']}, {replying_to['from']}"
+    cc = cc or replying_to.get("cc", [])
+
+    email = build_email_message(recipient, subject, body, cc, bcc, replying_to)
+
+    sent_message = service.users().messages().send(userId="me", body=email).execute()
+
+    email = parse_plain_text_email(sent_message)
+    email["url"] = get_sent_email_url(sent_message["id"])
+    return email
+
+
 # Draft Management Tools
 @tool(
     requires_auth=Google(
@@ -120,9 +156,6 @@ async def write_draft_email(
     subject: Annotated[str, "The subject of the draft email"],
     body: Annotated[str, "The body of the draft email"],
     recipient: Annotated[str, "The recipient of the draft email"],
-    reply_to_message_id: Annotated[
-        Optional[str], "The Gmail message ID of the message to respond to"
-    ] = None,
     cc: Annotated[Optional[list[str]], "CC recipients of the draft email"] = None,
     bcc: Annotated[Optional[list[str]], "BCC recipients of the draft email"] = None,
 ) -> Annotated[dict, "A dictionary containing the created draft email details"]:
@@ -154,7 +187,10 @@ async def write_draft_reply_email(
     bcc: Annotated[Optional[list[str]], "BCC recipients of the draft email"] = None,
 ) -> Annotated[dict, "A dictionary containing the created draft email details"]:
     """
-    Compose a response email draft using the Gmail API and maintaining the thread.
+    Compose a reply email draft using the Gmail API and maintaining the thread.
+
+    In case the user asks to send a reply to an email, and not write a draft reply, use the
+    `reply_to_email` tool instead.
     """
 
     service = _build_gmail_service(context)
@@ -182,7 +218,7 @@ async def write_draft_reply_email(
     html_body = None
     if message.get("html_body"):
         html_body = (
-            f"<div>{body}</div><br>{attribution_line}"
+            f"<div>{body.replace('\\n', '<br>')}</div><br>{attribution_line}"
             f'<blockquote class="gmail_quote">\n\n{message["html_body"]}\n</blockquote>'
         )
         html_part = MIMEText(html_body, "html")
