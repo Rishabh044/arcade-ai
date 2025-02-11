@@ -1,7 +1,6 @@
 import base64
 import json
 import logging
-from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Annotated, Any, Optional
 
@@ -17,6 +16,7 @@ from arcade_google.tools.utils import (
     DateRange,
     build_email_message,
     build_query_string,
+    build_reply_recipients,
     fetch_messages,
     get_draft_url,
     get_email_in_trash_url,
@@ -105,6 +105,10 @@ async def send_draft_email(
     return email
 
 
+# Note: in the Gmail UI, a user can customize the recipient and cc fields before replying.
+# We decided not to support this feature, since we'd need a way for LLMs to tell apart between
+# adding or removing recipients/cc, or replacing with an entirely new list of addresses,
+# which would make the tool more complex to call.
 @tool(
     requires_auth=Google(
         scopes=["https://www.googleapis.com/auth/gmail.send"],
@@ -114,8 +118,6 @@ async def reply_to_email(
     context: ToolContext,
     body: Annotated[str, "The body of the email"],
     reply_to_message_id: Annotated[str, "The ID of the message to reply to"],
-    recipient: Annotated[Optional[str], "The recipient of the email"] = None,
-    cc: Annotated[Optional[list[str]], "CC recipients of the email"] = None,
     bcc: Annotated[Optional[list[str]], "BCC recipients of the email"] = None,
 ) -> Annotated[dict, "A dictionary containing the sent email details"]:
     """
@@ -123,20 +125,33 @@ async def reply_to_email(
     """
     service = _build_gmail_service(context)
 
-    replying_to = service.users().messages().get(userId="me", id=reply_to_message_id).execute()
+    current_user = service.users().getProfile(userId="me").execute()
 
-    if not replying_to:
+    try:
+        replying_to_email = (
+            service.users().messages().get(userId="me", id=reply_to_message_id).execute()
+        )
+    except HttpError as e:
         raise RetryableToolError(
             message=f"Could not retrieve the message with id {reply_to_message_id}.",
-        )
+            developer_message=(
+                f"Could not retrieve the message with id {reply_to_message_id}. "
+                f"Reason: '{e.reason}'. Error details: '{e.error_details}'"
+            ),
+        ) from e
 
-    replying_to = parse_multipart_email(replying_to)
+    replying_to_email = parse_multipart_email(replying_to_email)
 
-    subject = f"Re: {replying_to['subject']}"
-    recipient = recipient or f"{replying_to['to']}, {replying_to['from']}"
-    cc = cc or replying_to.get("cc", [])
+    recipients = build_reply_recipients(replying_to_email, current_user["emailAddress"])
 
-    email = build_email_message(recipient, subject, body, cc, bcc, replying_to)
+    email = build_email_message(
+        recipient=recipients,
+        subject=f"Re: {replying_to_email['subject']}",
+        body=body,
+        cc=replying_to_email["cc"],
+        bcc=bcc,
+        replying_to=replying_to_email,
+    )
 
     sent_message = service.users().messages().send(userId="me", body=email).execute()
 
@@ -175,6 +190,10 @@ async def write_draft_email(
     return email
 
 
+# Note: in the Gmail UI, a user can customize the recipient and cc fields before replying.
+# We decided not to support this feature, since we'd need a way for LLMs to tell apart between
+# adding or removing recipients/cc, or replacing with an entirely new list of addresses,
+# which would make the tool more complex to call.
 @tool(
     requires_auth=Google(
         scopes=["https://www.googleapis.com/auth/gmail.compose"],
@@ -182,10 +201,10 @@ async def write_draft_email(
 )
 async def write_draft_reply_email(
     context: ToolContext,
-    message_id: Annotated[str, "The Gmail message ID of the message to respond to"],
-    body: Annotated[str, "The body of the draft email"],
-    bcc: Annotated[Optional[list[str]], "BCC recipients of the draft email"] = None,
-) -> Annotated[dict, "A dictionary containing the created draft email details"]:
+    message_id: Annotated[str, "The Gmail message ID of the message to draft a reply to"],
+    body: Annotated[str, "The body of the draft reply email"],
+    bcc: Annotated[Optional[list[str]], "BCC recipients of the draft reply email"] = None,
+) -> Annotated[dict, "A dictionary containing the created draft reply email details"]:
     """
     Compose a reply email draft using the Gmail API and maintaining the thread.
 
@@ -195,8 +214,10 @@ async def write_draft_reply_email(
 
     service = _build_gmail_service(context)
 
+    current_user = service.users().getProfile(userId="me").execute()
+
     try:
-        original_message = service.users().messages().get(userId="me", id=message_id).execute()
+        replying_to_email = service.users().messages().get(userId="me", id=message_id).execute()
     except HttpError as e:
         raise RetryableToolError(
             message="Could not retrieve the message to respond to.",
@@ -206,53 +227,25 @@ async def write_draft_reply_email(
             ),
         )
 
-    message = parse_multipart_email(original_message)
+    replying_to_email = parse_multipart_email(replying_to_email)
 
-    # build the plain text body with quoted message
-    attribution_line = f"On {message['date']}, {message['from']} wrote:"
-    quoted_plain = message["plain_text_body"].replace("\n", "\n> ")
-    plain_text_body = f"{body}\n\n{attribution_line}\n\n{quoted_plain}"
+    recipients = build_reply_recipients(replying_to_email, current_user["emailAddress"])
 
-    plain_part = MIMEText(plain_text_body, "plain")
-
-    html_body = None
-    if message.get("html_body"):
-        html_body = (
-            f"<div>{body.replace('\\n', '<br>')}</div><br>{attribution_line}"
-            f'<blockquote class="gmail_quote">\n\n{message["html_body"]}\n</blockquote>'
+    draft_message = {
+        "message": build_email_message(
+            recipient=recipients,
+            subject=f"Re: {replying_to_email['subject']}",
+            body=body,
+            cc=replying_to_email["cc"],
+            bcc=bcc,
+            replying_to=replying_to_email,
         )
-        html_part = MIMEText(html_body, "html")
+    }
 
-    reply_mime = MIMEMultipart("alternative")
-    reply_mime.attach(plain_part)
-    if html_body:
-        reply_mime.attach(html_part)
+    draft = service.users().drafts().create(userId="me", body=draft_message).execute()
 
-    reply_mime["To"] = f"{message['to']}, {message['from']}"
-    reply_mime["Subject"] = f"Re: {message['subject']}"
-    reply_mime["Cc"] = message.get("cc", "")
-    if bcc:
-        reply_mime["Bcc"] = ", ".join(bcc)
-
-    reply_mime["In-Reply-To"] = message["header_message_id"]
-    reply_mime["References"] = f"{message['header_message_id']}, {message['references']}"
-
-    raw_message = base64.urlsafe_b64encode(reply_mime.as_bytes()).decode()
-    draft = {"message": {"raw": raw_message, "threadId": message["thread_id"]}}
-
-    try:
-        draft_message = service.users().drafts().create(userId="me", body=draft).execute()
-    except Exception as e:
-        raise GmailToolError(
-            message="Failed to create draft email.",
-            developer_message=(
-                f"Failed to create draft email. Reason: '{e.reason}'. "
-                f"Error details: '{e.error_details}'"
-            ),
-        )
-
-    email = parse_draft_email(draft_message)
-    email["url"] = get_draft_url(draft_message["id"])
+    email = parse_draft_email(draft)
+    email["url"] = get_draft_url(draft["id"])
     return email
 
 

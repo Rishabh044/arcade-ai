@@ -124,6 +124,16 @@ def build_reply_body(body: str, replying_to: dict[str, Any]) -> str:
     return f"{body}\n\n{attribution}\n\n{quoted_plain}"
 
 
+def build_reply_recipients(replying_to: dict[str, Any], current_user_email_address: str) -> str:
+    recipients = [replying_to["from"], *replying_to["to"].split(",")]
+    recipients = [
+        email_address
+        for email_address in recipients
+        if email_address.strip().lower() != current_user_email_address.lower().strip()
+    ]
+    return ", ".join(recipients)
+
+
 def parse_plain_text_email(email_data: dict[str, Any]) -> dict[str, Any]:
     """
     Parse email data and extract relevant information.
