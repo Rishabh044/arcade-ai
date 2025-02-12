@@ -1,6 +1,4 @@
 import base64
-import json
-import logging
 from email.mime.text import MIMEText
 from typing import Annotated, Any, Optional
 
@@ -28,10 +26,6 @@ from arcade_google.tools.utils import (
     remove_none_values,
 )
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
-logger.addHandler(logging.StreamHandler())
-
 
 def _build_gmail_service(context: ToolContext) -> Any:
     """
@@ -50,7 +44,6 @@ def _build_gmail_service(context: ToolContext) -> Any:
             else ""
         )
     except Exception as e:
-        logger.exception("Error building Gmail service.")
         raise GoogleServiceError(message="Failed to build Gmail service.", developer_message=str(e))
 
     return build("gmail", "v1", credentials=credentials)
@@ -179,8 +172,6 @@ async def write_draft_email(
     """
     # Set up the Gmail API client
     service = _build_gmail_service(context)
-
-    logger.debug(f"Writing draft email to {recipient} with subject {subject}")
 
     draft = build_email_message(recipient, subject, body, cc, bcc)
 
@@ -364,7 +355,6 @@ async def list_draft_emails(
             if draft_details:
                 emails.append(draft_details)
         except Exception as e:
-            logger.exception(f"Error reading draft email {draft_id}.")
             raise GmailToolError(
                 message=f"Error reading draft email {draft_id}.", developer_message=str(e)
             )
@@ -423,7 +413,6 @@ async def list_emails_by_header(
     # Check if label is valid
     if label:
         label_ids = get_label_ids(service, [label])
-        logger.debug(f"Label IDs: {label_ids}")
 
         if not label_ids:
             labels = service.users().labels().list(userId="me").execute().get("labels", [])
@@ -439,8 +428,6 @@ async def list_emails_by_header(
 
     # Fetch matching messages. This fetches message metadata from Gmail
     messages = fetch_messages(service, query, max_results)
-
-    logger.debug(f"Messages: {messages}\n")
 
     # If no messages found, return an empty list
     if not messages:
@@ -474,7 +461,6 @@ def get_email_details(service: Any, messages: list[dict[str, Any]]) -> list[dict
                 emails.append(email_details)
         except Exception as e:
             # Log any errors encountered while trying to fetch or parse a message
-            logger.exception(f"Error reading email {msg['id']}.")
             raise GmailToolError(
                 message=f"Error reading email {msg['id']}.", developer_message=str(e)
             )
@@ -508,7 +494,6 @@ async def list_emails(
             if email_details:
                 emails.append(email_details)
         except Exception as e:
-            logger.exception(f"Error reading email {msg['id']}.")
             raise GmailToolError(
                 message=f"Error reading email {msg['id']}.", developer_message=str(e)
             )
@@ -636,19 +621,12 @@ async def change_email_labels(
     """
     service = _build_gmail_service(context)
 
-    logger.debug(f"Starting to change labels for email {email_id}. Here is the input:")
-    logger.debug(f"Labels to add: {labels_to_add}")
-    logger.debug(f"Labels to remove: {labels_to_remove}")
-
     add_labels = get_label_ids(service, labels_to_add)
     remove_labels = get_label_ids(service, labels_to_remove)
 
     invalid_labels = (
         set(labels_to_add + labels_to_remove) - set(add_labels.keys()) - set(remove_labels.keys())
     )
-    logger.debug(f"Add_labels: {add_labels}")
-    logger.debug(f"Remove_labels: {remove_labels}")
-    logger.debug(f"Invalid_labels: {invalid_labels}")
 
     if invalid_labels:
         # prepare the list of valid labels
@@ -668,26 +646,19 @@ async def change_email_labels(
         "removeLabelIds": list(remove_labels.values()),
     }
 
-    logger.debug(f"Body for Label Modification: {body}")
-
     try:  # Modify the email labels.
         service.users().messages().modify(userId="me", id=email_id, body=body).execute()
 
     except Exception as e:
-        logger.exception(f"Error modifying labels for email {email_id}")
         raise GmailToolError(
             message=f"Error modifying labels for email {email_id}", developer_message=str(e)
         )
 
-    logger.debug("\nConfirmation1?")
     # Confirmation JSON with lists for added and removed labels.
     confirmation = {
         "addedLabels": list(add_labels.keys()),
         "removedLabels": list(remove_labels.keys()),
     }
-
-    logger.debug("\nConfirmation2?")
-    logger.debug(f"Confirmation: {json.dumps(confirmation, indent=2)}")
 
     return {"confirmation": dict(confirmation)}
 
@@ -702,13 +673,9 @@ async def list_labels(
 ) -> Annotated[dict, "A dictionary containing a list of label details"]:
     """List all the labels in the user's mailbox."""
 
-    logger.debug("\nListing labels\n")
-
     service = _build_gmail_service(context)
 
     labels = service.users().labels().list(userId="me").execute().get("labels", [])
-
-    logger.debug(f"Labels: {labels}\n")
 
     return {"labels": labels}
 
