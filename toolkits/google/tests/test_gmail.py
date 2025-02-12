@@ -1,3 +1,5 @@
+from base64 import urlsafe_b64encode
+from email.message import EmailMessage
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,6 +14,7 @@ from arcade_google.tools.gmail import (
     list_emails,
     list_emails_by_header,
     list_threads,
+    reply_to_email,
     search_threads,
     send_draft_email,
     send_email,
@@ -20,6 +23,7 @@ from arcade_google.tools.gmail import (
     write_draft_email,
 )
 from arcade_google.tools.utils import (
+    build_reply_body,
     parse_draft_email,
     parse_multipart_email,
     parse_plain_text_email,
@@ -587,6 +591,55 @@ async def test_get_thread(mock_build, mock_context):
             context=mock_context,
             thread_id="invalid_thread",
         )
+
+
+@pytest.mark.asyncio
+@patch("arcade_google.tools.gmail.build")
+async def test_reply_to_email(mock_build, mock_context):
+    mock_service = MagicMock()
+    mock_build.return_value = mock_service
+
+    original_message = {
+        "id": "id123456",
+        "threadId": "thread123456",
+        "payload": {
+            "headers": [
+                {"name": "Message-ID", "value": "id123456"},
+                {"name": "Subject", "value": "test"},
+                {"name": "From", "value": "sender@example.com"},
+                {"name": "To", "value": "to1@example.com, to2@example.com, test@example.com"},
+                {"name": "Cc", "value": "cc1@example.com, cc2@example.com"},
+                {"name": "References", "value": "thread123456"},
+            ],
+        },
+    }
+
+    mock_service.users().getProfile().execute.return_value = {"emailAddress": "test@example.com"}
+    mock_service.users().messages().get().execute.return_value = original_message
+
+    result = await reply_to_email(context=mock_context, body="test", reply_to_message_id="id123456")
+
+    assert isinstance(result, dict)
+    assert "url" in result
+
+    replying_to = parse_multipart_email(original_message)
+    expected_body = build_reply_body("test", replying_to)
+
+    expected_message = EmailMessage()
+    expected_message.set_content(expected_body)
+    expected_message["To"] = "sender@example.com, to1@example.com, to2@example.com"
+    expected_message["Subject"] = "Re: test"
+    expected_message["Cc"] = "cc1@example.com, cc2@example.com"
+    expected_message["In-Reply-To"] = "id123456"
+    expected_message["References"] = "id123456, thread123456"
+
+    mock_service.users().messages().send.assert_called_once_with(
+        userId="me",
+        body={
+            "raw": urlsafe_b64encode(expected_message.as_bytes()).decode(),
+            "threadId": "thread123456",
+        },
+    )
 
 
 def test_parse_multipart_email_full():

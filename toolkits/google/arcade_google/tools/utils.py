@@ -87,8 +87,8 @@ def build_email_message(
     recipient: str,
     subject: str,
     body: str,
-    cc: Optional[list[str]] = None,
-    bcc: Optional[list[str]] = None,
+    cc: str = "",
+    bcc: str = "",
     replying_to: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     if replying_to:
@@ -100,9 +100,9 @@ def build_email_message(
     message["Subject"] = subject
 
     if cc:
-        message["Cc"] = ", ".join(cc)
+        message["Cc"] = cc
     if bcc:
-        message["Bcc"] = ", ".join(bcc)
+        message["Bcc"] = bcc
     if replying_to:
         message["In-Reply-To"] = replying_to["header_message_id"]
         message["References"] = f"{replying_to['header_message_id']}, {replying_to['references']}"
@@ -127,7 +127,7 @@ def build_reply_body(body: str, replying_to: dict[str, Any]) -> str:
 def build_reply_recipients(replying_to: dict[str, Any], current_user_email_address: str) -> str:
     recipients = [replying_to["from"], *replying_to["to"].split(",")]
     recipients = [
-        email_address
+        email_address.strip()
         for email_address in recipients
         if email_address.strip().lower() != current_user_email_address.lower().strip()
     ]
@@ -147,9 +147,8 @@ def parse_plain_text_email(email_data: dict[str, Any]) -> dict[str, Any]:
     """
     payload = email_data.get("payload", {})
     headers = {d["name"].lower(): d["value"] for d in payload.get("headers", [])}
-    logger.debug(f"headers: {headers}")
+
     body_data = _get_email_plain_text_body(payload)
-    logger.debug(f"\nBody: {body_data}\n")
 
     email_details = {
         "id": email_data.get("id", ""),
@@ -169,7 +168,6 @@ def parse_plain_text_email(email_data: dict[str, Any]) -> dict[str, Any]:
         "body": body_data or "",
     }
 
-    logger.debug(f"email_details: {email_details}\n")
     return email_details
 
 
@@ -187,20 +185,10 @@ def parse_multipart_email(email_data: dict[str, Any]) -> dict[str, Any]:
 
     payload = email_data.get("payload", {})
     headers = {d["name"].lower(): d["value"] for d in payload.get("headers", [])}
-    logger.debug(f"parsing multipart email with headers: {headers}")
 
     # Extract different parts of the email
     plain_text_body = _get_email_plain_text_body(payload)
     html_body = _get_email_html_body(payload)
-    # images = _get_email_images(payload)
-
-    # Log which content types were found
-    content_types = {
-        "Plain Text": bool(plain_text_body),
-        "HTML": bool(html_body),
-        # "Images": bool(images),
-    }
-    logger.debug(f"Content Found: {content_types}")
 
     email_details = {
         "id": email_data.get("id", ""),
@@ -219,9 +207,8 @@ def parse_multipart_email(email_data: dict[str, Any]) -> dict[str, Any]:
         "subject": headers.get("subject", ""),
         "plain_text_body": plain_text_body or _clean_email_body(html_body),
         "html_body": html_body or "",
-        # "images": images or [],
     }
-    logger.debug(f"Email_details populated for multipart email {email_data.get('id', 'unknown')}\n")
+
     return email_details
 
 
@@ -275,20 +262,16 @@ def _extract_plain_body(parts: list) -> Optional[str]:
     """
     for part in parts:
         mime_type = part.get("mimeType")
-        logger.debug(f"\nProcessing part with mimeType: {mime_type}\n")
 
         if mime_type == "text/plain" and "data" in part.get("body", {}):
-            logger.debug("\nFound text/plain part\n")
             return urlsafe_b64decode(part["body"]["data"]).decode()
 
         elif mime_type.startswith("multipart/"):
-            logger.debug(f"\nHandling multipart type: {mime_type}\n")
             subparts = part.get("parts", [])
             body = _extract_plain_body(subparts)
             if body:
                 return body
 
-    logger.debug("\nNo suitable plain text body part found. Checking HTML body...\n")
     return _extract_html_body(parts)
 
 
@@ -304,21 +287,17 @@ def _extract_html_body(parts: list) -> Optional[str]:
     """
     for part in parts:
         mime_type = part.get("mimeType")
-        logger.debug(f"\nProcessing part with mimeType: {mime_type}\n")
 
         if mime_type == "text/html" and "data" in part.get("body", {}):
-            logger.debug("\nFound text/html part\n")
             html_content = urlsafe_b64decode(part["body"]["data"]).decode()
             return html_content
 
         elif mime_type.startswith("multipart/"):
-            logger.debug(f"\nHandling multipart type: {mime_type}\n")
             subparts = part.get("parts", [])
             body = _extract_html_body(subparts)
             if body:
                 return body
 
-    logger.debug("\nNo suitable html body part found\n")
     return None
 
 
@@ -335,25 +314,20 @@ def _get_email_images(payload: dict[str, Any]) -> Optional[list[str]]:
     images = []
     for part in payload.get("parts", []):
         mime_type = part.get("mimeType")
-        logger.debug(f"\nProcessing part with mimeType: {mime_type}\n")
 
         if mime_type.startswith("image/") and "data" in part.get("body", {}):
-            logger.debug(f"\nFound image part with mimeType: {mime_type}\n")
             image_content = part["body"]["data"]
             images.append(image_content)
 
         elif mime_type.startswith("multipart/"):
-            logger.debug(f"\nHandling multipart type: {mime_type}\n")
             subparts = part.get("parts", [])
             subimages = _get_email_images(subparts)
             if subimages:
                 images.extend(subimages)
 
     if images:
-        logger.debug(f"\nFound {len(images)} image(s)\n")
         return images
 
-    logger.debug("\nNo suitable images part found\n")
     return None
 
 
@@ -367,15 +341,11 @@ def _get_email_plain_text_body(payload: dict[str, Any]) -> Optional[str]:
     Returns:
         Optional[str]: Decoded email body or None if not found.
     """
-    logger.debug("\nGetting plain text body from payload.\n")
-
     # Direct body extraction
     if "body" in payload and payload["body"].get("data"):
-        logger.debug("\nGot the body directly from payload\n")
         return _clean_email_body(urlsafe_b64decode(payload["body"]["data"]).decode())
 
     # Handle multipart and alternative parts
-    logger.debug("\nLooking for parts in payload for plain text body.\n")
     return _clean_email_body(_extract_plain_body(payload.get("parts", [])))
 
 
@@ -389,15 +359,11 @@ def _get_email_html_body(payload: dict[str, Any]) -> Optional[str]:
     Returns:
         Optional[str]: Decoded email body or None if not found.
     """
-    logger.debug("\nGetting html body from payload.\n")
-
     # Direct body extraction
     if "body" in payload and payload["body"].get("data"):
-        logger.debug("\nGot the body directly from payload\n")
         return urlsafe_b64decode(payload["body"]["data"]).decode()
 
     # Handle multipart and alternative parts
-    logger.debug("\nLooking for parts in payload for html body.\n")
     return _extract_html_body(payload.get("parts", []))
 
 
@@ -411,8 +377,6 @@ def _clean_email_body(body: str) -> str:
     Returns:
         str: Cleaned email body text.
     """
-    logger.debug(f"\nBody to clean: {body}\n")
-
     if not body:
         return ""
 
@@ -513,13 +477,10 @@ def get_label_ids(service: Any, label_names: list[str]) -> dict[str, str]:
         # Fetch all existing labels from Gmail
         labels = service.users().labels().list(userId="me").execute().get("labels", [])
     except Exception as e:
-        error_msg = "Failed to list labels."
-        logger.exception(error_msg)
-        raise GmailToolError(message=error_msg, developer_message=str(e))
+        raise GmailToolError(message="Failed to list labels.", developer_message=str(e)) from e
 
     # Create a mapping from label names to their IDs
     label_id_map = {label["name"]: label["id"] for label in labels}
-    logger.debug(f"Label ID Map: {label_id_map}")
 
     found_labels = {}
     for name in label_names:
@@ -528,8 +489,6 @@ def get_label_ids(service: Any, label_names: list[str]) -> dict[str, str]:
             found_labels[name] = label_id
         else:
             logger.warning(f"Label '{name}' does not exist")
-
-    logger.debug(f"Found labels: {found_labels}")
 
     return found_labels
 
