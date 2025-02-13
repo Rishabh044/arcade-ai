@@ -342,3 +342,8 @@ class OrderBy(str, Enum):
         # The last time the file was viewed by the user (descending)
         "viewedByMeTime desc"
     )
+
+
+class GmailReplyToWhom(str, Enum):
+    EVERY_RECIPIENT = "every_recipient"
+    ONLY_THE_SENDER = "only_the_sender"

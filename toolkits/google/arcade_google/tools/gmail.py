@@ -9,7 +9,9 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from arcade_google.tools.constants import GMAIL_DEFAULT_REPLY_TO
 from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError
+from arcade_google.tools.models import GmailReplyToWhom
 from arcade_google.tools.utils import (
     DateRange,
     build_email_message,
@@ -111,11 +113,19 @@ async def reply_to_email(
     context: ToolContext,
     body: Annotated[str, "The body of the email"],
     reply_to_message_id: Annotated[str, "The ID of the message to reply to"],
+    reply_to_whom: Annotated[
+        GmailReplyToWhom,
+        "Whether to reply to every recipient (including cc) or only to the original sender. "
+        f"Defaults to '{GMAIL_DEFAULT_REPLY_TO}'.",
+    ] = GMAIL_DEFAULT_REPLY_TO,
     bcc: Annotated[Optional[list[str]], "BCC recipients of the email"] = None,
 ) -> Annotated[dict, "A dictionary containing the sent email details"]:
     """
-    Send a reply to an email using the Gmail API.
+    Send a reply to an email message.
     """
+    if isinstance(reply_to_whom, str):
+        reply_to_whom = GmailReplyToWhom(reply_to_whom)
+
     service = _build_gmail_service(context)
 
     current_user = service.users().getProfile(userId="me").execute()
@@ -135,13 +145,15 @@ async def reply_to_email(
 
     replying_to_email = parse_multipart_email(replying_to_email)
 
-    recipients = build_reply_recipients(replying_to_email, current_user["emailAddress"])
+    recipients = build_reply_recipients(
+        replying_to_email, current_user["emailAddress"], reply_to_whom
+    )
 
     email = build_email_message(
         recipient=recipients,
         subject=f"Re: {replying_to_email['subject']}",
         body=body,
-        cc=replying_to_email["cc"],
+        cc="" if reply_to_whom == GmailReplyToWhom.ONLY_THE_SENDER else replying_to_email["cc"],
         bcc=bcc,
         replying_to=replying_to_email,
     )
@@ -192,23 +204,29 @@ async def write_draft_email(
 )
 async def write_draft_reply_email(
     context: ToolContext,
-    message_id: Annotated[str, "The Gmail message ID of the message to draft a reply to"],
     body: Annotated[str, "The body of the draft reply email"],
+    reply_to_message_id: Annotated[str, "The Gmail message ID of the message to draft a reply to"],
+    reply_to_whom: Annotated[
+        GmailReplyToWhom,
+        "Whether to reply to every recipient (including cc) or only to the original sender. "
+        f"Defaults to '{GMAIL_DEFAULT_REPLY_TO}'.",
+    ] = GMAIL_DEFAULT_REPLY_TO,
     bcc: Annotated[Optional[list[str]], "BCC recipients of the draft reply email"] = None,
 ) -> Annotated[dict, "A dictionary containing the created draft reply email details"]:
     """
-    Compose a reply email draft using the Gmail API and maintaining the thread.
-
-    In case the user asks to send a reply to an email, and not write a draft reply, use the
-    `reply_to_email` tool instead.
+    Compose a draft reply to an email message.
     """
+    if isinstance(reply_to_whom, str):
+        reply_to_whom = GmailReplyToWhom(reply_to_whom)
 
     service = _build_gmail_service(context)
 
     current_user = service.users().getProfile(userId="me").execute()
 
     try:
-        replying_to_email = service.users().messages().get(userId="me", id=message_id).execute()
+        replying_to_email = (
+            service.users().messages().get(userId="me", id=reply_to_message_id).execute()
+        )
     except HttpError as e:
         raise RetryableToolError(
             message="Could not retrieve the message to respond to.",
@@ -220,14 +238,16 @@ async def write_draft_reply_email(
 
     replying_to_email = parse_multipart_email(replying_to_email)
 
-    recipients = build_reply_recipients(replying_to_email, current_user["emailAddress"])
+    recipients = build_reply_recipients(
+        replying_to_email, current_user["emailAddress"], reply_to_whom
+    )
 
     draft_message = {
         "message": build_email_message(
             recipient=recipients,
             subject=f"Re: {replying_to_email['subject']}",
             body=body,
-            cc=replying_to_email["cc"],
+            cc="" if reply_to_whom == GmailReplyToWhom.ONLY_THE_SENDER else replying_to_email["cc"],
             bcc=bcc,
             replying_to=replying_to_email,
         )

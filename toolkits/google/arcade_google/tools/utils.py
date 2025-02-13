@@ -12,7 +12,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import Resource, build
 
 from arcade_google.tools.exceptions import GmailToolError
-from arcade_google.tools.models import Day, TimeSlot
+from arcade_google.tools.models import Day, GmailReplyToWhom, TimeSlot
 
 ## Set up basic configuration for logging to the console with DEBUG level and a specific format.
 logging.basicConfig(
@@ -124,13 +124,22 @@ def build_reply_body(body: str, replying_to: dict[str, Any]) -> str:
     return f"{body}\n\n{attribution}\n\n{quoted_plain}"
 
 
-def build_reply_recipients(replying_to: dict[str, Any], current_user_email_address: str) -> str:
-    recipients = [replying_to["from"], *replying_to["to"].split(",")]
+def build_reply_recipients(
+    replying_to: dict[str, Any], current_user_email_address: str, reply_to_whom: GmailReplyToWhom
+) -> str:
+    if reply_to_whom == GmailReplyToWhom.ONLY_THE_SENDER:
+        recipients = [replying_to["from"]]
+    elif reply_to_whom == GmailReplyToWhom.EVERY_RECIPIENT:
+        recipients = [replying_to["from"], *replying_to["to"].split(",")]
+    else:
+        raise ValueError(f"Unsupported reply_to_whom value: {reply_to_whom}")
+
     recipients = [
         email_address.strip()
         for email_address in recipients
         if email_address.strip().lower() != current_user_email_address.lower().strip()
     ]
+
     return ", ".join(recipients)
 
 

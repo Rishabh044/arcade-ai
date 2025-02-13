@@ -22,6 +22,7 @@ from arcade_google.tools.gmail import (
     update_draft_email,
     write_draft_email,
 )
+from arcade_google.tools.models import GmailReplyToWhom
 from arcade_google.tools.utils import (
     build_reply_body,
     parse_draft_email,
@@ -594,8 +595,23 @@ async def test_get_thread(mock_build, mock_context):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "reply_to_whom, expected_to, expected_cc",
+    [
+        (
+            GmailReplyToWhom.EVERY_RECIPIENT,
+            "sender@example.com, to1@example.com, to2@example.com",
+            "cc1@example.com, cc2@example.com",
+        ),
+        (
+            GmailReplyToWhom.ONLY_THE_SENDER,
+            "sender@example.com",
+            "",
+        ),
+    ],
+)
 @patch("arcade_google.tools.gmail.build")
-async def test_reply_to_email(mock_build, mock_context):
+async def test_reply_to_email(mock_build, reply_to_whom, expected_to, expected_cc, mock_context):
     mock_service = MagicMock()
     mock_build.return_value = mock_service
 
@@ -617,7 +633,12 @@ async def test_reply_to_email(mock_build, mock_context):
     mock_service.users().getProfile().execute.return_value = {"emailAddress": "test@example.com"}
     mock_service.users().messages().get().execute.return_value = original_message
 
-    result = await reply_to_email(context=mock_context, body="test", reply_to_message_id="id123456")
+    result = await reply_to_email(
+        context=mock_context,
+        body="test",
+        reply_to_message_id="id123456",
+        reply_to_whom=reply_to_whom,
+    )
 
     assert isinstance(result, dict)
     assert "url" in result
@@ -627,9 +648,10 @@ async def test_reply_to_email(mock_build, mock_context):
 
     expected_message = EmailMessage()
     expected_message.set_content(expected_body)
-    expected_message["To"] = "sender@example.com, to1@example.com, to2@example.com"
+    expected_message["To"] = expected_to
     expected_message["Subject"] = "Re: test"
-    expected_message["Cc"] = "cc1@example.com, cc2@example.com"
+    if expected_cc:
+        expected_message["Cc"] = expected_cc
     expected_message["In-Reply-To"] = "id123456"
     expected_message["References"] = "id123456, thread123456"
 

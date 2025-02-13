@@ -13,12 +13,14 @@ from arcade.sdk.eval import (
 import arcade_google
 from arcade_google.tools.gmail import (
     get_thread,
+    list_emails_by_header,
     list_threads,
     reply_to_email,
     search_threads,
     send_email,
     write_draft_reply_email,
 )
+from arcade_google.tools.models import GmailReplyToWhom
 from arcade_google.tools.utils import DateRange
 
 # Evaluation rubric
@@ -252,15 +254,43 @@ def gmail_reply_eval_suite() -> EvalSuite:
                 args={
                     "reply_to_message_id": "9475tvy24578yx",
                     "body": "tested and working well",
+                    "reply_to_whom": GmailReplyToWhom.ONLY_THE_SENDER.value,
                 },
             )
         ],
         critics=[
-            SimilarityCritic(critic_field="subject", weight=0.125),
-            SimilarityCritic(critic_field="body", weight=0.25),
-            BinaryCritic(critic_field="recipient", weight=0.25),
-            BinaryCritic(critic_field="cc", weight=0.25),
-            BinaryCritic(critic_field="bcc", weight=0.125),
+            SimilarityCritic(critic_field="subject", weight=1 / 7),
+            SimilarityCritic(critic_field="body", weight=1 / 7),
+            BinaryCritic(critic_field="recipient", weight=1 / 7),
+            BinaryCritic(critic_field="cc", weight=1 / 7),
+            BinaryCritic(critic_field="bcc", weight=1 / 7),
+            BinaryCritic(critic_field="reply_to_whom", weight=1 / 7),
+            BinaryCritic(critic_field="reply_to_message_id", weight=1 / 7),
+        ],
+        additional_messages=email_history,
+    )
+
+    suite.add_case(
+        name="Reply to an email with every recipient",
+        user_message="Reply to every recipient in the email from johndoe@example.com about 'test 2' saying 'tested and working well'",
+        expected_tool_calls=[
+            ExpectedToolCall(
+                func=reply_to_email,
+                args={
+                    "reply_to_message_id": "9475tvy24578yx",
+                    "body": "tested and working well",
+                    "reply_to_whom": GmailReplyToWhom.EVERY_RECIPIENT.value,
+                },
+            )
+        ],
+        critics=[
+            SimilarityCritic(critic_field="subject", weight=1 / 7),
+            SimilarityCritic(critic_field="body", weight=1 / 7),
+            BinaryCritic(critic_field="recipient", weight=1 / 7),
+            BinaryCritic(critic_field="cc", weight=1 / 7),
+            BinaryCritic(critic_field="bcc", weight=1 / 7),
+            BinaryCritic(critic_field="reply_to_whom", weight=1 / 7),
+            BinaryCritic(critic_field="reply_to_message_id", weight=1 / 7),
         ],
         additional_messages=email_history,
     )
@@ -275,15 +305,18 @@ def gmail_reply_eval_suite() -> EvalSuite:
                     "reply_to_message_id": "9475tvy24578yx",
                     "body": "tested and working well",
                     "bcc": ["janedoe@example.com"],
+                    "reply_to_whom": GmailReplyToWhom.ONLY_THE_SENDER.value,
                 },
             )
         ],
         critics=[
-            SimilarityCritic(critic_field="subject", weight=0.125),
-            SimilarityCritic(critic_field="body", weight=0.25),
-            BinaryCritic(critic_field="recipient", weight=0.25),
-            BinaryCritic(critic_field="cc", weight=0.25),
-            BinaryCritic(critic_field="bcc", weight=0.125),
+            SimilarityCritic(critic_field="subject", weight=1 / 7),
+            SimilarityCritic(critic_field="body", weight=1 / 7),
+            BinaryCritic(critic_field="recipient", weight=1 / 7),
+            BinaryCritic(critic_field="cc", weight=1 / 7),
+            BinaryCritic(critic_field="bcc", weight=1 / 7),
+            BinaryCritic(critic_field="reply_to_whom", weight=1 / 7),
+            BinaryCritic(critic_field="reply_to_message_id", weight=1 / 7),
         ],
         additional_messages=email_history,
     )
@@ -297,17 +330,102 @@ def gmail_reply_eval_suite() -> EvalSuite:
                 args={
                     "reply_to_message_id": "9475tvy24578yx",
                     "body": "tested and working well",
+                    "reply_to_whom": GmailReplyToWhom.ONLY_THE_SENDER.value,
                 },
             )
         ],
         critics=[
-            SimilarityCritic(critic_field="subject", weight=0.125),
-            SimilarityCritic(critic_field="body", weight=0.25),
-            BinaryCritic(critic_field="recipient", weight=0.25),
-            BinaryCritic(critic_field="cc", weight=0.25),
-            BinaryCritic(critic_field="bcc", weight=0.125),
+            SimilarityCritic(critic_field="subject", weight=1 / 7),
+            SimilarityCritic(critic_field="body", weight=1 / 7),
+            BinaryCritic(critic_field="recipient", weight=1 / 7),
+            BinaryCritic(critic_field="cc", weight=1 / 7),
+            BinaryCritic(critic_field="bcc", weight=1 / 7),
+            BinaryCritic(critic_field="reply_to_message_id", weight=1 / 7),
+            BinaryCritic(critic_field="reply_to_whom", weight=1 / 7),
         ],
         additional_messages=email_history,
+    )
+
+    suite.add_case(
+        name="Write draft reply to every recipient",
+        user_message="Write a draft reply to every recipient in the email from johndoe@example.com about 'test 2' saying 'tested and working well'",
+        expected_tool_calls=[
+            ExpectedToolCall(
+                func=write_draft_reply_email,
+                args={
+                    "reply_to_message_id": "9475tvy24578yx",
+                    "body": "tested and working well",
+                    "reply_to_whom": GmailReplyToWhom.EVERY_RECIPIENT.value,
+                },
+            )
+        ],
+        critics=[
+            SimilarityCritic(critic_field="subject", weight=1 / 7),
+            SimilarityCritic(critic_field="body", weight=1 / 7),
+            BinaryCritic(critic_field="recipient", weight=1 / 7),
+            BinaryCritic(critic_field="cc", weight=1 / 7),
+            BinaryCritic(critic_field="bcc", weight=1 / 7),
+            BinaryCritic(critic_field="reply_to_whom", weight=0.125),
+            BinaryCritic(critic_field="reply_to_message_id", weight=1 / 7),
+        ],
+        additional_messages=email_history,
+    )
+
+    return suite
+
+
+@tool_eval()
+def gmail_list_emails_by_header_eval_suite() -> EvalSuite:
+    """Create an evaluation suite for Gmail tools."""
+    suite = EvalSuite(
+        name="Gmail list_emails_by_header tool evaluation",
+        system_message="You are an AI assistant that can send and manage emails using the provided tools.",
+        catalog=catalog,
+        rubric=rubric,
+    )
+
+    suite.add_case(
+        name="List emails by header using date-range",
+        user_message="List all emails from johndoe@example.com to janedoe@example.com about 'Arcade AI' from yesterday",
+        expected_tool_calls=[
+            ExpectedToolCall(
+                func=list_emails_by_header,
+                args={
+                    "sender": "johndoe@example.com",
+                    "recipient": "janedoe@example.com",
+                    "subject": "Arcade AI",
+                    "date_range": DateRange.YESTERDAY.value,
+                },
+            )
+        ],
+        critics=[
+            BinaryCritic(critic_field="sender", weight=1 / 4),
+            BinaryCritic(critic_field="recipient", weight=1 / 4),
+            SimilarityCritic(critic_field="subject", weight=1 / 4),
+            BinaryCritic(critic_field="date_range", weight=1 / 4),
+        ],
+    )
+
+    suite.add_case(
+        name="List emails by header using date-range",
+        user_message="List all emails from johndoe@example.com to janedoe@example.com about 'Arcade AI' from the last month",
+        expected_tool_calls=[
+            ExpectedToolCall(
+                func=list_emails_by_header,
+                args={
+                    "sender": "johndoe@example.com",
+                    "recipient": "janedoe@example.com",
+                    "subject": "Arcade AI",
+                    "date_range": DateRange.LAST_MONTH.value,
+                },
+            )
+        ],
+        critics=[
+            BinaryCritic(critic_field="sender", weight=1 / 4),
+            BinaryCritic(critic_field="recipient", weight=1 / 4),
+            SimilarityCritic(critic_field="subject", weight=1 / 4),
+            BinaryCritic(critic_field="date_range", weight=1 / 4),
+        ],
     )
 
     return suite
