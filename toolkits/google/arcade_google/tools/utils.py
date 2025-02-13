@@ -100,9 +100,9 @@ def build_email_message(
     message["Subject"] = subject
 
     if cc:
-        message["Cc"] = ", ".join(cc)
+        message["Cc"] = ",".join(cc)
     if bcc:
-        message["Bcc"] = ", ".join(bcc)
+        message["Bcc"] = ",".join(bcc)
     if replying_to:
         message["In-Reply-To"] = replying_to["header_message_id"]
         message["References"] = f"{replying_to['header_message_id']}, {replying_to['references']}"
