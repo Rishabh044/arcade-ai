@@ -6,7 +6,7 @@ class GoogleToolError(Exception):
         self.developer_message = developer_message
         super().__init__(self.message)
 
-    def __str__(self):
+    def __str__(self) -> str:
         base_message = self.message
         if self.developer_message:
             return f"{base_message} (Developer: {self.developer_message})"

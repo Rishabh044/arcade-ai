@@ -87,8 +87,8 @@ def build_email_message(
     recipient: str,
     subject: str,
     body: str,
-    cc: str = "",
-    bcc: str = "",
+    cc: Optional[list[str]] = None,
+    bcc: Optional[list[str]] = None,
     replying_to: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     if replying_to:
@@ -100,9 +100,9 @@ def build_email_message(
     message["Subject"] = subject
 
     if cc:
-        message["Cc"] = cc
+        message["Cc"] = ", ".join(cc)
     if bcc:
-        message["Bcc"] = bcc
+        message["Bcc"] = ", ".join(bcc)
     if replying_to:
         message["In-Reply-To"] = replying_to["header_message_id"]
         message["References"] = f"{replying_to['header_message_id']}, {replying_to['references']}"
@@ -376,7 +376,7 @@ def _get_email_html_body(payload: dict[str, Any]) -> Optional[str]:
     return _extract_html_body(payload.get("parts", []))
 
 
-def _clean_email_body(body: str) -> str:
+def _clean_email_body(body: Optional[str]) -> str:
     """
     Remove HTML tags and clean up email body text while preserving most content.
 

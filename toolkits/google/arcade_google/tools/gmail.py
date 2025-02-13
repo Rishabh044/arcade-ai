@@ -153,7 +153,9 @@ async def reply_to_email(
         recipient=recipients,
         subject=f"Re: {replying_to_email['subject']}",
         body=body,
-        cc="" if reply_to_whom == GmailReplyToWhom.ONLY_THE_SENDER else replying_to_email["cc"],
+        cc=None
+        if reply_to_whom == GmailReplyToWhom.ONLY_THE_SENDER
+        else replying_to_email["cc"].split(","),
         bcc=bcc,
         replying_to=replying_to_email,
     )
@@ -247,7 +249,9 @@ async def write_draft_reply_email(
             recipient=recipients,
             subject=f"Re: {replying_to_email['subject']}",
             body=body,
-            cc="" if reply_to_whom == GmailReplyToWhom.ONLY_THE_SENDER else replying_to_email["cc"],
+            cc=None
+            if reply_to_whom == GmailReplyToWhom.ONLY_THE_SENDER
+            else replying_to_email["cc"].split(","),
             bcc=bcc,
             replying_to=replying_to_email,
         )
@@ -418,17 +422,6 @@ async def list_emails_by_header(
                 "or date_range must be provided."
             ),
         )
-
-    # Convert date_range string to DateRange enum if valid
-    if date_range:
-        try:
-            date_range = DateRange(date_range.lower())
-        except KeyError:
-            valid_ranges = [dr.value for dr in DateRange]
-            raise RetryableToolError(
-                message=f"Invalid date range. Must be one of: {', '.join(valid_ranges)}",
-                developer_message=f"date_range must be one of: {valid_ranges}",
-            )
 
     # Check if label is valid
     if label:
