@@ -13,7 +13,7 @@ from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError
 from arcade_google.tools.utils import (
     DateRange,
     build_email_message,
-    build_query_string,
+    build_gmail_query_string,
     build_reply_recipients,
     fetch_messages,
     get_draft_url,
@@ -373,7 +373,7 @@ async def list_emails_by_header(
     recipient: Annotated[Optional[str], "The name or email address of the recipient"] = None,
     subject: Annotated[Optional[str], "Words to find in the subject of the email"] = None,
     body: Annotated[Optional[str], "Words to find in the body of the email"] = None,
-    date_range: Annotated[Optional[str], "The date range of the email"] = None,
+    date_range: Annotated[Optional[DateRange], "The date range of the email"] = None,
     label: Annotated[Optional[str], "The label name to filter by"] = None,
     max_results: Annotated[int, "The maximum number of emails to return"] = 25,
 ) -> Annotated[
@@ -424,7 +424,7 @@ async def list_emails_by_header(
             )
 
     # Build a Gmail-style query string based on the filters
-    query = build_query_string(sender, recipient, subject, body, date_range, label)
+    query = build_gmail_query_string(sender, recipient, subject, body, date_range, label)
 
     # Fetch matching messages. This fetches message metadata from Gmail
     messages = fetch_messages(service, query, max_results)
@@ -523,7 +523,7 @@ async def search_threads(
     service = _build_gmail_service(context)
 
     query = (
-        build_query_string(sender, recipient, subject, body, date_range)
+        build_gmail_query_string(sender, recipient, subject, body, date_range)
         if any([sender, recipient, subject, body, date_range])
         else None
     )

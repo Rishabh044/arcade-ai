@@ -434,7 +434,7 @@ def _update_datetime(day: Day | None, time: TimeSlot | None, time_zone: str) -> 
     return None
 
 
-def build_query_string(
+def build_gmail_query_string(
     sender: str | None = None,
     recipient: str | None = None,
     subject: str | None = None,
