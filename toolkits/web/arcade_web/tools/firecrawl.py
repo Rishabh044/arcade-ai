@@ -1,17 +1,15 @@
 from typing import Annotated, Any, Optional
 
 from arcade.sdk import ToolContext, tool
-from arcade.sdk.tool_secrets import ToolSecret
 from firecrawl import FirecrawlApp
 
 from arcade_web.tools.models import Formats
-from arcade_web.tools.utils import get_secret
 
 
 # TODO: Support actions. This would enable clicking, scrolling, screenshotting, etc.
 # TODO: Support extract.
 # TODO: Support headers param?
-@tool(requires_secrets=[ToolSecret(key_id="FIRECRAWL_API_KEY")])
+@tool(requires_secrets=["FIRECRAWL_API_KEY"])
 async def scrape_url(
     context: ToolContext,
     url: Annotated[str, "URL to scrape"],
@@ -52,8 +50,9 @@ async def scrape_url(
 
 
 # TODO: Support scrapeOptions.
-@tool
+@tool(requires_secrets=["FIRECRAWL_API_KEY"])
 async def crawl_website(
+    context: ToolContext,
     url: Annotated[str, "URL to crawl"],
     exclude_paths: Annotated[list[str] | None, "URL patterns to exclude from the crawl"] = None,
     include_paths: Annotated[list[str] | None, "URL patterns to include in the crawl"] = None,
@@ -77,7 +76,7 @@ async def crawl_website(
     If the crawl is synchronous, then returns the crawl data.
     """
 
-    api_key = get_secret("FIRECRAWL_API_KEY")
+    api_key = context.get_secret("FIRECRAWL_API_KEY")
 
     app = FirecrawlApp(api_key=api_key)
     params = {
@@ -104,15 +103,16 @@ async def crawl_website(
     return dict(response)
 
 
-@tool
+@tool(requires_secrets=["FIRECRAWL_API_KEY"])
 async def get_crawl_status(
+    context: ToolContext,
     crawl_id: Annotated[str, "The ID of the crawl job"],
 ) -> Annotated[dict[str, Any], "Crawl status information"]:
     """
     Get the status of a Firecrawl 'crawl' that is either in progress or recently completed.
     """
 
-    api_key = get_secret("FIRECRAWL_API_KEY")
+    api_key = context.get_secret("FIRECRAWL_API_KEY")
 
     app = FirecrawlApp(api_key=api_key)
     crawl_status = app.check_crawl_status(crawl_id)
@@ -127,13 +127,14 @@ async def get_crawl_status(
 #       then the Firecrawl API response will have a next_url field.
 @tool
 async def get_crawl_data(
+    context: ToolContext,
     crawl_id: Annotated[str, "The ID of the crawl job"],
 ) -> Annotated[dict[str, Any], "Crawl data information"]:
     """
     Get the data of a Firecrawl 'crawl' that is either in progress or recently completed.
     """
 
-    api_key = get_secret("FIRECRAWL_API_KEY")
+    api_key = context.get_secret("FIRECRAWL_API_KEY")
 
     app = FirecrawlApp(api_key=api_key)
     crawl_data = app.check_crawl_status(crawl_id)
@@ -141,15 +142,16 @@ async def get_crawl_data(
     return dict(crawl_data)
 
 
-@tool
+@tool(requires_secrets=["FIRECRAWL_API_KEY"])
 async def cancel_crawl(
+    context: ToolContext,
     crawl_id: Annotated[str, "The ID of the asynchronous crawl job to cancel"],
 ) -> Annotated[dict[str, Any], "Cancellation status information"]:
     """
     Cancel an asynchronous crawl job that is in progress using the Firecrawl API.
     """
 
-    api_key = get_secret("FIRECRAWL_API_KEY")
+    api_key = context.get_secret("FIRECRAWL_API_KEY")
 
     app = FirecrawlApp(api_key=api_key)
     cancellation_status = app.cancel_crawl(crawl_id)
@@ -157,8 +159,9 @@ async def cancel_crawl(
     return dict(cancellation_status)
 
 
-@tool
+@tool(requires_secrets=["FIRECRAWL_API_KEY"])
 async def map_website(
+    context: ToolContext,
     url: Annotated[str, "The base URL to start crawling from"],
     search: Annotated[Optional[str], "Search query to use for mapping"] = None,
     ignore_sitemap: Annotated[bool, "Ignore the website sitemap when crawling"] = True,
@@ -169,7 +172,7 @@ async def map_website(
     Map a website from a single URL to a map of the entire website.
     """
 
-    api_key = get_secret("FIRECRAWL_API_KEY")
+    api_key = context.get_secret("FIRECRAWL_API_KEY")
 
     app = FirecrawlApp(api_key=api_key)
     params: dict[str, Any] = {
