@@ -257,7 +257,7 @@ class ToolContext(BaseModel):
     """The user ID for the tool invocation (if any)."""
 
     @field_validator("secrets", mode="before")
-    def lower_keys(cls, v):
+    def lower_keys(cls, v) -> dict[str, ToolSecretItem]:
         if v and isinstance(v, dict):
             return {k.lower(): value for k, value in v.items()}
         return v
