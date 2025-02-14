@@ -2,7 +2,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # allow for custom tool name separator
 TOOL_NAME_SEPARATOR = os.getenv("ARCADE_TOOL_NAME_SEPARATOR", ".")
@@ -256,15 +256,25 @@ class ToolContext(BaseModel):
     user_id: str | None = None
     """The user ID for the tool invocation (if any)."""
 
+    @field_validator("secrets", mode="before")
+    def lower_keys(cls, v):
+        if v and isinstance(v, dict):
+            return {k.lower(): value for k, value in v.items()}
+        return v
+
     def get_auth_token_or_empty(self) -> str:
         """Retrieve the authorization token, or return an empty string if not available."""
         return self.authorization.token if self.authorization and self.authorization.token else ""
 
     def get_secret(self, key_id: str) -> str:
         """Retrieve the secret for the tool invocation."""
-        if not self.secrets or key_id not in self.secrets:
+        if not key_id or not key_id.strip():
+            raise ValueError("Secret key ID passed to get_secret cannot be empty.")
+
+        normalized_key_id = key_id.lower()
+        if not self.secrets or normalized_key_id not in self.secrets:
             raise ValueError(f"Secret {key_id} not found in context.")
-        return self.secrets[key_id].value
+        return self.secrets[normalized_key_id].value
 
 
 class ToolCallRequest(BaseModel):

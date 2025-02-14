@@ -37,6 +37,16 @@ def test_get_secret_valid():
     assert actual_secret == val
 
 
+def test_get_secret_with_case_insensitive_key():
+    key_id = "my_key"
+    val = "secret_value"
+    secrets = {key_id: ToolSecretItem(value=val)}
+    tool_context = ToolContext(secrets=secrets)
+
+    assert tool_context.get_secret(key_id.upper()) == val
+    assert tool_context.get_secret(key_id.lower()) == val
+
+
 def test_get_secret_key_not_found():
     key_id = "nonexistent_key"
     secrets = {"other_key": ToolSecretItem(value="another_secret")}
@@ -53,3 +63,10 @@ def test_get_secret_when_secrets_is_none():
     # When no secrets dictionary is provided, get_secret should raise a ValueError.
     with pytest.raises(ValueError, match="Secret missing_key not found in context."):
         tool_context.get_secret("missing_key")
+
+
+def test_get_secret_with_empty_key():
+    tool_context = ToolContext(secrets={})
+
+    with pytest.raises(ValueError, match="Secret key ID passed to get_secret cannot be empty."):
+        tool_context.get_secret("")
