@@ -1,7 +1,6 @@
 from typing import Annotated, Any, Optional
 
-from arcade.sdk import ToolContext, tool
-from arcade.sdk.tool_secrets import ToolSecret
+from arcade.sdk import tool
 from firecrawl import FirecrawlApp
 
 from arcade_web.tools.models import Formats
@@ -11,9 +10,8 @@ from arcade_web.tools.utils import get_secret
 # TODO: Support actions. This would enable clicking, scrolling, screenshotting, etc.
 # TODO: Support extract.
 # TODO: Support headers param?
-@tool(requires_secrets=[ToolSecret(key_id="FIRECRAWL_API_KEY")])
+@tool
 async def scrape_url(
-    context: ToolContext,
     url: Annotated[str, "URL to scrape"],
     formats: Annotated[
         Optional[list[Formats]], "Formats to retrieve. Defaults to ['markdown']."
@@ -33,7 +31,7 @@ async def scrape_url(
 ) -> Annotated[dict[str, Any], "Scraped data in specified formats"]:
     """Scrape a URL using Firecrawl and return the data in specified formats."""
 
-    api_key = context.get_secret("FIRECRAWL_API_KEY")
+    api_key = get_secret("FIRECRAWL_API_KEY")
 
     formats = formats or [Formats.MARKDOWN]
 
