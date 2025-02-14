@@ -5,6 +5,7 @@ from typing import Any, Callable, TypeVar, Union
 from arcade.core.utils import snake_to_pascal_case
 from arcade.sdk.auth import ToolAuthorization
 from arcade.sdk.errors import ToolExecutionError
+from arcade.sdk.tool_secrets import ToolSecret
 
 T = TypeVar("T")
 
@@ -14,6 +15,7 @@ def tool(
     desc: str | None = None,
     name: str | None = None,
     requires_auth: Union[ToolAuthorization, None] = None,
+    requires_secrets: Union[list[ToolSecret], None] = None,
 ) -> Callable:
     def decorator(func: Callable) -> Callable:
         func_name = str(getattr(func, "__name__", None))
@@ -22,6 +24,7 @@ def tool(
         func.__tool_name__ = tool_name  # type: ignore[attr-defined]
         func.__tool_description__ = desc or inspect.cleandoc(func.__doc__ or "")  # type: ignore[attr-defined]
         func.__tool_requires_auth__ = requires_auth  # type: ignore[attr-defined]
+        func.__tool_requires_secrets__ = requires_secrets  # type: ignore[attr-defined]
 
         if inspect.iscoroutinefunction(func):
 

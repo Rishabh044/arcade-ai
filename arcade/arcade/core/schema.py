@@ -102,11 +102,20 @@ class ToolAuthRequirement(BaseModel):
     """The OAuth 2.0 requirement, if any."""
 
 
+class ToolSecretRequirement(BaseModel):
+    """A requirement for a tool to run."""
+
+    key_id: str
+    """The ID of the secret."""
+
+
 class ToolRequirements(BaseModel):
     """The requirements for a tool to run."""
 
     authorization: Union[ToolAuthRequirement, None] = None
     """The authorization requirements for the tool, if any."""
+
+    secrets: Union[list[ToolSecretRequirement], None] = None
 
 
 class ToolkitDefinition(BaseModel):

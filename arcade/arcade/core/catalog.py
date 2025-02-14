@@ -41,6 +41,7 @@ from arcade.core.schema import (
     ToolkitDefinition,
     ToolOutput,
     ToolRequirements,
+    ToolSecretRequirement,
     ValueSchema,
 )
 from arcade.core.toolkit import Toolkit
@@ -374,6 +375,12 @@ class ToolCatalog(BaseModel):
                 new_auth_requirement.oauth2 = OAuth2Requirement(**auth_requirement.model_dump())
             auth_requirement = new_auth_requirement
 
+        secrets_requirement = getattr(tool, "__tool_requires_secrets__", None)
+        if isinstance(secrets_requirement, list):
+            secrets_requirement = [
+                ToolSecretRequirement(key_id=secret.key_id) for secret in secrets_requirement
+            ]
+
         toolkit_definition = ToolkitDefinition(
             name=snake_to_pascal_case(toolkit_name),
             description=toolkit_desc,
@@ -392,6 +399,7 @@ class ToolCatalog(BaseModel):
             output=create_output_definition(tool),
             requirements=ToolRequirements(
                 authorization=auth_requirement,
+                secrets=secrets_requirement,
             ),
         )
 

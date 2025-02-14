@@ -12,12 +12,14 @@ from arcade.core.schema import (
     ToolInput,
     ToolOutput,
     ToolRequirements,
+    ToolSecretRequirement,
     ValueSchema,
 )
 from arcade.core.utils import snake_to_pascal_case
 from arcade.sdk import tool
 from arcade.sdk.annotations import Inferrable
 from arcade.sdk.auth import GitHub, Google, OAuth2, Slack, X
+from arcade.sdk.tool_secrets import ToolSecret
 
 
 ### Tests on @tool decorator
@@ -43,6 +45,14 @@ def func_with_multiline_docstring_description():
 
 @tool(name="MyCustomTool", desc="A function with a very cool description")
 def func_with_name_and_description():
+    pass
+
+
+@tool(
+    desc="A function that requires a secret",
+    requires_secrets=[ToolSecret(key_id="my_secret_id")],
+)
+def func_with_secret_requirement():
     pass
 
 
@@ -262,6 +272,15 @@ def func_with_complex_return() -> dict[str, str]:
             id="func_with_no_auth_requirement",
         ),
         pytest.param(
+            func_with_secret_requirement,
+            {
+                "requirements": ToolRequirements(
+                    secrets=[ToolSecretRequirement(key_id="my_secret_id")]
+                )
+            },
+            id="func_with_secret_requirement",
+        ),
+        pytest.param(
             func_with_auth_requirement,
             {
                 "requirements": ToolRequirements(
@@ -269,7 +288,6 @@ def func_with_complex_return() -> dict[str, str]:
                         provider_type="oauth2",
                         id="my_example_provider123",
                         oauth2=OAuth2Requirement(
-                            authority="https://example.com/oauth2/auth",
                             scopes=["scope1", "scope2"],
                         ),
                     )
