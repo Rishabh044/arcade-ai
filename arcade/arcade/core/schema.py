@@ -237,11 +237,21 @@ class ToolAuthorizationContext(BaseModel):
     """
 
 
+class ToolSecretItem(BaseModel):
+    """The context for a tool secret."""
+
+    value: str
+    """The value of the secret."""
+
+
 class ToolContext(BaseModel):
     """The context for a tool invocation."""
 
     authorization: ToolAuthorizationContext | None = None
     """The authorization context for the tool invocation that requires authorization."""
+
+    secrets: dict[str, ToolSecretItem] | None = None
+    """The secrets for the tool invocation."""
 
     user_id: str | None = None
     """The user ID for the tool invocation (if any)."""
@@ -249,6 +259,12 @@ class ToolContext(BaseModel):
     def get_auth_token_or_empty(self) -> str:
         """Retrieve the authorization token, or return an empty string if not available."""
         return self.authorization.token if self.authorization and self.authorization.token else ""
+
+    def get_secret(self, key_id: str) -> str:
+        """Retrieve the secret for the tool invocation."""
+        if not self.secrets or key_id not in self.secrets:
+            raise ValueError(f"Secret {key_id} not found in context.")
+        return self.secrets[key_id].value
 
 
 class ToolCallRequest(BaseModel):

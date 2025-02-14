@@ -377,9 +377,12 @@ class ToolCatalog(BaseModel):
 
         secrets_requirement = getattr(tool, "__tool_requires_secrets__", None)
         if isinstance(secrets_requirement, list):
-            secrets_requirement = [
-                ToolSecretRequirement(key_id=secret.key_id) for secret in secrets_requirement
-            ]
+            secrets_requirement = to_tool_secret_requirements(secrets_requirement)
+            if any(
+                secret.key_id is None or secret.key_id.strip() == ""
+                for secret in secrets_requirement
+            ):
+                raise ToolDefinitionError("Secrets must have a non-empty key_id.")
 
         toolkit_definition = ToolkitDefinition(
             name=snake_to_pascal_case(toolkit_name),
@@ -804,3 +807,11 @@ def determine_output_model(func: Callable) -> type[BaseModel]:
             output_model_name,
             result=(return_annotation, Field(description="No description provided.")),
         )
+
+
+def to_tool_secret_requirements(
+    secrets_requirement: list[str],
+) -> list[ToolSecretRequirement]:
+    # Iterate through the list, de-dupe case-insensitively, and convert each string to a ToolSecretRequirement
+    unique_secrets = {name.lower(): name.lower() for name in secrets_requirement}.values()
+    return [ToolSecretRequirement(key_id=name) for name in unique_secrets]

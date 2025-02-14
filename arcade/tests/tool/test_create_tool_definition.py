@@ -19,7 +19,6 @@ from arcade.core.utils import snake_to_pascal_case
 from arcade.sdk import tool
 from arcade.sdk.annotations import Inferrable
 from arcade.sdk.auth import GitHub, Google, OAuth2, Slack, X
-from arcade.sdk.tool_secrets import ToolSecret
 
 
 ### Tests on @tool decorator
@@ -50,9 +49,17 @@ def func_with_name_and_description():
 
 @tool(
     desc="A function that requires a secret",
-    requires_secrets=[ToolSecret(key_id="my_secret_id")],
+    requires_secrets=["my_secret_id"],
 )
 def func_with_secret_requirement():
+    pass
+
+
+@tool(
+    desc="A function that requires multiple secrets, deduped case-insensitively",
+    requires_secrets=["my_secret_id", "my_secret_id2", "MY_SECRET_ID"],
+)
+def func_with_multiple_secret_requirement():
     pass
 
 
@@ -279,6 +286,18 @@ def func_with_complex_return() -> dict[str, str]:
                 )
             },
             id="func_with_secret_requirement",
+        ),
+        pytest.param(
+            func_with_multiple_secret_requirement,
+            {
+                "requirements": ToolRequirements(
+                    secrets=[
+                        ToolSecretRequirement(key_id="my_secret_id"),
+                        ToolSecretRequirement(key_id="my_secret_id2"),
+                    ]
+                )
+            },
+            id="func_with_multiple_secret_requirement",
         ),
         pytest.param(
             func_with_auth_requirement,
