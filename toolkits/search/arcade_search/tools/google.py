@@ -2,18 +2,19 @@ import json
 from typing import Annotated
 
 import serpapi
-from arcade.sdk import ToolContext, tool
+from arcade.sdk import tool
+
+from arcade_search.tools.utils import get_secret
 
 
-@tool(requires_secrets=["SERP_API_KEY"])
+@tool
 async def search_google(
-    context: ToolContext,
     query: Annotated[str, "Search query"],
     n_results: Annotated[int, "Number of results to retrieve"] = 5,
 ) -> str:
     """Search Google using SerpAPI and return organic search results."""
 
-    api_key = context.get_secret("SERP_API_KEY")
+    api_key = get_secret("SERP_API_KEY")
     if not api_key:
         raise ValueError("SERP_API_KEY is not set")
 
