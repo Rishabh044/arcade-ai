@@ -615,7 +615,10 @@ async def get_conversation_metadata_by_id(
     context: ToolContext,
     conversation_id: Annotated[str, "The ID of the conversation to get metadata for"],
 ) -> Annotated[dict, "The conversation metadata"]:
-    """Get the metadata of a conversation in Slack searching by its ID."""
+    """Get the metadata of a conversation in Slack searching by its ID.
+
+    This tool does not return the messages in a conversation. To get the messages, use the
+    `get_messages_in_conversation_by_id` tool."""
     token = (
         context.authorization.token if context.authorization and context.authorization.token else ""
     )
@@ -657,7 +660,10 @@ async def get_channel_metadata_by_name(
         "The cursor to use for pagination, if continuing from a previous search.",
     ] = None,
 ) -> Annotated[dict, "The channel metadata"]:
-    """Get the metadata of a channel in Slack searching by its name."""
+    """Get the metadata of a channel in Slack searching by its name.
+
+    This tool does not return the messages in a channel. To get the messages, use the
+    `get_messages_in_channel_by_name` tool."""
     channel_names: list[str] = []
 
     async def find_channel() -> dict:
@@ -719,7 +725,10 @@ async def get_direct_message_conversation_metadata_by_username(
     Optional[dict],
     "The direct message conversation metadata.",
 ]:
-    """Get the metadata of a direct message conversation in Slack by the username."""
+    """Get the metadata of a direct message conversation in Slack by the username.
+
+    This tool does not return the messages in a conversation. To get the messages, use the
+    `get_messages_in_direct_message_conversation_by_username` tool."""
     try:
         token = (
             context.authorization.token
@@ -768,7 +777,11 @@ async def get_multi_person_dm_conversation_metadata_by_usernames(
     Optional[dict],
     "The multi-person direct message conversation metadata.",
 ]:
-    """Get the metadata of a multi-person direct message conversation in Slack by the usernames."""
+    """Get the metadata of a multi-person direct message conversation in Slack by the usernames.
+
+    This tool does not return the messages in a conversation. To get the messages, use the
+    `get_messages_in_multi_person_dm_conversation_by_usernames` tool.
+    """
     try:
         token = (
             context.authorization.token
