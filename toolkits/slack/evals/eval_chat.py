@@ -1100,10 +1100,10 @@ def get_messages_in_multi_person_direct_message_eval_suite() -> EvalSuite:
     )
 
     no_arguments_user_messages_by_username = [
-        "what are the latest messages I exchanged with john, ryan, and jennifer",
-        "show my messages with john, ryan, and jennifer on Slack",
-        "list the messages I exchanged with john, ryan, and jennifer",
-        "list the message history with john, ryan, and jennifer",
+        "what are the latest messages I exchanged together with the usernames john, ryan, and jennifer",
+        "show the messages in the multi person dm with the usernames john, ryan, and jennifer on Slack",
+        "list the messages I exchanged together with the usernames john, ryan, and jennifer",
+        "list the message history together with the usernames john, ryan, and jennifer",
     ]
 
     for i, user_message in enumerate(no_arguments_user_messages_by_username):
@@ -1125,7 +1125,7 @@ def get_messages_in_multi_person_direct_message_eval_suite() -> EvalSuite:
 
     suite.add_case(
         name="get messages in direct conversation by username (on a specific date)",
-        user_message="get the messages I exchanged with john, ryan, and jennifer on 2025-01-31",
+        user_message="get the messages I exchanged together with the usernames john, ryan, and jennifer on 2025-01-31",
         expected_tool_calls=[
             ExpectedToolCall(
                 func=get_messages_in_multi_person_dm_conversation_by_usernames,
@@ -1149,7 +1149,7 @@ def get_messages_in_multi_person_direct_message_eval_suite() -> EvalSuite:
 
     suite.add_case(
         name="Get conversation history oldest relative by username (2 days ago)",
-        user_message="Get the messages I exchanged with jane.doe starting 2 days ago",
+        user_message="Get the messages I exchanged together with the usernames john, ryan, and jennifer starting 2 days ago",
         expected_tool_calls=[
             ExpectedToolCall(
                 func=get_messages_in_multi_person_dm_conversation_by_usernames,
