@@ -14,6 +14,7 @@ from rich.markup import escape
 from rich.text import Text
 from tqdm import tqdm
 
+import arcade.cli.workers as worker
 from arcade.cli.authn import LocalAuthCallbackServer, check_existing_login
 from arcade.cli.constants import (
     CREDENTIALS_FILE_PATH,
@@ -53,6 +54,8 @@ cli = typer.Typer(
     pretty_exceptions_short=True,
 )
 console = Console()
+
+cli.add_typer(worker.app, name="worker", help="Manage workers")
 
 
 @cli.command(help="Log in to Arcade Cloud", rich_help_panel="User")
