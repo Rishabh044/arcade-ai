@@ -8,7 +8,7 @@ from arcade_google.tools.models import GmailReplyToWhom
 try:
     GMAIL_DEFAULT_REPLY_TO = GmailReplyToWhom(
         # Values accepted are defined in the arcade_google.tools.models.GmailReplyToWhom Enum
-        os.getenv("ARCADE_GMAIL_DEFAULT_REPLY_TO", "only_the_sender").lower()
+        os.getenv("ARCADE_GMAIL_DEFAULT_REPLY_TO", GmailReplyToWhom.ONLY_THE_SENDER.value).lower()
     )
 except ValueError as e:
     raise ValueError(
