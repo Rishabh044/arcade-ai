@@ -587,13 +587,6 @@ async def get_messages_in_multi_person_dm_conversation_by_usernames(
         context=context, usernames=usernames
     )
 
-    if not direct_conversation:
-        raise RetryableToolError(
-            "Conversation not found with the usernames provided",
-            developer_message="Conversation not found with the usernames provided",
-            retry_after_ms=500,
-        )
-
     return await get_messages_in_conversation_by_id(  # type: ignore[no-any-return]
         context=context,
         conversation_id=direct_conversation["id"],
@@ -812,7 +805,14 @@ async def get_multi_person_dm_conversation_metadata_by_usernames(
             next_cursor=next_cursor,
         )
 
-        return None if not conversations_found else conversations_found[0]
+        if not conversations_found:
+            raise RetryableToolError(
+                "Conversation not found with the usernames provided",
+                developer_message="Conversation not found with the usernames provided",
+                retry_after_ms=500,
+            )
+
+        return conversations_found[0]
 
     except UsernameNotFoundError as e:
         raise RetryableToolError(
