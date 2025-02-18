@@ -5,15 +5,14 @@ from typing import Annotated, Any, Optional
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Google
 from arcade.sdk.errors import RetryableToolError
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from arcade_google.tools.constants import GMAIL_DEFAULT_REPLY_TO
-from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError
+from arcade_google.tools.exceptions import GmailToolError
 from arcade_google.tools.models import GmailAction, GmailReplyToWhom
 from arcade_google.tools.utils import (
     DateRange,
+    _build_gmail_service,
     build_email_message,
     build_gmail_query_string,
     build_reply_recipients,
@@ -28,28 +27,6 @@ from arcade_google.tools.utils import (
     parse_plain_text_email,
     remove_none_values,
 )
-
-
-def _build_gmail_service(context: ToolContext) -> Any:
-    """
-    Private helper function to build and return the Gmail service client.
-
-    Args:
-        context (ToolContext): The context containing authorization details.
-
-    Returns:
-        googleapiclient.discovery.Resource: An authorized Gmail API service instance.
-    """
-    try:
-        credentials = Credentials(
-            context.authorization.token
-            if context.authorization and context.authorization.token
-            else ""
-        )
-    except Exception as e:
-        raise GoogleServiceError(message="Failed to build Gmail service.", developer_message=str(e))
-
-    return build("gmail", "v1", credentials=credentials)
 
 
 # Email sending tools

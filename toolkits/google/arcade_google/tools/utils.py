@@ -8,11 +8,12 @@ from enum import Enum
 from typing import Any, Optional, Union
 from zoneinfo import ZoneInfo
 
+from arcade.sdk import ToolContext
 from bs4 import BeautifulSoup
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import Resource, build
 
-from arcade_google.tools.exceptions import GmailToolError
+from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError
 from arcade_google.tools.models import Day, GmailAction, GmailReplyToWhom, TimeSlot
 
 ## Set up basic configuration for logging to the console with DEBUG level and a specific format.
@@ -292,6 +293,28 @@ def get_email_details(service: Any, messages: list[dict[str, Any]]) -> list[dict
 
 def get_email_in_trash_url(email_id: str) -> str:
     return f"https://mail.google.com/mail/u/0/#trash/{email_id}"
+
+
+def _build_gmail_service(context: ToolContext) -> Any:
+    """
+    Private helper function to build and return the Gmail service client.
+
+    Args:
+        context (ToolContext): The context containing authorization details.
+
+    Returns:
+        googleapiclient.discovery.Resource: An authorized Gmail API service instance.
+    """
+    try:
+        credentials = Credentials(
+            context.authorization.token
+            if context.authorization and context.authorization.token
+            else ""
+        )
+    except Exception as e:
+        raise GoogleServiceError(message="Failed to build Gmail service.", developer_message=str(e))
+
+    return build("gmail", "v1", credentials=credentials)
 
 
 def _extract_plain_body(parts: list) -> Optional[str]:
