@@ -11,7 +11,7 @@ from googleapiclient.errors import HttpError
 
 from arcade_google.tools.constants import GMAIL_DEFAULT_REPLY_TO
 from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError
-from arcade_google.tools.models import GmailReplyToWhom
+from arcade_google.tools.models import GmailAction, GmailReplyToWhom
 from arcade_google.tools.utils import (
     DateRange,
     build_email_message,
@@ -187,7 +187,9 @@ async def write_draft_email(
     # Set up the Gmail API client
     service = _build_gmail_service(context)
 
-    draft = build_email_message(recipient, subject, body, cc, bcc)
+    draft = {
+        "message": build_email_message(recipient, subject, body, cc, bcc, action=GmailAction.DRAFT)
+    }
 
     draft_message = service.users().drafts().create(userId="me", body=draft).execute()
     email = parse_draft_email(draft_message)
@@ -254,7 +256,8 @@ async def write_draft_reply_email(
             else replying_to_email["cc"].split(","),
             bcc=bcc,
             replying_to=replying_to_email,
-        )
+            action=GmailAction.DRAFT,
+        ),
     }
 
     draft = service.users().drafts().create(userId="me", body=draft_message).execute()

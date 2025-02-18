@@ -3,6 +3,7 @@ import re
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import datetime, timedelta
 from email.message import EmailMessage
+from email.mime.text import MIMEText
 from enum import Enum
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
@@ -12,7 +13,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import Resource, build
 
 from arcade_google.tools.exceptions import GmailToolError
-from arcade_google.tools.models import Day, GmailReplyToWhom, TimeSlot
+from arcade_google.tools.models import Day, GmailAction, GmailReplyToWhom, TimeSlot
 
 ## Set up basic configuration for logging to the console with DEBUG level and a specific format.
 logging.basicConfig(
@@ -90,12 +91,17 @@ def build_email_message(
     cc: Optional[list[str]] = None,
     bcc: Optional[list[str]] = None,
     replying_to: Optional[dict[str, Any]] = None,
+    action: GmailAction = GmailAction.SEND,
 ) -> dict[str, Any]:
     if replying_to:
         body = build_reply_body(body, replying_to)
 
-    message = EmailMessage()
-    message.set_content(body)
+    if action == GmailAction.SEND:
+        message = EmailMessage()
+        message.set_content(body)
+    elif action == GmailAction.DRAFT:
+        message = MIMEText(body)
+
     message["To"] = recipient
     message["Subject"] = subject
 
