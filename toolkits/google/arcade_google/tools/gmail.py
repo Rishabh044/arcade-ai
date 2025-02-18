@@ -19,6 +19,7 @@ from arcade_google.tools.utils import (
     build_reply_recipients,
     fetch_messages,
     get_draft_url,
+    get_email_details,
     get_email_in_trash_url,
     get_label_ids,
     get_sent_email_url,
@@ -454,33 +455,6 @@ async def list_emails_by_header(
 
     # Return the list of emails in a dictionary with key "emails"
     return {"emails": emails}
-
-
-def get_email_details(service: Any, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """
-    Retrieves full message data for each message ID in the given list and extracts email details.
-
-    :param service: Authenticated Gmail API service instance.
-    :param messages: A list of dictionaries, each representing a message with an 'id' key.
-    :return: A list of dictionaries, each containing parsed email details.
-    """
-
-    emails = []
-    for msg in messages:
-        try:
-            # Fetch the full message data from Gmail using the message ID
-            email_data = service.users().messages().get(userId="me", id=msg["id"]).execute()
-            # Parse the raw email data into a structured form
-            email_details = parse_plain_text_email(email_data)
-            # Only add the details if parsing was successful
-            if email_details:
-                emails.append(email_details)
-        except Exception as e:
-            # Log any errors encountered while trying to fetch or parse a message
-            raise GmailToolError(
-                message=f"Error reading email {msg['id']}.", developer_message=str(e)
-            )
-    return emails
 
 
 @tool(

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from email.message import EmailMessage
 from email.mime.text import MIMEText
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
@@ -95,6 +95,8 @@ def build_email_message(
 ) -> dict[str, Any]:
     if replying_to:
         body = build_reply_body(body, replying_to)
+
+    message: Union[EmailMessage, MIMEText]
 
     if action == GmailAction.SEND:
         message = EmailMessage()
@@ -259,6 +261,33 @@ def get_draft_url(draft_id: str) -> str:
 
 def get_sent_email_url(sent_email_id: str) -> str:
     return f"https://mail.google.com/mail/u/0/#sent/{sent_email_id}"
+
+
+def get_email_details(service: Any, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Retrieves full message data for each message ID in the given list and extracts email details.
+
+    :param service: Authenticated Gmail API service instance.
+    :param messages: A list of dictionaries, each representing a message with an 'id' key.
+    :return: A list of dictionaries, each containing parsed email details.
+    """
+
+    emails = []
+    for msg in messages:
+        try:
+            # Fetch the full message data from Gmail using the message ID
+            email_data = service.users().messages().get(userId="me", id=msg["id"]).execute()
+            # Parse the raw email data into a structured form
+            email_details = parse_plain_text_email(email_data)
+            # Only add the details if parsing was successful
+            if email_details:
+                emails.append(email_details)
+        except Exception as e:
+            # Log any errors encountered while trying to fetch or parse a message
+            raise GmailToolError(
+                message=f"Error reading email {msg['id']}.", developer_message=str(e)
+            )
+    return emails
 
 
 def get_email_in_trash_url(email_id: str) -> str:
