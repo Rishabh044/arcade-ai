@@ -649,7 +649,7 @@ async def list_labels(
 
 @tool(
     requires_auth=Google(
-        scopes=["https://www.googleapis.com/auth/gmail.modify"],
+        scopes=["https://www.googleapis.com/auth/gmail.labels"],
     )
 )
 async def create_label(
