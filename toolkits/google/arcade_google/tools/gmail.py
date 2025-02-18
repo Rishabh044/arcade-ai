@@ -66,7 +66,7 @@ async def send_email(
     bcc: Annotated[Optional[list[str]], "BCC recipients of the email"] = None,
 ) -> Annotated[dict, "A dictionary containing the sent email details"]:
     """
-    Send or reply to an email using the Gmail API.
+    Send an email using the Gmail API.
     """
     service = _build_gmail_service(context)
     email = build_email_message(recipient, subject, body, cc, bcc)
