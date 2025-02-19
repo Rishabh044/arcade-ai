@@ -191,6 +191,9 @@ class ToolDefinition(BaseModel):
     requirements: ToolRequirements
     """The requirements (e.g. authorization) for the tool to run."""
 
+    deprecation_message: Optional[str] = None
+    """The message to display when the tool is deprecated."""
+
     def get_fully_qualified_name(self) -> FullyQualifiedName:
         return FullyQualifiedName(self.name, self.toolkit.name, self.toolkit.version)
 
@@ -259,6 +262,24 @@ class ToolCallRequest(BaseModel):
     """The context for the tool invocation."""
 
 
+class ToolCallLog(BaseModel):
+    """A log that occurred during the tool invocation."""
+
+    message: str
+    """The user-facing warning message."""
+
+    level: Literal[
+        "debug",
+        "info",
+        "warning",
+        "error",
+    ]
+    """The level of severity for the log."""
+
+    subtype: Optional[Literal["deprecation"]] = None
+    """Optional field for further categorization of the log."""
+
+
 class ToolCallError(BaseModel):
     """The error that occurred during the tool invocation."""
 
@@ -294,6 +315,8 @@ class ToolCallOutput(BaseModel):
 
     value: Union[str, int, float, bool, dict, list[str]] | None = None
     """The value returned by the tool."""
+    logs: list[ToolCallLog] | None = None
+    """The logs that occurred during the tool invocation."""
     error: ToolCallError | None = None
     """The error that occurred during the tool invocation."""
     requires_authorization: ToolCallRequiresAuthorization | None = None
