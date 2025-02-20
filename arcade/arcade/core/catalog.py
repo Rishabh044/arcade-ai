@@ -379,10 +379,9 @@ class ToolCatalog(BaseModel):
         if isinstance(secrets_requirement, list):
             secrets_requirement = to_tool_secret_requirements(secrets_requirement)
             if any(
-                secret.key_id is None or secret.key_id.strip() == ""
-                for secret in secrets_requirement
+                secret.key is None or secret.key.strip() == "" for secret in secrets_requirement
             ):
-                raise ToolDefinitionError("Secrets must have a non-empty key_id.")
+                raise ToolDefinitionError("Secrets must have a non-empty key.")
 
         toolkit_definition = ToolkitDefinition(
             name=snake_to_pascal_case(toolkit_name),
@@ -392,6 +391,7 @@ class ToolCatalog(BaseModel):
 
         tool_name = snake_to_pascal_case(raw_tool_name)
         fully_qualified_name = FullyQualifiedName.from_toolkit(tool_name, toolkit_definition)
+        deprecation_message = getattr(tool, "__tool_deprecation_message__", None)
 
         return ToolDefinition(
             name=tool_name,
@@ -404,6 +404,7 @@ class ToolCatalog(BaseModel):
                 authorization=auth_requirement,
                 secrets=secrets_requirement,
             ),
+            deprecation_message=deprecation_message,
         )
 
 
@@ -814,4 +815,4 @@ def to_tool_secret_requirements(
 ) -> list[ToolSecretRequirement]:
     # Iterate through the list, de-dupe case-insensitively, and convert each string to a ToolSecretRequirement
     unique_secrets = {name.lower(): name.lower() for name in secrets_requirement}.values()
-    return [ToolSecretRequirement(key_id=name) for name in unique_secrets]
+    return [ToolSecretRequirement(key=name) for name in unique_secrets]

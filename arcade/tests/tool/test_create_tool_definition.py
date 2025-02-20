@@ -280,11 +280,7 @@ def func_with_complex_return() -> dict[str, str]:
         ),
         pytest.param(
             func_with_secret_requirement,
-            {
-                "requirements": ToolRequirements(
-                    secrets=[ToolSecretRequirement(key_id="my_secret_id")]
-                )
-            },
+            {"requirements": ToolRequirements(secrets=[ToolSecretRequirement(key="my_secret_id")])},
             id="func_with_secret_requirement",
         ),
         pytest.param(
@@ -292,8 +288,8 @@ def func_with_complex_return() -> dict[str, str]:
             {
                 "requirements": ToolRequirements(
                     secrets=[
-                        ToolSecretRequirement(key_id="my_secret_id"),
-                        ToolSecretRequirement(key_id="my_secret_id2"),
+                        ToolSecretRequirement(key="my_secret_id"),
+                        ToolSecretRequirement(key="my_secret_id2"),
                     ]
                 )
             },

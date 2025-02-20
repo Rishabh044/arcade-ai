@@ -17,8 +17,9 @@ class ItemNotFoundError(SlackToolkitError):
 class UsernameNotFoundError(SlackToolkitError):
     """Raised when a user is not found by the username searched"""
 
-    def __init__(self, usernames_found: list[str]) -> None:
+    def __init__(self, usernames_found: list[str], username_not_found: str) -> None:
         self.usernames_found = usernames_found
+        self.username_not_found = username_not_found
 
 
 class ConversationNotFoundError(SlackToolkitError):

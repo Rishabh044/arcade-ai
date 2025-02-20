@@ -105,7 +105,7 @@ class ToolAuthRequirement(BaseModel):
 class ToolSecretRequirement(BaseModel):
     """A requirement for a tool to run."""
 
-    key_id: str
+    key: str
     """The ID of the secret."""
 
 
@@ -200,6 +200,9 @@ class ToolDefinition(BaseModel):
     requirements: ToolRequirements
     """The requirements (e.g. authorization) for the tool to run."""
 
+    deprecation_message: Optional[str] = None
+    """The message to display when the tool is deprecated."""
+
     def get_fully_qualified_name(self) -> FullyQualifiedName:
         return FullyQualifiedName(self.name, self.toolkit.name, self.toolkit.version)
 
@@ -266,15 +269,15 @@ class ToolContext(BaseModel):
         """Retrieve the authorization token, or return an empty string if not available."""
         return self.authorization.token if self.authorization and self.authorization.token else ""
 
-    def get_secret(self, key_id: str) -> str:
+    def get_secret(self, key: str) -> str:
         """Retrieve the secret for the tool invocation."""
-        if not key_id or not key_id.strip():
+        if not key or not key.strip():
             raise ValueError("Secret key ID passed to get_secret cannot be empty.")
 
-        normalized_key_id = key_id.lower()
-        if not self.secrets or normalized_key_id not in self.secrets:
-            raise ValueError(f"Secret {key_id} not found in context.")
-        return self.secrets[normalized_key_id].value
+        normalized_key = key.lower()
+        if not self.secrets or normalized_key not in self.secrets:
+            raise ValueError(f"Secret {key} not found in context.")
+        return self.secrets[normalized_key].value
 
 
 class ToolCallRequest(BaseModel):
@@ -292,6 +295,24 @@ class ToolCallRequest(BaseModel):
     """The inputs for the tool."""
     context: ToolContext = Field(default_factory=ToolContext)
     """The context for the tool invocation."""
+
+
+class ToolCallLog(BaseModel):
+    """A log that occurred during the tool invocation."""
+
+    message: str
+    """The user-facing warning message."""
+
+    level: Literal[
+        "debug",
+        "info",
+        "warning",
+        "error",
+    ]
+    """The level of severity for the log."""
+
+    subtype: Optional[Literal["deprecation"]] = None
+    """Optional field for further categorization of the log."""
 
 
 class ToolCallError(BaseModel):
@@ -329,6 +350,8 @@ class ToolCallOutput(BaseModel):
 
     value: Union[str, int, float, bool, dict, list[str]] | None = None
     """The value returned by the tool."""
+    logs: list[ToolCallLog] | None = None
+    """The logs that occurred during the tool invocation."""
     error: ToolCallError | None = None
     """The error that occurred during the tool invocation."""
     requires_authorization: ToolCallRequiresAuthorization | None = None

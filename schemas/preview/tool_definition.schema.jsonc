@@ -149,11 +149,11 @@
               "items": {
                 "type": "object",
                 "properties": {
-                  "key_id": {
+                  "key": {
                     "type": "string"
                   }
                 },
-                "required": ["key_id"],
+                "required": ["key"],
                 "additionalProperties": false
               }
             }
