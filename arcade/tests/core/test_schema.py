@@ -27,34 +27,34 @@ def test_get_auth_token_or_empty_no_authorization():
 
 
 def test_get_secret_valid():
-    key_id = "my_key"
+    key = "my_key"
     val = "secret_value"
-    secrets = {key_id: ToolSecretItem(value=val)}
+    secrets = {key: ToolSecretItem(value=val)}
     tool_context = ToolContext(secrets=secrets)
 
     # When the secret exists, get_secret should return its value.
-    actual_secret = tool_context.get_secret(key_id)
+    actual_secret = tool_context.get_secret(key)
     assert actual_secret == val
 
 
 def test_get_secret_with_case_insensitive_key():
-    key_id = "my_key"
+    key = "my_key"
     val = "secret_value"
-    secrets = {key_id: ToolSecretItem(value=val)}
+    secrets = {key: ToolSecretItem(value=val)}
     tool_context = ToolContext(secrets=secrets)
 
-    assert tool_context.get_secret(key_id.upper()) == val
-    assert tool_context.get_secret(key_id.lower()) == val
+    assert tool_context.get_secret(key.upper()) == val
+    assert tool_context.get_secret(key.lower()) == val
 
 
 def test_get_secret_key_not_found():
-    key_id = "nonexistent_key"
+    key = "nonexistent_key"
     secrets = {"other_key": ToolSecretItem(value="another_secret")}
     tool_context = ToolContext(secrets=secrets)
 
     # When the key is not found, get_secret should raise a ValueError.
-    with pytest.raises(ValueError, match=f"Secret {key_id} not found in context."):
-        tool_context.get_secret(key_id)
+    with pytest.raises(ValueError, match=f"Secret {key} not found in context."):
+        tool_context.get_secret(key)
 
 
 def test_get_secret_when_secrets_is_none():

@@ -105,7 +105,7 @@ class ToolAuthRequirement(BaseModel):
 class ToolSecretRequirement(BaseModel):
     """A requirement for a tool to run."""
 
-    key_id: str
+    key: str
     """The ID of the secret."""
 
 
@@ -266,15 +266,15 @@ class ToolContext(BaseModel):
         """Retrieve the authorization token, or return an empty string if not available."""
         return self.authorization.token if self.authorization and self.authorization.token else ""
 
-    def get_secret(self, key_id: str) -> str:
+    def get_secret(self, key: str) -> str:
         """Retrieve the secret for the tool invocation."""
-        if not key_id or not key_id.strip():
+        if not key or not key.strip():
             raise ValueError("Secret key ID passed to get_secret cannot be empty.")
 
-        normalized_key_id = key_id.lower()
-        if not self.secrets or normalized_key_id not in self.secrets:
-            raise ValueError(f"Secret {key_id} not found in context.")
-        return self.secrets[normalized_key_id].value
+        normalized_key = key.lower()
+        if not self.secrets or normalized_key not in self.secrets:
+            raise ValueError(f"Secret {key} not found in context.")
+        return self.secrets[normalized_key].value
 
 
 class ToolCallRequest(BaseModel):
