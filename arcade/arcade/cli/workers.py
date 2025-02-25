@@ -33,9 +33,11 @@ def create(
         "http://localhost:8001/api/v1/workers",
         headers={"Authorization": f"Bearer {config.api.key}"},
         json={"name": name},
-        timeout=20,
+        timeout=45,
     )
-    response.raise_for_status()
+    if response.status_code != 200:
+        console.print(f"Error creating worker {name}: {response.json()['msg']}", style="red")
+        return
 
     console.print(f"Adding worker {name} to the engine...", style="dim")
 
@@ -47,14 +49,18 @@ def create(
             "enabled": True,
             "http": {
                 "uri": response.json()["data"]["worker_endpoint"],
-                "secret": "dev",
+                "secret": response.json()["data"]["worker_secret"],
                 "timeout": 1,
                 "retry": 4,
             },
         },
-        timeout=20,
+        timeout=45,
     )
-    response.raise_for_status()
+    if response.status_code != 200:
+        console.print(
+            f"Error adding worker {name} to the engine: {response.json()["message"]}", style="red"
+        )
+        return
     console.print("Done.", style="dim")
 
 
@@ -73,16 +79,22 @@ def delete_worker(name: str = typer.Argument(..., help="Name of the worker")) ->
     response = requests.delete(
         f"http://localhost:8001/api/v1/workers/{name}",
         headers={"Authorization": f"Bearer {config.api.key}"},
-        timeout=20,
+        timeout=45,
     )
-    response.raise_for_status()
+    if response.status_code != 200:
+        console.print(f"Error deleting worker {name}: {response.json()['msg']}", style="red")
+        return
 
     response = requests.delete(
         f"http://localhost:9099/v1/admin/workers/{name}",
         headers={"Authorization": f"Bearer {config.api.key}"},
-        timeout=20,
+        timeout=45,
     )
-    response.raise_for_status()
+    if response.status_code != 204:
+        console.print(
+            f"Error deleting worker from engine {name}: {response.json()["message"]}", style="red"
+        )
+        return
     console.print("Done.", style="dim")
 
 
@@ -138,7 +150,7 @@ def add_package(
             byte_stream.seek(0)
             b = byte_stream.read()
 
-            package_name = get_package_name(os.path.join(package, "pyproject.toml"))
+            package_name = os.path.basename(os.path.normpath(package))
 
             # Convert bytes to base64 string for JSON serialization
             package_bytes_b64 = base64.b64encode(b).decode("utf-8")
@@ -152,9 +164,14 @@ def add_package(
                     "package_name": package_name,
                     "package_bytes": package_bytes_b64,  # Send base64 encoded string
                 },
-                timeout=20,
+                timeout=120,
             )
-            response.raise_for_status()
+            if response.status_code != 200:
+                console.print(
+                    f"Error adding local package {package} to worker {worker_name}: {response.json()['msg']}",
+                    style="red",
+                )
+                return
 
         else:
             raise typer.BadParameter(f"'{package}' exists but is not a directory")
@@ -166,23 +183,15 @@ def add_package(
             "http://localhost:8001/api/v1/workers/add_package",
             headers={"Authorization": f"Bearer {config.api.key}"},
             json={"worker_name": worker_name, "package_name": package},
-            timeout=20,
+            timeout=45,
         )
-        response.raise_for_status()
+        if response.status_code != 200:
+            console.print(
+                f"Error adding PyPI package {package} to worker {worker_name}: {response.json()['msg']}",
+                style="red",
+            )
+            return
 
-    console.print(f"Restarting worker {worker_name}...", style="dim")
-    response = requests.patch(
-        f"http://localhost:9099/v1/admin/workers/{worker_name}",
-        headers={"Authorization": f"Bearer {config.api.key}"},
-        json={
-            "id": worker_name,
-            "http": {
-                "uri": response.json()["data"]["worker_endpoint"],
-            },
-        },
-        timeout=20,
-    )
-    response.raise_for_status()
     console.print("Done.", style="dim")
 
 
@@ -211,22 +220,15 @@ def remove_package(
         "http://localhost:8001/api/v1/workers/remove_package",
         headers={"Authorization": f"Bearer {config.api.key}"},
         json={"worker_name": worker_name, "package_name": package},
-        timeout=20,
+        timeout=45,
     )
-    response.raise_for_status()
+    if response.status_code != 200:
+        console.print(
+            f"Error removing package {package} from worker {worker_name}: {response.json()['msg']}",
+            style="red",
+        )
+        return
 
-    response = requests.patch(
-        f"http://localhost:9099/v1/admin/workers/{worker_name}",
-        headers={"Authorization": f"Bearer {config.api.key}"},
-        json={
-            "id": worker_name,
-            "http": {
-                "uri": response.json()["data"]["worker_endpoint"],
-            },
-        },
-        timeout=20,
-    )
-    response.raise_for_status()
     console.print("Done.", style="dim")
 
 
@@ -235,4 +237,4 @@ def get_package_name(pyproject_path="pyproject.toml"):
 
     with open(pyproject_path, "rb") as f:
         pyproject_data = tomllib.load(f)
-    return pyproject_data.get("project", {}).get("name", None)
+    return pyproject_data.get("tool", {}).get("poetry", {}).get("name", None)

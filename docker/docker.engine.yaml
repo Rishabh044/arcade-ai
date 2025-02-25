@@ -73,6 +73,8 @@ storage:
 
 cache:
   api_key_ttl: "10s"
+  worker_ttl: 60s
+  tool_registry_ttl: 60s
   redis:
     addr: ${env:REDIS_HOST}:${env:REDIS_PORT}
     password: ${env:REDIS_PASSWORD}
