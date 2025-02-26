@@ -154,6 +154,9 @@ async def get_file_tree_structure(
 
             files[file["id"]] = result
 
+    if not files:
+        return {"drives": []}
+
     file_tree = build_file_tree(files)
 
     drives = []
