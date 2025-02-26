@@ -295,7 +295,7 @@ def build_drive_service(auth_token: Optional[str]) -> Resource:  # type: ignore[
     return build("drive", "v3", credentials=Credentials(auth_token))
 
 
-def build_file_tree(files: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
+def build_file_tree(files: dict[str, Any]) -> dict[str, Any]:
     file_tree: dict[str, Any] = {}
 
     for file in files.values():

@@ -118,8 +118,8 @@ async def get_file_tree_structure(
 
     if include_shared_drives:
         file_list_params["corpora"] = Corpora.ALL_DRIVES.value
-        file_list_params["supportsAllDrives"] = True
-        file_list_params["includeItemsFromAllDrives"] = True
+        file_list_params["supportsAllDrives"] = "true"
+        file_list_params["includeItemsFromAllDrives"] = "true"
 
     while keep_paginating:
         # Get a list of files
@@ -147,7 +147,7 @@ async def get_file_tree_structure(
                         "modifiedTime",
                         "owners",
                     ]),
-                    supportsAllDrives=include_shared_drives,
+                    supportsAllDrives="true" if include_shared_drives else "false",
                 )
                 .execute()
             )
