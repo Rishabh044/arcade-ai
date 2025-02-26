@@ -296,44 +296,41 @@ def build_drive_service(auth_token: Optional[str]) -> Resource:  # type: ignore[
 
 
 def build_file_tree(files: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
-    my_drive_id = None
-    file_tree: dict[str, Any] = {"My Drive": []}
-    for file in files.values():
-        drive_id = "My Drive"
-        if "driveId" in file:
-            drive_id = file["driveId"]
-            del file["driveId"]
-            if drive_id not in file_tree:
-                file_tree[drive_id] = []
+    file_tree: dict[str, Any] = {}
 
+    for file in files.values():
+        # Although "parents" is a list, a file can only have one parent
         try:
             parent_id = file["parents"][0]
+            del file["parents"]
         except (KeyError, IndexError):
             parent_id = None
 
-        if parent_id:
-            del file["parents"]
+        # Determine the file's Drive ID
+        drive_id = file.get("driveId")
+        if "driveId" in file:
+            del file["driveId"]
 
-            # File is in the root of a shared drive
-            if drive_id != "My Drive" and parent_id == drive_id:
-                file_tree[drive_id].append(file)
-                continue
+        # When there's no "driveId" and the parent is not a folder, the parent id
+        # value refers to "My Drive". Root files in "My Drive" never have a "driveId",
+        # so we derive it from the parent id.  ¯\_(ツ)_/¯
+        elif parent_id not in files:
+            drive_id = parent_id
 
-            # If the parent is not in the files list, it must be the root of the drive
-            elif parent_id not in files:
-                my_drive_id = parent_id
-                file_tree[drive_id].append(file)
-                continue
+        if drive_id not in file_tree:
+            file_tree[drive_id] = []
 
-            # Associate the file with its parent
+        # If the parent is not in the files list, it must be the root of the drive
+        if parent_id not in files:
+            file_tree[drive_id].append(file)
+
+        # Associate the file with its parent
+        else:
             if "children" not in files[parent_id]:
                 files[parent_id]["children"] = []
             files[parent_id]["children"].append(file)
-        else:
-            # If the file has no parent, it must be the root of the drive
-            file_tree[drive_id].append(file)
 
-    return file_tree, my_drive_id
+    return file_tree
 
 
 # Docs utils

@@ -107,53 +107,52 @@ async def get_file_tree_structure(
 
     keep_paginating = True
     page_token = None
-    my_drive_id = None
     files = {}
     file_tree: dict[str, list[dict]] = {"My Drive": []}
 
     file_list_params = {
         "q": "trashed = false",
-        "corpora": Corpora.USER if not include_shared_drives else Corpora.ALL_DRIVES,
-        "includeItemsFromAllDrives": include_shared_drives,
-        "supportsAllDrives": include_shared_drives,
+        "corpora": Corpora.USER.value,
         "pageToken": page_token,
     }
 
+    if include_shared_drives:
+        file_list_params["corpora"] = Corpora.ALL_DRIVES.value
+        file_list_params["supportsAllDrives"] = True
+        file_list_params["includeItemsFromAllDrives"] = True
+
     while keep_paginating:
+        # Get a list of files
         results = service.files().list(**file_list_params).execute()
+
+        # Update page token
         page_token = results.get("nextPageToken")
         file_list_params["pageToken"] = page_token
         keep_paginating = page_token is not None
+
+        # Get details for each file
         for file in results.get("files", []):
             result = (
                 service.files()
                 .get(
                     fileId=file["id"],
                     fields="id, name, parents, mimeType, driveId",
-                    supportsAllDrives=True,
+                    supportsAllDrives=include_shared_drives,
                 )
                 .execute()
             )
             files[file["id"]] = result
 
-    file_tree, my_drive_id = build_file_tree(files)
+    file_tree = build_file_tree(files)
 
-    drives = []
-
-    for drive_id, files in file_tree.items():  # type: ignore[assignment]
-        if drive_id == "My Drive":
-            drives.append({
+    return {
+        "drives": [
+            {
                 "type": "drive",
-                "name": "My Drive",
-                "id": my_drive_id,
-                "children": files,
-            })
-        else:
-            drives.append({
-                "type": "drive",
-                "name": service.drives().get(driveId=drive_id).execute()["name"],
+                "name": service.drives().get(driveId=drive_id).execute().get("name"),
                 "id": drive_id,
                 "children": files,
-            })
-
-    return {"drives": drives}
+            }
+            for drive_id, files in file_tree.items()  # type: ignore[assignment]
+        ]
+    }
