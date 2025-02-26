@@ -103,7 +103,7 @@ def get_user_by_username(username: str, users_list: list[dict]) -> SlackUser:
         if username.lower() == username_found.lower():
             return SlackUser(**user)
 
-    raise UsernameNotFoundError(usernames_found)
+    raise UsernameNotFoundError(usernames_found=usernames_found, username_not_found=username)
 
 
 def convert_conversation_type_to_slack_name(

@@ -4,7 +4,7 @@ import pytest
 
 from arcade.core.catalog import ToolCatalog
 from arcade.core.executor import ToolExecutor
-from arcade.core.schema import ToolCallError, ToolCallOutput, ToolContext
+from arcade.core.schema import ToolCallError, ToolCallLog, ToolCallOutput, ToolContext
 from arcade.sdk import tool
 from arcade.sdk.errors import RetryableToolError, ToolExecutionError
 
@@ -12,6 +12,13 @@ from arcade.sdk.errors import RetryableToolError, ToolExecutionError
 @tool
 def simple_tool(inp: Annotated[str, "input"]) -> Annotated[str, "output"]:
     """Simple tool"""
+    return inp
+
+
+@tool.deprecated("Use simple_tool instead")
+@tool
+def simple_deprecated_tool(inp: Annotated[str, "input"]) -> Annotated[str, "output"]:
+    """Simple tool that is deprecated"""
     return inp
 
 
@@ -43,6 +50,7 @@ def bad_output_error_tool() -> Annotated[str, "output"]:
 
 catalog = ToolCatalog()
 catalog.add_tool(simple_tool, "simple_toolkit")
+catalog.add_tool(simple_deprecated_tool, "simple_toolkit")
 catalog.add_tool(retryable_error_tool, "simple_toolkit")
 catalog.add_tool(exec_error_tool, "simple_toolkit")
 catalog.add_tool(unexpected_error_tool, "simple_toolkit")
@@ -54,6 +62,20 @@ catalog.add_tool(bad_output_error_tool, "simple_toolkit")
     "tool_func, inputs, expected_output",
     [
         (simple_tool, {"inp": "test"}, ToolCallOutput(value="test")),
+        (
+            simple_deprecated_tool,
+            {"inp": "test"},
+            ToolCallOutput(
+                value="test",
+                logs=[
+                    ToolCallLog(
+                        message="Use simple_tool instead",
+                        level="warning",
+                        subtype="deprecation",
+                    )
+                ],
+            ),
+        ),
         (
             retryable_error_tool,
             {},
@@ -110,6 +132,7 @@ catalog.add_tool(bad_output_error_tool, "simple_toolkit")
     ],
     ids=[
         "simple_tool",
+        "simple_deprecated_tool",
         "retryable_error_tool",
         "exec_error_tool",
         "unexpected_error_tool",
@@ -152,3 +175,12 @@ def check_output(output: ToolCallOutput, expected_output: ToolCallOutput):
     # normal tool execution
     else:
         assert output.value == expected_output.value
+
+        # check logs
+        output_logs = output.logs or []
+        expected_logs = expected_output.logs or []
+        assert len(output_logs) == len(expected_logs)
+        for output_log, expected_log in zip(output_logs, expected_logs):
+            assert output_log.message == expected_log.message
+            assert output_log.level == expected_log.level
+            assert output_log.subtype == expected_log.subtype

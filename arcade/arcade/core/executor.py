@@ -12,7 +12,7 @@ from arcade.core.errors import (
     ToolSerializationError,
 )
 from arcade.core.output import output_factory
-from arcade.core.schema import ToolCallOutput, ToolContext, ToolDefinition
+from arcade.core.schema import ToolCallLog, ToolCallOutput, ToolContext, ToolDefinition
 
 
 class ToolExecutor:
@@ -29,6 +29,15 @@ class ToolExecutor:
         """
         Execute a callable function with validated inputs and outputs via Pydantic models.
         """
+        # only gathering deprecation log for now
+        tool_call_logs = []
+        if definition.deprecation_message is not None:
+            tool_call_logs.append(
+                ToolCallLog(
+                    message=definition.deprecation_message, level="warning", subtype="deprecation"
+                )
+            )
+
         try:
             # serialize the input model
             inputs = await ToolExecutor._serialize_input(input_model, **kwargs)
@@ -50,7 +59,7 @@ class ToolExecutor:
             output = await ToolExecutor._serialize_output(output_model, results)
 
             # return the output
-            return output_factory.success(data=output)
+            return output_factory.success(data=output, logs=tool_call_logs)
 
         except RetryableToolError as e:
             return output_factory.fail_retry(
