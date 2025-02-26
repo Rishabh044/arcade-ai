@@ -136,7 +136,17 @@ async def get_file_tree_structure(
                 service.files()
                 .get(
                     fileId=file["id"],
-                    fields="id, name, parents, mimeType, driveId",
+                    fields=", ".join([
+                        "id",
+                        "name",
+                        "parents",
+                        "mimeType",
+                        "driveId",
+                        "size",
+                        "createdTime",
+                        "modifiedTime",
+                        "owners",
+                    ]),
                     supportsAllDrives=include_shared_drives,
                 )
                 .execute()
@@ -145,14 +155,15 @@ async def get_file_tree_structure(
 
     file_tree = build_file_tree(files)
 
-    return {
-        "drives": [
-            {
-                "type": "drive",
-                "name": service.drives().get(driveId=drive_id).execute().get("name"),
-                "id": drive_id,
-                "children": files,
-            }
-            for drive_id, files in file_tree.items()  # type: ignore[assignment]
-        ]
-    }
+    drives = []
+
+    for drive_id, files in file_tree.items():  # type: ignore[assignment]
+        if drive_id == "My Drive":
+            drive = {"name": "My Drive", "children": files}
+        else:
+            drive_details = service.drives().get(driveId=drive_id).execute()
+            drive = {"name": drive_details.get("name"), "id": drive_id, "children": files}
+
+        drives.append(drive)
+
+    return {"drives": drives}

@@ -299,6 +299,17 @@ def build_file_tree(files: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
     file_tree: dict[str, Any] = {}
 
     for file in files.values():
+        owners = file.get("owners", [])
+        if owners:
+            owners = [
+                {"name": owner.get("displayName", ""), "email": owner.get("emailAddress", "")}
+                for owner in owners
+            ]
+            file["owners"] = owners
+
+        if "size" in file:
+            file["size"] = {"value": file["size"], "unit": "bytes"}
+
         # Although "parents" is a list, a file can only have one parent
         try:
             parent_id = file["parents"][0]
@@ -307,20 +318,18 @@ def build_file_tree(files: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
             parent_id = None
 
         # Determine the file's Drive ID
-        drive_id = file.get("driveId")
         if "driveId" in file:
+            drive_id = file["driveId"]
             del file["driveId"]
-
-        # When there's no "driveId" and the parent is not a folder, the parent id
-        # value refers to "My Drive". Root files in "My Drive" never have a "driveId",
-        # so we derive it from the parent id.  ¯\_(ツ)_/¯
-        elif parent_id not in files:
-            drive_id = parent_id
+        # If a shared drive id is not present, the file is in "My Drive"
+        else:
+            drive_id = "My Drive"
 
         if drive_id not in file_tree:
             file_tree[drive_id] = []
 
-        # If the parent is not in the files list, it must be the root of the drive
+        # Root files will have the Drive's id as the parent. If the parent id is not in the files
+        # list, the file must be at drive's root
         if parent_id not in files:
             file_tree[drive_id].append(file)
 
