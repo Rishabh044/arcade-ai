@@ -92,8 +92,8 @@ async def list_documents(
 async def get_file_tree_structure(
     context: ToolContext,
     include_shared_drives: Annotated[
-        bool, "Whether to include shared drives in the file tree structure"
-    ] = False,
+        bool, "Whether to include shared drives in the file tree structure. Defaults to True."
+    ] = True,
 ) -> Annotated[
     dict,
     "A dictionary containing the file/folder tree structure in the user's Google Drive",
@@ -151,6 +151,7 @@ async def get_file_tree_structure(
                 )
                 .execute()
             )
+
             files[file["id"]] = result
 
     file_tree = build_file_tree(files)

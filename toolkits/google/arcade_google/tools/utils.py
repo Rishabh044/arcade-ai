@@ -308,7 +308,7 @@ def build_file_tree(files: dict[str, Any]) -> dict[str, Any]:
             file["owners"] = owners
 
         if "size" in file:
-            file["size"] = {"value": file["size"], "unit": "bytes"}
+            file["size"] = {"value": int(file["size"]), "unit": "bytes"}
 
         # Although "parents" is a list, a file can only have one parent
         try:
