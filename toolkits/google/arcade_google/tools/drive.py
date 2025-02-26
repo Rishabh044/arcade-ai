@@ -3,7 +3,7 @@ from typing import Annotated, Any, Optional
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Google
 
-from arcade_google.tools.utils import build_drive_service, remove_none_values
+from arcade_google.tools.utils import build_drive_service, build_file_tree, remove_none_values
 
 from .models import Corpora, OrderBy
 
@@ -82,3 +82,78 @@ async def list_documents(
             break
 
     return {"documents_count": len(files), "documents": files}
+
+
+@tool(
+    requires_auth=Google(
+        scopes=["https://www.googleapis.com/auth/drive.file"],
+    )
+)
+async def get_file_tree_structure(
+    context: ToolContext,
+    include_shared_drives: Annotated[
+        bool, "Whether to include shared drives in the file tree structure"
+    ] = False,
+) -> Annotated[
+    dict,
+    "A dictionary containing the file/folder tree structure in the user's Google Drive",
+]:
+    """
+    Get the file/folder tree structure of the user's Google Drive.
+    """
+    service = build_drive_service(
+        context.authorization.token if context.authorization and context.authorization.token else ""
+    )
+
+    keep_paginating = True
+    page_token = None
+    my_drive_id = None
+    files = {}
+    file_tree: dict[str, list[dict]] = {"My Drive": []}
+
+    file_list_params = {
+        "q": "trashed = false",
+        "corpora": Corpora.USER if not include_shared_drives else Corpora.ALL_DRIVES,
+        "includeItemsFromAllDrives": include_shared_drives,
+        "supportsAllDrives": include_shared_drives,
+        "pageToken": page_token,
+    }
+
+    while keep_paginating:
+        results = service.files().list(**file_list_params).execute()
+        page_token = results.get("nextPageToken")
+        file_list_params["pageToken"] = page_token
+        keep_paginating = page_token is not None
+        for file in results.get("files", []):
+            result = (
+                service.files()
+                .get(
+                    fileId=file["id"],
+                    fields="id, name, parents, mimeType, driveId",
+                    supportsAllDrives=True,
+                )
+                .execute()
+            )
+            files[file["id"]] = result
+
+    file_tree, my_drive_id = build_file_tree(files)
+
+    drives = []
+
+    for drive_id, files in file_tree.items():  # type: ignore[assignment]
+        if drive_id == "My Drive":
+            drives.append({
+                "type": "drive",
+                "name": "My Drive",
+                "id": my_drive_id,
+                "children": files,
+            })
+        else:
+            drives.append({
+                "type": "drive",
+                "name": service.drives().get(driveId=drive_id).execute()["name"],
+                "id": drive_id,
+                "children": files,
+            })
+
+    return {"drives": drives}
