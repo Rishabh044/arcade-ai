@@ -1,13 +1,14 @@
 import base64
 
-import requests
 import typer
+from arcadepy import APIConnectionError, APIStatusError, Arcade
 from rich.console import Console
 
 from arcade.cli.utils import (
     OrderCommands,
     validate_and_get_config,
 )
+from arcade.core.cloud import CloudResource
 
 console = Console()
 
@@ -21,42 +22,57 @@ app = typer.Typer(
     pretty_exceptions_short=True,
 )
 
+domains = {
+    "prod": {
+        "cloud": "https://cloud.arcade.dev",
+        "api": "https://api.arcade.dev",
+    },
+    "dev": {
+        "cloud": "https://cloud.bosslevel.dev",
+        "api": "https://api.bosslevel.dev",
+    },
+}
+
 
 @app.command("create", help="Create a new worker")
 def create(
     name: str = typer.Argument(..., help="Name of the worker"),
+    env: str = typer.Option("dev", "--env", "-e", help="Environment to use"),
 ) -> None:
     config = validate_and_get_config()
 
+    cloud = CloudResource(url=domains[env]["cloud"], api_key=config.api.key)
+    arcade = Arcade(api_key=config.api.key, base_url=domains[env]["api"])
+
     console.print(f"Starting worker {name}...", style="dim")
-    response = requests.post(
-        "http://localhost:8001/api/v1/workers",
-        headers={"Authorization": f"Bearer {config.api.key}"},
-        json={"name": name},
-        timeout=45,
-    )
+
+    response = cloud.create_worker(name)
+
     if response.status_code != 200:
         console.print(f"Error creating worker {name}: {response.json()['msg']}", style="red")
         return
 
     console.print(f"Adding worker {name} to the engine...", style="dim")
 
-    response = requests.post(
-        "http://localhost:9099/v1/admin/workers",
-        headers={"Authorization": f"Bearer {config.api.key}"},
-        json={
-            "id": name,
-            "enabled": True,
-            "http": {
+    try:
+        arcade.worker.create(
+            id=name,
+            enabled=True,
+            http={
                 "uri": response.json()["data"]["worker_endpoint"],
                 "secret": response.json()["data"]["worker_secret"],
                 "timeout": 1,
                 "retry": 4,
             },
-        },
-        timeout=45,
-    )
-    if response.status_code != 200:
+            timeout=45,
+        )
+    except APIConnectionError:
+        console.print(
+            "⚠️ Warning: Arcade Engine was unreachable. (Is it running?)",
+            style="bold yellow",
+        )
+        return
+    except APIStatusError:
         console.print(
             f"Error adding worker {name} to the engine: {response.json()["message"]}", style="red"
         )
@@ -72,25 +88,31 @@ def list_workers() -> None:
 
 
 @app.command("delete", help="Delete a worker")
-def delete_worker(name: str = typer.Argument(..., help="Name of the worker")) -> None:
+def delete_worker(
+    name: str = typer.Argument(..., help="Name of the worker"),
+    env: str = typer.Option("dev", "--env", "-e", help="Environment to use"),
+) -> None:
     """Delete a worker"""
     config = validate_and_get_config()
+
+    cloud = CloudResource(url=domains[env]["cloud"], api_key=config.api.key)
+    arcade = Arcade(api_key=config.api.key, base_url=domains[env]["api"])
+
     console.print(f"Deleting worker {name}...", style="dim")
-    response = requests.delete(
-        f"http://localhost:8001/api/v1/workers/{name}",
-        headers={"Authorization": f"Bearer {config.api.key}"},
-        timeout=45,
-    )
+    response = cloud.delete_worker(name)
     if response.status_code != 200:
-        console.print(f"Error deleting worker {name}: {response.json()['msg']}", style="red")
+        console.print(f"Failed to delete worker {name}: {response.json()['msg']}", style="red")
         return
 
-    response = requests.delete(
-        f"http://localhost:9099/v1/admin/workers/{name}",
-        headers={"Authorization": f"Bearer {config.api.key}"},
-        timeout=45,
-    )
-    if response.status_code != 204:
+    try:
+        arcade.worker.delete(name)
+    except APIConnectionError:
+        console.print(
+            "⚠️ Warning: Arcade Engine was unreachable. (Is it running?)",
+            style="bold yellow",
+        )
+        return
+    except APIStatusError:
         console.print(
             f"Error deleting worker from engine {name}: {response.json()["message"]}", style="red"
         )
@@ -110,18 +132,7 @@ def add_package(
             "- Local directory with editable install (e.g., '-e ./my-package')"
         ),
     ),
-    # index_url: str = typer.Option(
-    #     None,
-    #     "--index",
-    #     "-i",
-    #     help="Alternative Python package index URL"
-    # ),
-    # extra_index_url: str = typer.Option(
-    #     None,
-    #     "--extra-index",
-    #     "-e",
-    #     help="Additional Python package index URL"
-    # ),
+    env: str = typer.Option("dev", "--env", "-e", help="Environment to use"),
 ) -> None:
     """
     Add a Python package to a worker's environment. The package can be installed from PyPI
@@ -135,6 +146,10 @@ def add_package(
     import io
     import os
     import tarfile
+
+    config = validate_and_get_config()
+    cloud = CloudResource(url=domains[env]["cloud"], api_key=config.api.key)
+    arcade = Arcade(api_key=config.api.key, base_url=domains[env]["api"])
 
     if os.path.exists(package):
         if os.path.isdir(package):
@@ -155,17 +170,8 @@ def add_package(
             # Convert bytes to base64 string for JSON serialization
             package_bytes_b64 = base64.b64encode(b).decode("utf-8")
 
-            config = validate_and_get_config()
-            response = requests.patch(
-                "http://localhost:8001/api/v1/workers/add_local_package",
-                headers={"Authorization": f"Bearer {config.api.key}"},
-                json={
-                    "worker_name": worker_name,
-                    "package_name": package_name,
-                    "package_bytes": package_bytes_b64,  # Send base64 encoded string
-                },
-                timeout=120,
-            )
+            response = cloud.upload_local_package(worker_name, package_name, package_bytes_b64)
+
             if response.status_code != 200:
                 console.print(
                     f"Error adding local package {package} to worker {worker_name}: {response.json()['msg']}",
@@ -178,19 +184,26 @@ def add_package(
     else:
         # If path doesn't exist, assume it's a package name
         console.print(f"Adding PyPI package {package} to worker {worker_name}...", style="dim")
-        config = validate_and_get_config()
-        response = requests.patch(
-            "http://localhost:8001/api/v1/workers/add_package",
-            headers={"Authorization": f"Bearer {config.api.key}"},
-            json={"worker_name": worker_name, "package_name": package},
-            timeout=45,
-        )
+        response = cloud.upload_hosted_package(worker_name, package)
         if response.status_code != 200:
             console.print(
                 f"Error adding PyPI package {package} to worker {worker_name}: {response.json()['msg']}",
                 style="red",
             )
             return
+
+    try:
+        arcade.worker.update(id=worker_name)
+    except APIConnectionError:
+        console.print(
+            "⚠️ Warning: Arcade Engine was unreachable. (Is it running?)",
+            style="bold yellow",
+        )
+        return
+
+    except APIStatusError as e:
+        console.print(f"Error refreshing engine: {e.message}", style="red")
+        return
 
     console.print("Done.", style="dim")
 
@@ -207,6 +220,7 @@ def remove_package(
             "- Local directory with editable install (e.g., '-e ./my-package')"
         ),
     ),
+    env: str = typer.Option("dev", "--env", "-e", help="Environment to use"),
 ) -> None:
     """
     Remove a Python package from a worker's environment.
@@ -215,18 +229,29 @@ def remove_package(
         arcade worker remove-package -w my-worker requests
     """
     config = validate_and_get_config()
+    cloud = CloudResource(url=domains[env]["cloud"], api_key=config.api.key)
+    arcade = Arcade(api_key=config.api.key, base_url=domains[env]["api"])
+
     console.print(f"Removing package {package} from worker {worker_name}...", style="dim")
-    response = requests.patch(
-        "http://localhost:8001/api/v1/workers/remove_package",
-        headers={"Authorization": f"Bearer {config.api.key}"},
-        json={"worker_name": worker_name, "package_name": package},
-        timeout=45,
-    )
+    response = cloud.remove_package(worker_name, package)
     if response.status_code != 200:
         console.print(
             f"Error removing package {package} from worker {worker_name}: {response.json()['msg']}",
             style="red",
         )
+        return
+
+    try:
+        arcade.worker.update(id=worker_name)
+    except APIConnectionError:
+        console.print(
+            "⚠️ Warning: Arcade Engine was unreachable. (Is it running?)",
+            style="bold yellow",
+        )
+        return
+
+    except APIStatusError as e:
+        console.print(f"Error refreshing engine: {e.message}", style="red")
         return
 
     console.print("Done.", style="dim")
