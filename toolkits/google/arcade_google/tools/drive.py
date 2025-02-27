@@ -114,6 +114,9 @@ async def get_file_tree_structure(
         "q": "trashed = false",
         "corpora": Corpora.USER.value,
         "pageToken": page_token,
+        "fields": (
+            "files(id, name, parents, mimeType, driveId, size, createdTime, modifiedTime, owners)"
+        ),
     }
 
     if include_shared_drives:
@@ -130,29 +133,8 @@ async def get_file_tree_structure(
         file_list_params["pageToken"] = page_token
         keep_paginating = page_token is not None
 
-        # Get details for each file
         for file in results.get("files", []):
-            result = (
-                service.files()
-                .get(
-                    fileId=file["id"],
-                    fields=", ".join([
-                        "id",
-                        "name",
-                        "parents",
-                        "mimeType",
-                        "driveId",
-                        "size",
-                        "createdTime",
-                        "modifiedTime",
-                        "owners",
-                    ]),
-                    supportsAllDrives="true" if include_shared_drives else "false",
-                )
-                .execute()
-            )
-
-            files[file["id"]] = result
+            files[file["id"]] = file
 
     if not files:
         return {"drives": []}

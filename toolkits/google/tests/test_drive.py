@@ -121,12 +121,9 @@ async def test_list_documents_with_parameters(mock_context, mock_service):
 async def test_get_file_tree_structure(
     mock_context, mock_service, sample_drive_file_tree_request_responses
 ):
-    files_list_sample, files_get_sample, drives_get_sample = (
-        sample_drive_file_tree_request_responses
-    )
+    files_list_sample, drives_get_sample = sample_drive_file_tree_request_responses
 
     mock_service.files.return_value.list.return_value.execute.side_effect = [files_list_sample]
-    mock_service.files.return_value.get.return_value.execute.side_effect = files_get_sample
     mock_service.drives.return_value.get.return_value.execute.side_effect = drives_get_sample
 
     result = await get_file_tree_structure(mock_context, include_shared_drives=True)
@@ -202,6 +199,74 @@ async def test_get_file_tree_structure(
                                 "name": "one_new_tool_everyday",
                             }
                         ],
+                        "children": [
+                            {
+                                "id": "1J92V9yvVWm_uNHq3CCY4wyG1H9B6iiwO",
+                                "name": "test folder 1.1",
+                                "mimeType": "application/vnd.google-apps.folder",
+                                "createdTime": "2025-02-25T17:58:58.987Z",
+                                "modifiedTime": "2025-02-25T17:58:58.987Z",
+                                "owners": [
+                                    {
+                                        "email": "one_new_tool_everyday@arcade.dev",
+                                        "name": "one_new_tool_everyday",
+                                    }
+                                ],
+                                "children": [
+                                    {
+                                        "id": "1wv2dmYo0skJTI59ZIcwH9vm-wt7psMwXTvihuEGeHeI",
+                                        "name": "test document 1.1.1",
+                                        "mimeType": "application/vnd.google-apps.document",
+                                        "createdTime": "2025-02-25T17:59:03.325Z",
+                                        "modifiedTime": "2025-02-25T17:59:11.445Z",
+                                        "owners": [
+                                            {
+                                                "email": "one_new_tool_everyday@arcade.dev",
+                                                "name": "one_new_tool_everyday",
+                                            }
+                                        ],
+                                        "size": {
+                                            "unit": "bytes",
+                                            "value": 1024,
+                                        },
+                                    },
+                                ],
+                            },
+                            {
+                                "id": "1DSmL7d07kjT6b6L-t4JIT06ElUbZ1q0K6_gEpn_UGZ8",
+                                "name": "test document 1.2",
+                                "mimeType": "application/vnd.google-apps.document",
+                                "createdTime": "2025-02-25T17:58:38.628Z",
+                                "modifiedTime": "2025-02-25T17:58:46.713Z",
+                                "owners": [
+                                    {
+                                        "email": "one_new_tool_everyday@arcade.dev",
+                                        "name": "one_new_tool_everyday",
+                                    }
+                                ],
+                                "size": {
+                                    "unit": "bytes",
+                                    "value": 1024,
+                                },
+                            },
+                            {
+                                "id": "1Fcxz7HsyO2Zyc-5DTD3zBQnaVrZwD29BP9KD9rPnYfE",
+                                "name": "test document 1.1",
+                                "mimeType": "application/vnd.google-apps.document",
+                                "createdTime": "2025-02-25T17:57:53.850Z",
+                                "modifiedTime": "2025-02-25T17:58:28.745Z",
+                                "owners": [
+                                    {
+                                        "email": "one_new_tool_everyday@arcade.dev",
+                                        "name": "one_new_tool_everyday",
+                                    }
+                                ],
+                                "size": {
+                                    "unit": "bytes",
+                                    "value": 1024,
+                                },
+                            },
+                        ],
                     },
                     {
                         "createdTime": "2025-02-18T20:48:52.786Z",
@@ -218,6 +283,23 @@ async def test_get_file_tree_structure(
                         "size": {
                             "unit": "bytes",
                             "value": 15774558,
+                        },
+                    },
+                    {
+                        "id": "1nG7lSvIyK05N9METPczVJa4iGgE7uoo-A6zpqjpUsDY",
+                        "name": "Shared doc 1",
+                        "mimeType": "application/vnd.google-apps.document",
+                        "createdTime": "2025-02-19T18:51:44.622Z",
+                        "modifiedTime": "2025-02-19T19:30:39.773Z",
+                        "owners": [
+                            {
+                                "name": "theboss",
+                                "email": "theboss@arcade.dev",
+                            }
+                        ],
+                        "size": {
+                            "unit": "bytes",
+                            "value": 2700,
                         },
                     },
                 ],
