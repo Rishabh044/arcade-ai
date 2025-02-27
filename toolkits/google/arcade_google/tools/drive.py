@@ -3,7 +3,12 @@ from typing import Annotated, Any, Optional
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Google
 
-from arcade_google.tools.utils import build_drive_service, build_file_tree, remove_none_values
+from arcade_google.tools.utils import (
+    build_drive_service,
+    build_file_tree,
+    build_file_tree_request_params,
+    remove_none_values,
+)
 
 from .models import Corpora, OrderBy
 
@@ -94,6 +99,26 @@ async def get_file_tree_structure(
     include_shared_drives: Annotated[
         bool, "Whether to include shared drives in the file tree structure. Defaults to True."
     ] = True,
+    restrict_to_shared_drive_id: Annotated[
+        Optional[str],
+        "If provided, only include files from this shared drive in the file tree structure. "
+        "Defaults to None, which will include files and folders from all drives.",
+    ] = None,
+    include_organization_domain_documents: Annotated[
+        bool,
+        "Whether to include documents from the organization's domain. This is applicable to admin "
+        "users who have permissions to view organization-wide documents in a Google Workspace "
+        "account. Defaults to False.",
+    ] = False,
+    order_by: Annotated[
+        Optional[list[OrderBy]],
+        "Sort order. Defaults to listing the most recently modified documents first",
+    ] = None,
+    limit: Annotated[
+        Optional[int],
+        "The number of files and folders to list. Defaults to None, "
+        "which will list all files and folders.",
+    ] = None,
 ) -> Annotated[
     dict,
     "A dictionary containing the file/folder tree structure in the user's Google Drive",
@@ -110,27 +135,22 @@ async def get_file_tree_structure(
     files = {}
     file_tree: dict[str, list[dict]] = {"My Drive": []}
 
-    file_list_params = {
-        "q": "trashed = false",
-        "corpora": Corpora.USER.value,
-        "pageToken": page_token,
-        "fields": (
-            "files(id, name, parents, mimeType, driveId, size, createdTime, modifiedTime, owners)"
-        ),
-    }
-
-    if include_shared_drives:
-        file_list_params["corpora"] = Corpora.ALL_DRIVES.value
-        file_list_params["supportsAllDrives"] = "true"
-        file_list_params["includeItemsFromAllDrives"] = "true"
+    params = build_file_tree_request_params(
+        order_by,
+        page_token,
+        limit,
+        include_shared_drives,
+        restrict_to_shared_drive_id,
+        include_organization_domain_documents,
+    )
 
     while keep_paginating:
         # Get a list of files
-        results = service.files().list(**file_list_params).execute()
+        results = service.files().list(**params).execute()
 
         # Update page token
         page_token = results.get("nextPageToken")
-        file_list_params["pageToken"] = page_token
+        params["pageToken"] = page_token
         keep_paginating = page_token is not None
 
         for file in results.get("files", []):
@@ -148,7 +168,10 @@ async def get_file_tree_structure(
             drive = {"name": "My Drive", "children": files}
         else:
             drive_details = service.drives().get(driveId=drive_id).execute()
-            drive = {"name": drive_details.get("name"), "id": drive_id, "children": files}
+            drive_name = drive_details.get("name")
+            if not drive_name:
+                drive_name = "Shared Drive (name not available)"
+            drive = {"name": drive_name, "id": drive_id, "children": files}
 
         drives.append(drive)
 

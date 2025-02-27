@@ -10,7 +10,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import Resource, build
 from googleapiclient.errors import HttpError
 
-from arcade_google.tools.models import Day, TimeSlot
+from arcade_google.tools.models import Corpora, Day, OrderBy, TimeSlot
 
 
 def parse_datetime(datetime_str: str, time_zone: str) -> datetime:
@@ -293,6 +293,50 @@ def build_drive_service(auth_token: Optional[str]) -> Resource:  # type: ignore[
     """
     auth_token = auth_token or ""
     return build("drive", "v3", credentials=Credentials(auth_token))
+
+
+def build_file_tree_request_params(
+    order_by: Optional[list[OrderBy]],
+    page_token: Optional[str],
+    limit: Optional[int],
+    include_shared_drives: bool,
+    restrict_to_shared_drive_id: Optional[str],
+    include_organization_domain_documents: bool,
+) -> dict[str, Any]:
+    if order_by is None:
+        order_by = [OrderBy.MODIFIED_TIME_DESC]
+    elif isinstance(order_by, OrderBy):
+        order_by = [order_by]
+
+    params = {
+        "q": "trashed = false",
+        "corpora": Corpora.USER.value,
+        "pageToken": page_token,
+        "fields": (
+            "files(id, name, parents, mimeType, driveId, size, createdTime, modifiedTime, owners)"
+        ),
+        "orderBy": ",".join([item.value for item in order_by]),
+    }
+
+    if limit:
+        params["pageSize"] = limit
+
+    if (
+        include_shared_drives
+        or restrict_to_shared_drive_id
+        or include_organization_domain_documents
+    ):
+        params["includeItemsFromAllDrives"] = "true"
+        params["supportsAllDrives"] = "true"
+
+    if restrict_to_shared_drive_id:
+        params["driveId"] = restrict_to_shared_drive_id
+        params["corpora"] = Corpora.DRIVE.value
+
+    if include_organization_domain_documents:
+        params["corpora"] = Corpora.DOMAIN.value
+
+    return params
 
 
 def build_file_tree(files: dict[str, Any]) -> dict[str, Any]:
