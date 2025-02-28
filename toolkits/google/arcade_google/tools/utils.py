@@ -598,3 +598,38 @@ def build_docs_service(auth_token: Optional[str]) -> Resource:  # type: ignore[n
     """
     auth_token = auth_token or ""
     return build("docs", "v1", credentials=Credentials(auth_token))
+
+
+# Contacts utils
+def build_people_service(auth_token: Optional[str]) -> Resource:  # type: ignore[no-any-unimported]
+    """
+    Build a People service object.
+    """
+    auth_token = auth_token or ""
+    return build("people", "v1", credentials=Credentials(auth_token))
+
+
+def search_contacts(service: Resource, query: str, limit: int) -> list[dict[str, Any]]:
+    """
+    Search the user's contacts in Google Contacts.
+    """
+    response = (
+        service.people()
+        .searchContacts(
+            query=query,
+            pageSize=limit,
+            readMask=",".join([
+                "names",
+                "nicknames",
+                "emailAddresses",
+                "phoneNumbers",
+                "addresses",
+                "organizations",
+                "biographies",
+                "urls",
+                "userDefined",
+            ]),
+        )
+        .execute()
+    )
+    return response.get("results", [])

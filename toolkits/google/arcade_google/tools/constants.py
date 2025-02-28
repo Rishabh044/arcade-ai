@@ -16,3 +16,6 @@ except ValueError as e:
         f"'{os.getenv('ARCADE_GMAIL_DEFAULT_REPLY_TO')}'. Expected one of "
         f"{list(GmailReplyToWhom.__members__.keys())}"
     ) from e
+
+
+DEFAULT_SEARCH_CONTACTS_LIMIT = 30
