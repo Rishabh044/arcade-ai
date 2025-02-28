@@ -25,7 +25,7 @@ async def search_contacts_by_email(
     context: ToolContext,
     email: Annotated[str, "The email address to search for"],
     limit: Annotated[
-        Optional[int],
+        int,
         "The maximum number of contacts to return (30 is the max allowed by Google API)",
     ] = DEFAULT_SEARCH_CONTACTS_LIMIT,
 ) -> Annotated[dict, "A dictionary containing the list of matching contacts"]:
@@ -47,7 +47,7 @@ async def search_contacts_by_name(
     context: ToolContext,
     name: Annotated[str, "The full name to search for"],
     limit: Annotated[
-        Optional[int],
+        int,
         "The maximum number of contacts to return (30 is the max allowed by Google API)",
     ] = DEFAULT_SEARCH_CONTACTS_LIMIT,
 ) -> Annotated[dict, "A dictionary containing the list of matching contacts"]:

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from email.message import EmailMessage
 from email.mime.text import MIMEText
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 from zoneinfo import ZoneInfo
 
 from arcade.sdk import ToolContext
@@ -609,7 +609,7 @@ def build_people_service(auth_token: Optional[str]) -> Resource:  # type: ignore
     return build("people", "v1", credentials=Credentials(auth_token))
 
 
-def search_contacts(service: Resource, query: str, limit: int) -> list[dict[str, Any]]:
+def search_contacts(service: Any, query: str, limit: int) -> list[dict[str, Any]]:
     """
     Search the user's contacts in Google Contacts.
     """
@@ -632,4 +632,5 @@ def search_contacts(service: Resource, query: str, limit: int) -> list[dict[str,
         )
         .execute()
     )
-    return response.get("results", [])
+
+    return cast(list[dict[str, Any]], response.get("results", []))
