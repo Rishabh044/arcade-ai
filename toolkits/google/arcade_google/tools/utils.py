@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import Resource, build
 
+from arcade_google.tools.constants import DEFAULT_SEARCH_CONTACTS_LIMIT
 from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError
 from arcade_google.tools.models import Day, GmailAction, GmailReplyToWhom, TimeSlot
 
@@ -609,7 +610,7 @@ def build_people_service(auth_token: Optional[str]) -> Resource:  # type: ignore
     return build("people", "v1", credentials=Credentials(auth_token))
 
 
-def search_contacts(service: Any, query: str, limit: int) -> list[dict[str, Any]]:
+def search_contacts(service: Any, query: str, limit: Optional[int]) -> list[dict[str, Any]]:
     """
     Search the user's contacts in Google Contacts.
     """
@@ -617,7 +618,7 @@ def search_contacts(service: Any, query: str, limit: int) -> list[dict[str, Any]
         service.people()
         .searchContacts(
             query=query,
-            pageSize=limit,
+            pageSize=limit or DEFAULT_SEARCH_CONTACTS_LIMIT,
             readMask=",".join([
                 "names",
                 "nicknames",
