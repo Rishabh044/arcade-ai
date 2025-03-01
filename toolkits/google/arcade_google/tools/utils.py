@@ -319,7 +319,7 @@ def build_file_tree_request_params(
     }
 
     if limit:
-        params["pageSize"] = limit
+        params["pageSize"] = str(limit)
 
     if (
         include_shared_drives
