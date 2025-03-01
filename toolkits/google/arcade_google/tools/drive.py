@@ -2,6 +2,7 @@ from typing import Annotated, Any, Optional
 
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Google
+from googleapiclient.errors import HttpError
 
 from arcade_google.tools.utils import (
     build_drive_service,
@@ -167,10 +168,14 @@ async def get_file_tree_structure(
         if drive_id == "My Drive":
             drive = {"name": "My Drive", "children": files}
         else:
-            drive_details = service.drives().get(driveId=drive_id).execute()
-            drive_name = drive_details.get("name")
-            if not drive_name:
-                drive_name = "Shared Drive (name not available)"
+            try:
+                drive_details = service.drives().get(driveId=drive_id).execute()
+                drive_name = drive_details.get("name", "Shared Drive (name unavailable)")
+            except HttpError as e:
+                drive_name = (
+                    f"Shared Drive (name unavailable: 'HttpError {e.status_code}: {e.reason}')"
+                )
+
             drive = {"name": drive_name, "id": drive_id, "children": files}
 
         drives.append(drive)
