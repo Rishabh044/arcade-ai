@@ -98,8 +98,8 @@ async def list_documents(
 async def get_file_tree_structure(
     context: ToolContext,
     include_shared_drives: Annotated[
-        bool, "Whether to include shared drives in the file tree structure. Defaults to True."
-    ] = True,
+        bool, "Whether to include shared drives in the file tree structure. Defaults to False."
+    ] = False,
     restrict_to_shared_drive_id: Annotated[
         Optional[str],
         "If provided, only include files from this shared drive in the file tree structure. "
