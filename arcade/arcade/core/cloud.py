@@ -50,7 +50,7 @@ class CloudResource:
         response = requests.patch(
             f"{self.url}/api/v1/workers/remove_package",
             headers={"Authorization": f"Bearer {self.api_key}"},
-            json={"worker_name": name, "package_name": package_name},
+            json={"worker_name": name, "package_name": package_name, "force": True},
             timeout=45,
         )
         return response

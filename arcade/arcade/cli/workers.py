@@ -31,6 +31,10 @@ domains = {
         "cloud": "https://cloud.bosslevel.dev",
         "api": "https://api.bosslevel.dev",
     },
+    "local": {
+        "cloud": "http://localhost:8001",
+        "api": "http://localhost:9099",
+    },
 }
 
 
@@ -61,7 +65,7 @@ def create(
             http={
                 "uri": response.json()["data"]["worker_endpoint"],
                 "secret": response.json()["data"]["worker_secret"],
-                "timeout": 1,
+                "timeout": 15,
                 "retry": 4,
             },
             timeout=45,
@@ -87,7 +91,7 @@ def list_workers() -> None:
     pass
 
 
-@app.command("delete", help="Delete a worker")
+@app.command("rm", help="Delete a worker")
 def delete_worker(
     name: str = typer.Argument(..., help="Name of the worker"),
     env: str = typer.Option("dev", "--env", "-e", help="Environment to use"),
@@ -120,7 +124,7 @@ def delete_worker(
     console.print("Done.", style="dim")
 
 
-@app.command("add-package", help="Add a Python package to a worker from PyPI or local directory")
+@app.command("add-pkg", help="Add a Python package to a worker from PyPI or local directory")
 def add_package(
     worker_name: str = typer.Option(..., "--worker", "-w", help="Name of the worker"),
     package: str = typer.Argument(
@@ -151,35 +155,38 @@ def add_package(
     cloud = CloudResource(url=domains[env]["cloud"], api_key=config.api.key)
     arcade = Arcade(api_key=config.api.key, base_url=domains[env]["api"])
 
-    if os.path.exists(package):
-        if os.path.isdir(package):
-            console.print(f"Adding local package {package} to worker {worker_name}...", style="dim")
-            # return os.path.abspath(package)  # Return absolute path if it's a directory
-            byte_stream = io.BytesIO()
+    if os.path.exists(package) and os.path.isdir(package):
+        if not os.path.isfile(package + "/pyproject.toml") and not os.path.isfile(
+            package + "/setup.py"
+        ):
+            raise typer.BadParameter(f"'{package}' must contain a pyproject.toml or setup.py file")
 
-            # Create a tar archive in memory
-            with tarfile.open(fileobj=byte_stream, mode="w:gz") as tar:
-                tar.add(package, arcname=os.path.basename(package))
+        console.print(f"Adding local package {package} to worker {worker_name}...", style="dim")
+        byte_stream = io.BytesIO()
 
-            # Get the byte content
-            byte_stream.seek(0)
-            b = byte_stream.read()
+        # Create a tar archive in memory
+        with tarfile.open(fileobj=byte_stream, mode="w:gz") as tar:
+            tar.add(package, arcname=os.path.basename(package))
 
-            package_name = os.path.basename(os.path.normpath(package))
+        # Get the byte content
+        byte_stream.seek(0)
+        b = byte_stream.read()
 
-            # Convert bytes to base64 string for JSON serialization
-            package_bytes_b64 = base64.b64encode(b).decode("utf-8")
+        package_name = os.path.basename(os.path.normpath(package))
 
-            response = cloud.upload_local_package(worker_name, package_name, package_bytes_b64)
+        # Convert bytes to base64 string for JSON serialization
+        package_bytes_b64 = base64.b64encode(b).decode("utf-8")
 
-            if response.status_code != 200:
-                console.print(
-                    f"Error adding local package {package} to worker {worker_name}: {response.json()['msg']}",
-                    style="red",
-                )
-                return
+        response = cloud.upload_local_package(worker_name, package_name, package_bytes_b64)
 
-        else:
+        if response.status_code != 200:
+            console.print(
+                f"Error adding local package {package} to worker {worker_name}: {response.json()['msg']}",
+                style="red",
+            )
+            return
+
+        if not os.path.isdir(package):
             raise typer.BadParameter(f"'{package}' exists but is not a directory")
     else:
         # If path doesn't exist, assume it's a package name
@@ -193,6 +200,7 @@ def add_package(
             return
 
     try:
+        print("Updating worker")
         arcade.worker.update(id=worker_name)
     except APIConnectionError:
         console.print(
@@ -208,7 +216,7 @@ def add_package(
     console.print("Done.", style="dim")
 
 
-@app.command("remove-package", help="Remove a Python package from a worker")
+@app.command("rm-pkg", help="Remove a Python package from a worker")
 def remove_package(
     worker_name: str = typer.Option(..., "--worker", "-w", help="Name of the worker"),
     package: str = typer.Argument(
@@ -228,9 +236,14 @@ def remove_package(
     Examples:
         arcade worker remove-package -w my-worker requests
     """
+    import os
+
     config = validate_and_get_config()
     cloud = CloudResource(url=domains[env]["cloud"], api_key=config.api.key)
     arcade = Arcade(api_key=config.api.key, base_url=domains[env]["api"])
+
+    if os.path.exists(package) and os.path.isdir(package):
+        package = os.path.basename(os.path.normpath(package))
 
     console.print(f"Removing package {package} from worker {worker_name}...", style="dim")
     response = cloud.remove_package(worker_name, package)
