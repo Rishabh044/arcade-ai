@@ -2,7 +2,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # allow for custom tool name separator
 TOOL_NAME_SEPARATOR = os.getenv("ARCADE_TOOL_NAME_SEPARATOR", ".")
@@ -102,11 +102,20 @@ class ToolAuthRequirement(BaseModel):
     """The OAuth 2.0 requirement, if any."""
 
 
+class ToolSecretRequirement(BaseModel):
+    """A requirement for a tool to run."""
+
+    key: str
+    """The ID of the secret."""
+
+
 class ToolRequirements(BaseModel):
     """The requirements for a tool to run."""
 
     authorization: Union[ToolAuthRequirement, None] = None
     """The authorization requirements for the tool, if any."""
+
+    secrets: Union[list[ToolSecretRequirement], None] = None
 
 
 class ToolkitDefinition(BaseModel):
@@ -191,6 +200,9 @@ class ToolDefinition(BaseModel):
     requirements: ToolRequirements
     """The requirements (e.g. authorization) for the tool to run."""
 
+    deprecation_message: Optional[str] = None
+    """The message to display when the tool is deprecated."""
+
     def get_fully_qualified_name(self) -> FullyQualifiedName:
         return FullyQualifiedName(self.name, self.toolkit.name, self.toolkit.version)
 
@@ -228,18 +240,51 @@ class ToolAuthorizationContext(BaseModel):
     """
 
 
+class ToolSecretItem(BaseModel):
+    """The context for a tool secret."""
+
+    key: str
+    """The key of the secret."""
+
+    value: str
+    """The value of the secret."""
+
+
 class ToolContext(BaseModel):
     """The context for a tool invocation."""
 
     authorization: ToolAuthorizationContext | None = None
     """The authorization context for the tool invocation that requires authorization."""
 
+    secrets: list[ToolSecretItem] | None = None
+    """The secrets for the tool invocation."""
+
     user_id: str | None = None
     """The user ID for the tool invocation (if any)."""
+
+    @field_validator("secrets", mode="before")
+    def lower_keys(cls, v: dict[str, ToolSecretItem] | None) -> dict[str, ToolSecretItem] | None:
+        if isinstance(v, dict):
+            return {k.lower(): value for k, value in v.items()}
+        return v
 
     def get_auth_token_or_empty(self) -> str:
         """Retrieve the authorization token, or return an empty string if not available."""
         return self.authorization.token if self.authorization and self.authorization.token else ""
+
+    def get_secret(self, key: str) -> str:
+        """Retrieve the secret for the tool invocation."""
+        if not key or not key.strip():
+            raise ValueError("Secret key ID passed to get_secret cannot be empty.")
+
+        if not self.secrets:
+            raise ValueError("Secrets not found in context.")
+
+        normalized_key = key.lower()
+        for secret in self.secrets:
+            if secret.key == normalized_key:
+                return secret.value
+        raise ValueError(f"Secret {key} not found in context.")
 
 
 class ToolCallRequest(BaseModel):
@@ -257,6 +302,24 @@ class ToolCallRequest(BaseModel):
     """The inputs for the tool."""
     context: ToolContext = Field(default_factory=ToolContext)
     """The context for the tool invocation."""
+
+
+class ToolCallLog(BaseModel):
+    """A log that occurred during the tool invocation."""
+
+    message: str
+    """The user-facing warning message."""
+
+    level: Literal[
+        "debug",
+        "info",
+        "warning",
+        "error",
+    ]
+    """The level of severity for the log."""
+
+    subtype: Optional[Literal["deprecation"]] = None
+    """Optional field for further categorization of the log."""
 
 
 class ToolCallError(BaseModel):
@@ -294,6 +357,8 @@ class ToolCallOutput(BaseModel):
 
     value: Union[str, int, float, bool, dict, list[str]] | None = None
     """The value returned by the tool."""
+    logs: list[ToolCallLog] | None = None
+    """The logs that occurred during the tool invocation."""
     error: ToolCallError | None = None
     """The error that occurred during the tool invocation."""
     requires_authorization: ToolCallRequiresAuthorization | None = None
