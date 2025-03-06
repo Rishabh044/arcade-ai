@@ -1,3 +1,6 @@
+from zoneinfo import available_timezones
+
+
 class GoogleToolError(Exception):
     """Base exception for Google tool errors."""
 
@@ -29,6 +32,22 @@ class GoogleCalendarToolError(GoogleToolError):
     """Raised when there's an error in the Google Calendar tools."""
 
     pass
+
+
+class InvalidTimezoneError(GoogleToolError):
+    """Raised when a timezone is provided that is not supported by Python's zoneinfo."""
+
+    def __init__(self, timezone_str: str):
+        self.timezone_str = timezone_str
+        available_timezones_msg = (
+            "Here is a list of valid timezones (from Python's zoneinfo.available_timezones()): "
+            f"{available_timezones()}"
+        )
+        super().__init__(
+            f"Invalid timezone: '{timezone_str}'",
+            developer_message=available_timezones_msg,
+            additional_prompt_content=available_timezones_msg,
+        )
 
 
 class GoogleDriveToolError(GoogleToolError):

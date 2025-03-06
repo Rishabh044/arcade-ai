@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 from zoneinfo import ZoneInfo
 
 from arcade.sdk import ToolContext, tool
@@ -9,8 +9,13 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from arcade_google.tools.models import EventVisibility, SendUpdatesOptions
-from arcade_google.tools.utils import find_free_times, get_now, parse_datetime
+from arcade_google.tools.models import DateRange, EventVisibility, SendUpdatesOptions
+from arcade_google.tools.utils import (
+    find_free_times,
+    get_datetime_range,
+    get_now,
+    parse_datetime,
+)
 
 
 @tool(
@@ -364,67 +369,77 @@ async def delete_event(
         scopes=["https://www.googleapis.com/auth/calendar.readonly"],
     ),
 )
-async def get_busy_slots(
+async def get_free_busy_time_slots(
     context: ToolContext,
-    start_datetime: Annotated[
-        str,
-        "The datetime to start searching for free/busy slots in RFC3339 format, "
-        "e.g., '2024-12-31T15:30:00.000Z'.",
-    ],
-    end_datetime: Annotated[
-        str,
-        "The datetime to end searching for free/busy slots in RFC3339 format, "
-        "e.g., '2024-12-31T17:30:00.000Z'.",
-    ],
-    email_addresses: Annotated[
-        list[str],
-        "The list of email addresses to search for free/busy slots in.",
-    ],
-    include_current_user: Annotated[
-        bool,
-        "Whether to include the current user's email address in the slot search results.",
-    ] = True,
-) -> Annotated[dict, "A dictionary of free/busy slots"]:
-    """Returns free/busy slots in the specified calendars within the given datetime range."""
+    additional_people_email_addresses: Annotated[
+        Optional[list[str]],
+        "The list of email addresses from people in the same organization domain to search for "
+        "busy time slots. Defaults to None (will return busy time slots for the current user only)",
+    ] = None,
+    date_range: Annotated[
+        Optional[DateRange],
+        "A date range to search for free/busy slots. Defaults to None.",
+    ] = None,
+    start_date: Annotated[
+        Optional[str],
+        "The start date to search for free/busy slots (format YYYY-MM-DD). Defaults to None.",
+    ] = None,
+    end_date: Annotated[
+        Optional[str],
+        "The end date to search for free/busy slots (format YYYY-MM-DD). Defaults to None.",
+    ] = None,
+) -> Annotated[dict, "A dictionary of busy time slots"]:
+    """Returns busy time slots in the specified calendars within the given datetime range.
+
+    To specify which date/time range to search for free/busy slots, provide either `date_range` or
+    `start_date` and `end_date`.
+
+    If you don't provide either `date_range` or `start_date` and `end_date`, the tool will default
+    to searching for busy time slots in the next 7 days.
+    """
+    if not date_range and not start_date and not end_date:
+        date_range = DateRange.NEXT_7_DAYS
 
     credentials = Credentials(
         context.authorization.token if context.authorization and context.authorization.token else ""
     )
-
-    if isinstance(email_addresses, str):
-        email_addresses = [email_addresses]
-
-    if include_current_user:
-        oauth_service = build("oauth2", "v2", credentials=credentials)
-        user_info = oauth_service.userinfo().get().execute()
-        if user_info["email"] not in email_addresses:
-            email_addresses.append(user_info["email"])
-
     calendar_service = build("calendar", "v3", credentials=credentials)
-    calendar = calendar_service.calendars().get(calendarId="primary").execute()
 
-    items = [{"id": email_address} for email_address in email_addresses]
+    email_addresses = additional_people_email_addresses or []
 
-    free_busy_result = (
+    if isinstance(additional_people_email_addresses, str):
+        additional_people_email_addresses = [additional_people_email_addresses]
+
+    oauth_service = build("oauth2", "v2", credentials=credentials)
+    user_info = oauth_service.userinfo().get().execute()
+    if user_info["email"] not in email_addresses:
+        email_addresses.append(user_info["email"])
+
+    calendar_timezone = await get_calendar_default_timezone_name(context)["timezone_name"]
+
+    start_datetime, end_datetime = get_datetime_range(
+        timezone_str=calendar_timezone,
+        date_range=date_range,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    response = (
         calendar_service.freebusy()
         .query(
             body={
                 "timeMin": start_datetime,
                 "timeMax": end_datetime,
-                "timeZone": calendar["timeZone"],
-                "items": items,
+                "timeZone": calendar_timezone,
+                "items": [{"id": email_address} for email_address in email_addresses],
             }
         )
         .execute()
     )
-    import json
-
-    with open("free_busy_result.json", "w") as f:
-        json.dump(free_busy_result.get("calendars"), f)
 
     return {
-        "calendars": free_busy_result.get("calendars", {}),
-        "timezone": calendar["timeZone"],
+        "calendars": response.get("calendars", {}),
+        "timezone": calendar_timezone,
     }
 
 
@@ -495,7 +510,7 @@ async def find_free_slots_across_calendars(
         five_days_from_now = now + timedelta(days=5)
         end_datetime = five_days_from_now.isoformat()
 
-    response = await get_busy_slots(
+    response = await get_free_busy_time_slots(
         context=context,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
@@ -510,3 +525,33 @@ async def find_free_slots_across_calendars(
         "free_slots": find_free_times(busy_slots, start_datetime, end_datetime, tz),
         "timezone": response["timezone"],
     }
+
+
+@tool(
+    requires_auth=Google(
+        scopes=["https://www.googleapis.com/auth/calendar.readonly"],
+    ),
+)
+def get_calendar_default_timezone_name(
+    context: ToolContext,
+    calendar_id: Annotated[
+        str, "The ID of the calendar to get the timezone name. Defaults to 'primary'."
+    ] = "primary",
+) -> Annotated[
+    dict[str, str | None],
+    "The timezone name (Formatted as an IANA Time Zone Database name) or None if the calendar does "
+    "not have a timezone configured.",
+]:
+    """
+    Provide the timezone configured in one of the currently logged in user's Google calendars
+    (or None, if the calendar does not have a timezone configured).
+
+    The timezone returned by the Google Calendar API is formatted as an IANA Time Zone Database name
+    (e.g., 'America/Los_Angeles').
+    """
+    credentials = Credentials(
+        context.authorization.token if context.authorization and context.authorization.token else ""
+    )
+    service = build("calendar", "v3", credentials=credentials)
+    calendar = service.calendars().get(calendarId=calendar_id).execute()
+    return {"timezone_name": calendar.get("timeZone")}

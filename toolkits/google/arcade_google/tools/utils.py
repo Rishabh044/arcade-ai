@@ -14,7 +14,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import Resource, build
 
 from arcade_google.tools.constants import DEFAULT_SEARCH_CONTACTS_LIMIT
-from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError
+from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError, InvalidTimezoneError
 from arcade_google.tools.models import Day, GmailAction, GmailReplyToWhom, TimeSlot
 
 ## Set up basic configuration for logging to the console with DEBUG level and a specific format.
@@ -630,6 +630,58 @@ def merge_intervals(intervals: list[tuple[datetime, datetime]]) -> list[tuple[da
             else:
                 merged.append((start, end))
     return merged
+
+
+# Calendar utils
+def get_datetime_range(
+    timezone_str: Optional[str] = None,
+    date_range: Optional[DateRange] = None,
+    start_date: Optional[str] = None,
+    start_time: Optional[str] = "00:00:00",
+    end_date: Optional[str] = None,
+    end_time: Optional[str] = "23:59:59",
+) -> tuple[datetime, datetime]:
+    """
+    Get a date/time range as native Python datetime objects.
+
+    :timezone_str: The timezone name to use for the event (supported by Python's zoneinfo).
+    :date_range: The date range to use for the event.
+    :start_date: The start date in the format YYYY-MM-DD.
+    :start_time: The start time in the format HH:MM:SS.
+    :end_date: The end date in the format YYYY-MM-DD.
+    :end_time: The end time in the format HH:MM:SS.
+    """
+    timezone_obj = None
+
+    if timezone_str:
+        try:
+            timezone_obj = ZoneInfo(timezone_str)
+        except Exception as e:
+            raise InvalidTimezoneError(timezone_str) from e
+
+    start_time = datetime.strptime(start_time, "%H:%M:%S").time()
+    end_time = datetime.strptime(end_time, "%H:%M:%S").time()
+
+    if date_range:
+        start_datetime, end_datetime = date_range.to_datetime_range(
+            start_time=start_time,
+            end_time=end_time,
+            time_zone=timezone_obj,
+        )
+    else:
+        start_date = start_date or datetime.now()
+        start_datetime = datetime.combine(start_date, start_time)
+        end_date = end_date or (datetime.now() + timedelta(days=7))
+        end_datetime = datetime.combine(end_date, end_time)
+
+    if timezone_obj:
+        start_datetime = start_datetime.replace(tzinfo=timezone_obj)
+        end_datetime = end_datetime.replace(tzinfo=timezone_obj)
+
+    start_datetime = start_datetime.isoformat()
+    end_datetime = end_datetime.isoformat()
+
+    return start_datetime, end_datetime
 
 
 def get_business_hours_for_day(
