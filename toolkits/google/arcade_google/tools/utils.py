@@ -14,7 +14,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import Resource, build
 
 from arcade_google.tools.constants import DEFAULT_SEARCH_CONTACTS_LIMIT
-from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError, InvalidTimezoneError
+from arcade_google.tools.exceptions import GmailToolError, GoogleServiceError
 from arcade_google.tools.models import Day, GmailAction, GmailReplyToWhom, TimeSlot
 
 ## Set up basic configuration for logging to the console with DEBUG level and a specific format.
@@ -633,39 +633,6 @@ def merge_intervals(intervals: list[tuple[datetime, datetime]]) -> list[tuple[da
 
 
 # Calendar utils
-def get_freebusy_date_range(
-    start_date: Optional[str],
-    end_date: Optional[str],
-    timezone_str: Optional[str] = None,
-) -> tuple[str, str]:
-    """
-    Get a datetime range in isoformat strings for Google Calendar free/busy search
-
-    :start_date: The start date in the format YYYY-MM-DD.
-    :end_date: The end date in the format YYYY-MM-DD.
-    :timezone_str: The timezone name to use for the event (supported by Python's zoneinfo).
-    """
-    timezone_obj = None
-
-    if timezone_str:
-        try:
-            timezone_obj = ZoneInfo(timezone_str)
-        except Exception as e:
-            raise InvalidTimezoneError(timezone_str) from e
-
-    start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
-    end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
-
-    if timezone_obj:
-        start_datetime = start_datetime.replace(tzinfo=timezone_obj)
-        end_datetime = end_datetime.replace(tzinfo=timezone_obj)
-
-    start_datetime = start_datetime.isoformat()
-    end_datetime = end_datetime.isoformat()
-
-    return start_datetime, end_datetime
-
-
 def get_business_hours_for_day(
     current_date: datetime,
     business_tz: timezone,
@@ -721,6 +688,16 @@ def subtract_busy_intervals(
     """
     free_slots = []
     merged_busy = merge_intervals(busy_intervals)
+
+    # If there are no busy intervals, return the entire business window as free.
+    if not merged_busy:
+        return [
+            {
+                "start": business_start.isoformat(),
+                "end": business_end.isoformat(),
+            }
+        ]
+
     current_free_start = business_start
     for busy_start, busy_end in merged_busy:
         if current_free_start < busy_start:
@@ -737,10 +714,10 @@ def subtract_busy_intervals(
     return free_slots
 
 
-def find_free_times(
+def compute_free_time_intersection(
     busy_data: dict[str, Any],
-    global_start_str: str,
-    global_end_str: str,
+    global_start: datetime,
+    global_end: datetime,
     tz: timezone = timezone.utc,
 ) -> list[dict[str, Any]]:
     """
@@ -750,12 +727,9 @@ def find_free_times(
     Only considers business days (Monday to Friday) and business hours (08:00-19:00)
     in the provided timezone.
     """
-    # Parse the global boundaries and convert them to the business timezone.
-    global_start = parse_rfc3339(global_start_str).astimezone(tz)
-    global_end = parse_rfc3339(global_end_str).astimezone(tz)
-
     # Ensure global_start is never in the past relative to now.
     now = get_now(tz)
+
     if now > global_start:
         global_start = now
 
@@ -768,7 +742,7 @@ def find_free_times(
 
     while current_date <= global_end.date():
         # Only consider weekdays (Monday=0 to Friday=4)
-        if current_date.weekday() < 5:
+        if current_date.weekday() <= 5:
             day_start, day_end = get_business_hours_for_day(
                 current_date, tz, global_start, global_end
             )
@@ -779,6 +753,7 @@ def find_free_times(
 
             busy_intervals = gather_busy_intervals(busy_data, day_start, day_end, tz)
             free_slots.extend(subtract_busy_intervals(day_start, day_end, busy_intervals))
+
         current_date += timedelta(days=1)
 
     return free_slots

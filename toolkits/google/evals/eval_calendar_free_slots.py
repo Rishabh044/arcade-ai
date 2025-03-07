@@ -144,8 +144,6 @@ def get_free_slots_eval_suite() -> EvalSuite:
             BinaryCritic(critic_field="email_addresses", weight=0.1),
             BinaryCritic(critic_field="start_date", weight=0.45),
             BinaryCritic(critic_field="end_date", weight=0.45),
-            # Sometimes models consider "today" to end in tomorrow's date, so we allow a tolerance of 1 day
-            # DatetimeCritic(critic_field="end_date", weight=0.45, tolerance=timedelta(days=1)),
         ],
     )
 

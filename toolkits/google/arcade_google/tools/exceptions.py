@@ -1,5 +1,7 @@
 from zoneinfo import available_timezones
 
+from arcade.sdk.errors import RetryableToolError
+
 
 class GoogleToolError(Exception):
     """Base exception for Google tool errors."""
@@ -14,6 +16,12 @@ class GoogleToolError(Exception):
         if self.developer_message:
             return f"{base_message} (Developer: {self.developer_message})"
         return base_message
+
+
+class RetryableGoogleToolError(RetryableToolError):
+    """Raised when there's an error in a Google tool that can be retried."""
+
+    pass
 
 
 class GoogleServiceError(GoogleToolError):
@@ -34,7 +42,7 @@ class GoogleCalendarToolError(GoogleToolError):
     pass
 
 
-class InvalidTimezoneError(GoogleToolError):
+class InvalidTimezoneError(RetryableGoogleToolError):
     """Raised when a timezone is provided that is not supported by Python's zoneinfo."""
 
     def __init__(self, timezone_str: str):

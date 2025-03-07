@@ -9,10 +9,10 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from arcade_google.tools.exceptions import InvalidTimezoneError
 from arcade_google.tools.models import EventVisibility, SendUpdatesOptions
 from arcade_google.tools.utils import (
-    find_free_times,
-    get_freebusy_date_range,
+    compute_free_time_intersection,
     parse_datetime,
 )
 
@@ -379,17 +379,17 @@ async def find_time_slots_when_everyone_is_free(
     start_date: Annotated[
         Optional[str],
         "The start date to search for time slots in the format 'YYYY-MM-DD'. Defaults to today's "
-        "date. It will always search from the time 00:00:00.",
+        "date. It will search starting from this date at the time 00:00:00.",
     ] = None,
     end_date: Annotated[
         Optional[str],
-        "The end date to search for time slots in the format 'YYYY-MM-DD'. Defaults to None. It "
-        "will always search until the time 23:59:59.",
+        "The end date to search for time slots in the format 'YYYY-MM-DD'. Defaults to seven days "
+        "from the start date. It will search until this date at the time 23:59:59.",
     ] = None,
 ) -> Annotated[
     dict, "A dictionary with the free slots and the currently logged in user's timezone"
 ]:
-    """Returns free time slots in the specified calendars within the given date range."""
+    """Provides time slots when multiple people are free within the given date range."""
     credentials = Credentials(
         context.authorization.token if context.authorization and context.authorization.token else ""
     )
@@ -400,40 +400,48 @@ async def find_time_slots_when_everyone_is_free(
     if isinstance(email_addresses, str):
         email_addresses = [email_addresses]
 
+    # Add the currently logged in user to the list of email addresses
     oauth_service = build("oauth2", "v2", credentials=credentials)
     user_info = oauth_service.userinfo().get().execute()
     if user_info["email"] not in email_addresses:
         email_addresses.append(user_info["email"])
 
-    calendar_timezone = await get_default_timezone_name_configured_in_calendar(context)[
-        "timezone_name"
-    ]
-    start_date = ""
-    end_date = ""
-    start_datetime, end_datetime = get_freebusy_date_range(
-        start_date=start_date,
-        end_date=end_date,
-        timezone_str=calendar_timezone,
+    # Get the calendar's default timezone to use for the free/busy search
+    calendar_timezone = await get_calendar_default_timezone(context)
+    timezone_name = calendar_timezone["timezone_name"]
+    if not timezone_name:
+        timezone_name = "UTC"
+
+    try:
+        tz = ZoneInfo(timezone_name)
+    except Exception as e:
+        raise InvalidTimezoneError(timezone_name) from e
+
+    start_datetime = datetime.strptime(start_date, "%Y-%m-%d").replace(
+        hour=0, minute=0, second=0, microsecond=0, tzinfo=tz
+    )
+    end_datetime = datetime.strptime(end_date, "%Y-%m-%d").replace(
+        hour=23, minute=59, second=59, microsecond=0, tzinfo=tz
     )
 
     response = (
         calendar_service.freebusy()
         .query(
             body={
-                "timeMin": start_datetime,
-                "timeMax": end_datetime,
-                "timeZone": calendar_timezone,
+                "timeMin": start_datetime.isoformat(),
+                "timeMax": end_datetime.isoformat(),
+                "timeZone": timezone_name,
                 "items": [{"id": email_address} for email_address in email_addresses],
             }
         )
         .execute()
     )
     busy_slots = response["calendars"]
-    tz = ZoneInfo(response["timezone"])
+    free_slots = compute_free_time_intersection(busy_slots, start_datetime, end_datetime, tz)
 
     return {
-        "free_slots": find_free_times(busy_slots, start_datetime, end_datetime, tz),
-        "timezone": response["timezone"],
+        "free_slots": free_slots,
+        "timezone": timezone_name,
     }
 
 
@@ -442,7 +450,7 @@ async def find_time_slots_when_everyone_is_free(
         scopes=["https://www.googleapis.com/auth/calendar.readonly"],
     ),
 )
-def get_default_timezone_name_configured_in_calendar(
+async def get_calendar_default_timezone(
     context: ToolContext,
     calendar_id: Annotated[
         str, "The ID of the calendar to get the timezone name. Defaults to 'primary'."
@@ -464,4 +472,9 @@ def get_default_timezone_name_configured_in_calendar(
     )
     service = build("calendar", "v3", credentials=credentials)
     calendar = service.calendars().get(calendarId=calendar_id).execute()
-    return {"timezone_name": calendar.get("timeZone")}
+    timezone_name = calendar.get("timeZone")
+
+    if isinstance(timezone_name, str) and timezone_name:
+        return {"timezone_name": timezone_name}
+
+    return {"timezone_name": None}
