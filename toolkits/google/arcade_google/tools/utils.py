@@ -1,7 +1,7 @@
 import logging
 import re
 from base64 import urlsafe_b64decode, urlsafe_b64encode
-from datetime import datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from email.message import EmailMessage
 from email.mime.text import MIMEText
 from enum import Enum
@@ -619,7 +619,7 @@ def merge_intervals(intervals: list[tuple[datetime, datetime]]) -> list[tuple[da
     """
     Given a list of (start, end) tuples, merge overlapping or adjacent intervals.
     """
-    merged = []
+    merged: list[tuple[datetime, datetime]] = []
     for start, end in sorted(intervals, key=lambda x: x[0]):
         if not merged:
             merged.append((start, end))
@@ -638,12 +638,12 @@ def weekday_to_name(weekday: int) -> str:
 
 
 def get_time_boundaries_for_date(
-    current_date: datetime,
+    current_date: date,
     global_start: datetime,
     global_end: datetime,
     start_time_boundary: time,
     end_time_boundary: time,
-    tz: timezone,
+    tz: ZoneInfo,
 ) -> tuple[datetime, datetime]:
     """Compute the allowed start and end times for the given day, adjusting for global bounds."""
     day_start_time = datetime.combine(current_date, start_time_boundary).replace(tzinfo=tz)
@@ -662,7 +662,7 @@ def gather_busy_intervals(
     busy_data: dict[str, Any],
     day_start: datetime,
     day_end: datetime,
-    business_tz: timezone,
+    business_tz: ZoneInfo,
 ) -> list[tuple[datetime, datetime]]:
     """
     Collect busy intervals from all calendars that intersect with the day's business hours.
@@ -739,7 +739,7 @@ def compute_free_time_intersection(
     start_time_boundary: time,
     end_time_boundary: time,
     include_weekends: bool,
-    tz: timezone,
+    tz: ZoneInfo,
 ) -> list[dict[str, Any]]:
     """
     Returns the free time slots across all calendars within the global bounds,
@@ -788,7 +788,9 @@ def compute_free_time_intersection(
     return free_slots
 
 
-def get_now(tz: timezone = timezone.utc) -> datetime:
+def get_now(tz: ZoneInfo | None = None) -> datetime:
+    if not tz:
+        tz = ZoneInfo("UTC")
     return datetime.now(tz)
 
 

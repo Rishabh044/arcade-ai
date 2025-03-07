@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from typing import Any
 
 from arcade.sdk.eval import DatetimeCritic
@@ -24,7 +25,9 @@ class AnyDatetimeCritic(DatetimeCritic):
     A critic that evaluates the closeness of datetime values within a list of expected values.
     """
 
-    def evaluate(self, expected: list[Any], actual: Any) -> dict[str, Any]:
+    def evaluate(self, expected: Any, actual: Any) -> dict[str, Any]:
+        if not isinstance(expected, Collection):
+            expected = [expected]
         for expected_value in expected:
             critic = DatetimeCritic(
                 critic_field=self.critic_field,

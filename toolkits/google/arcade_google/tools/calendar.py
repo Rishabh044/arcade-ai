@@ -388,12 +388,12 @@ async def find_time_slots_when_everyone_is_free(
         "from the start date. It will search until this date at the time 23:59:59.",
     ] = None,
     start_time_boundary: Annotated[
-        Optional[str],
+        str,
         "Will return free slots in any given day starting from this time in the format 'HH:MM'. "
         "Defaults to '08:00', which is a usual business hour start time.",
     ] = "08:00",
     end_time_boundary: Annotated[
-        Optional[str],
+        str,
         "Will return free slots in any given day until this time in the format 'HH:MM'. "
         "Defaults to '18:00', which is a usual business hour end time.",
     ] = "18:00",
