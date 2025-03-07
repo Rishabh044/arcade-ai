@@ -7,10 +7,12 @@ from arcade.sdk.eval import (
     EvalRubric,
     EvalSuite,
     ExpectedToolCall,
+    NoneCritic,
     tool_eval,
 )
 
 import arcade_google
+from arcade_google.critics import AnyDatetimeCritic, DatetimeOrNoneCritic
 from arcade_google.tools.calendar import find_time_slots_when_everyone_is_free
 
 rubric = EvalRubric(
@@ -55,14 +57,19 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": None,
                     "start_date": "2025-03-06",
                     "end_date": "2025-03-11",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            # Sometimes models consider "next X days" to include today, so we allow a tolerance of 1 day
-            DatetimeCritic(critic_field="start_date", weight=0.45, tolerance=timedelta(days=1)),
-            DatetimeCritic(critic_field="end_date", weight=0.45, tolerance=timedelta(days=1)),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeOrNoneCritic(
+                critic_field="start_date", weight=0.35, tolerance=timedelta(days=1)
+            ),
+            DatetimeCritic(critic_field="end_date", weight=0.35, tolerance=timedelta(days=1)),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -76,14 +83,19 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": None,
                     "start_date": "2025-03-06",
                     "end_date": "2025-03-16",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            # Sometimes models consider "next X days" to include today, so we allow a tolerance of 1 day
-            DatetimeCritic(critic_field="start_date", weight=0.45, tolerance=timedelta(days=1)),
-            DatetimeCritic(critic_field="end_date", weight=0.45, tolerance=timedelta(days=1)),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeOrNoneCritic(
+                critic_field="start_date", weight=0.35, tolerance=timedelta(days=1)
+            ),
+            DatetimeCritic(critic_field="end_date", weight=0.35, tolerance=timedelta(days=1)),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -95,15 +107,21 @@ def get_free_slots_eval_suite() -> EvalSuite:
                 func=find_time_slots_when_everyone_is_free,
                 args={
                     "email_addresses": None,
-                    "start_date": "2025-03-03",
+                    # Models sometimes will consider today as the start range, other times it will
+                    # consider last Monday. The question is ambiguous, so we allow both.
+                    "start_date": ["2025-03-03", "2025-03-06"],
                     "end_date": "2025-03-09",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            BinaryCritic(critic_field="start_date", weight=0.45),
-            BinaryCritic(critic_field="end_date", weight=0.45),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            AnyDatetimeCritic(critic_field="start_date", weight=0.35),
+            BinaryCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -117,13 +135,17 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": None,
                     "start_date": "2025-03-10",
                     "end_date": "2025-03-16",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            BinaryCritic(critic_field="start_date", weight=0.45),
-            BinaryCritic(critic_field="end_date", weight=0.45),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            BinaryCritic(critic_field="start_date", weight=0.35),
+            BinaryCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -137,13 +159,41 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": None,
                     "start_date": "2025-03-06",
                     "end_date": "2025-03-06",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            BinaryCritic(critic_field="start_date", weight=0.45),
-            BinaryCritic(critic_field="end_date", weight=0.45),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeOrNoneCritic(critic_field="start_date", weight=0.35),
+            DatetimeCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
+        ],
+    )
+
+    suite.add_case(
+        name="Get free slots today",
+        user_message=("At what times am I free tonight before 10 PM?"),
+        expected_tool_calls=[
+            ExpectedToolCall(
+                func=find_time_slots_when_everyone_is_free,
+                args={
+                    "email_addresses": None,
+                    "start_date": "2025-03-06",
+                    "end_date": "2025-03-06",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "22:00",
+                },
+            )
+        ],
+        critics=[
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeOrNoneCritic(critic_field="start_date", weight=0.35),
+            DatetimeCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -157,13 +207,17 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": None,
                     "start_date": "2025-03-08",
                     "end_date": "2025-03-09",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            BinaryCritic(critic_field="start_date", weight=0.45),
-            BinaryCritic(critic_field="end_date", weight=0.45),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeCritic(critic_field="start_date", weight=0.35),
+            DatetimeCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -175,15 +229,19 @@ def get_free_slots_eval_suite() -> EvalSuite:
                 func=find_time_slots_when_everyone_is_free,
                 args={
                     "email_addresses": None,
-                    "start_date": "2025-03-01",
+                    "start_date": ["2025-03-06", "2025-03-01"],
                     "end_date": "2025-03-31",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            BinaryCritic(critic_field="start_date", weight=0.45),
-            DatetimeCritic(critic_field="end_date", weight=0.45, tolerance=timedelta(days=1)),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            AnyDatetimeCritic(critic_field="start_date", weight=0.35),
+            DatetimeCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -197,13 +255,17 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": None,
                     "start_date": "2025-04-01",
                     "end_date": "2025-04-30",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            BinaryCritic(critic_field="start_date", weight=0.45),
-            BinaryCritic(critic_field="end_date", weight=0.45),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeCritic(critic_field="start_date", weight=0.35),
+            DatetimeCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -217,13 +279,17 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": None,
                     "start_date": "2025-02-24",
                     "end_date": "2025-03-02",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            BinaryCritic(critic_field="start_date", weight=0.45),
-            BinaryCritic(critic_field="end_date", weight=0.45),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeCritic(critic_field="start_date", weight=0.35),
+            DatetimeCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -237,13 +303,17 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": None,
                     "start_date": "2025-04-01",
                     "end_date": "2025-06-30",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            BinaryCritic(critic_field="start_date", weight=0.45),
-            BinaryCritic(critic_field="end_date", weight=0.45),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeCritic(critic_field="start_date", weight=0.35),
+            DatetimeCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -255,15 +325,21 @@ def get_free_slots_eval_suite() -> EvalSuite:
                 func=find_time_slots_when_everyone_is_free,
                 args={
                     "email_addresses": None,
-                    "start_date": "2025-03-07",
+                    "start_date": "2025-03-06",
                     "end_date": "2025-04-05",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            DatetimeCritic(critic_field="start_date", weight=0.45, tolerance=timedelta(days=1)),
-            DatetimeCritic(critic_field="end_date", weight=0.45, tolerance=timedelta(days=1)),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeOrNoneCritic(
+                critic_field="start_date", weight=0.35, tolerance=timedelta(days=1)
+            ),
+            DatetimeCritic(critic_field="end_date", weight=0.35, tolerance=timedelta(days=1)),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -277,13 +353,17 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": None,
                     "start_date": "2025-04-01",
                     "end_date": "2025-04-30",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            BinaryCritic(critic_field="start_date", weight=0.45),
-            BinaryCritic(critic_field="end_date", weight=0.45),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeCritic(critic_field="start_date", weight=0.35),
+            DatetimeCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -297,13 +377,17 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": ["johndoe@example.com"],
                     "start_date": "2025-03-07",
                     "end_date": "2025-03-07",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=1 / 3),
-            BinaryCritic(critic_field="start_date", weight=1 / 3),
-            DatetimeCritic(critic_field="end_date", weight=1 / 3, tolerance=timedelta(days=1)),
+            BinaryCritic(critic_field="email_addresses", weight=0.30),
+            DatetimeCritic(critic_field="start_date", weight=0.25),
+            DatetimeCritic(critic_field="end_date", weight=0.25),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 
@@ -319,33 +403,67 @@ def get_free_slots_eval_suite() -> EvalSuite:
                     "email_addresses": ["johndoe@example.com"],
                     "start_date": "2025-03-07",
                     "end_date": "2025-03-07",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=1 / 3),
-            BinaryCritic(critic_field="start_date", weight=1 / 3),
-            DatetimeCritic(critic_field="end_date", weight=1 / 3, tolerance=timedelta(days=1)),
+            BinaryCritic(critic_field="email_addresses", weight=0.3),
+            DatetimeCritic(critic_field="start_date", weight=0.25),
+            DatetimeCritic(critic_field="end_date", weight=0.25),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
+        ],
+    )
+
+    suite.add_case(
+        name="Get free slots for a specific email address",
+        user_message=(
+            "I need to schedule a meeting with johndoe@example.com tomorrow morning. When are both of us free?"
+        ),
+        expected_tool_calls=[
+            ExpectedToolCall(
+                func=find_time_slots_when_everyone_is_free,
+                args={
+                    "email_addresses": ["johndoe@example.com"],
+                    "start_date": "2025-03-07",
+                    "end_date": "2025-03-07",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "12:00",
+                },
+            )
+        ],
+        critics=[
+            BinaryCritic(critic_field="email_addresses", weight=0.2),
+            DatetimeCritic(critic_field="start_date", weight=0.2),
+            DatetimeCritic(critic_field="end_date", weight=0.2),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.2),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.2),
         ],
     )
 
     suite.add_case(
         name="Get free slots for a specific date range",
-        user_message=("At what times am I free between 2024-09-27 and 2024-09-29?"),
+        user_message=("At what times am I free between 2025-04-27 and 2025-04-29?"),
         expected_tool_calls=[
             ExpectedToolCall(
                 func=find_time_slots_when_everyone_is_free,
                 args={
                     "email_addresses": None,
-                    "start_date": "2024-09-27",
-                    "end_date": "2024-09-29",
+                    "start_date": "2025-04-27",
+                    "end_date": "2025-04-29",
+                    "start_time_boundary": "08:00",
+                    "end_time_boundary": "18:00",
                 },
             )
         ],
         critics=[
-            BinaryCritic(critic_field="email_addresses", weight=0.1),
-            BinaryCritic(critic_field="start_date", weight=0.45),
-            BinaryCritic(critic_field="end_date", weight=0.45),
+            NoneCritic(critic_field="email_addresses", weight=0.1),
+            DatetimeCritic(critic_field="start_date", weight=0.35),
+            DatetimeCritic(critic_field="end_date", weight=0.35),
+            BinaryCritic(critic_field="start_time_boundary", weight=0.1),
+            BinaryCritic(critic_field="end_time_boundary", weight=0.1),
         ],
     )
 

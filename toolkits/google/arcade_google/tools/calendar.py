@@ -9,7 +9,6 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from arcade_google.tools.exceptions import InvalidTimezoneError
 from arcade_google.tools.models import EventVisibility, SendUpdatesOptions
 from arcade_google.tools.utils import (
     compute_free_time_intersection,
@@ -396,15 +395,12 @@ async def find_time_slots_when_everyone_is_free(
         "Will return free slots in any given day until this time in the format 'HH:MM'. "
         "Defaults to '18:00', which is a usual business hour end time.",
     ] = "18:00",
-    include_weekends: Annotated[
-        bool, "Whether to include weekends in the free time slots returned. Defaults to False."
-    ] = False,
 ) -> Annotated[
     dict,
     "A dictionary with the free slots and the timezone in which time slots are represented.",
 ]:
     """
-    Provides time slots when multiple people are free within a given date range and time boundaries.
+    Provides time slots when everyone is free within a given date range and time boundaries.
     """
     credentials = Credentials(
         context.authorization.token if context.authorization and context.authorization.token else ""
@@ -422,15 +418,18 @@ async def find_time_slots_when_everyone_is_free(
     if user_info["email"] not in email_addresses:
         email_addresses.append(user_info["email"])
 
-    calendar_timezone = await get_calendar_default_timezone(context)
-    timezone = calendar_timezone["timezone_name"]
-    if not timezone:
-        timezone = "UTC"
+    calendar = calendar_service.calendars().get(calendarId="primary").execute()
+    timezone_name = calendar.get("timeZone")
 
     try:
-        tz = ZoneInfo(timezone)
-    except Exception as e:
-        raise InvalidTimezoneError(timezone) from e
+        tz = ZoneInfo(timezone_name)
+    # If the calendar timezone name is not supported by Python's zoneinfo, use UTC
+    except Exception:
+        timezone_name = "UTC"
+        tz = ZoneInfo("UTC")
+
+    start_date = start_date or datetime.now().date().isoformat()
+    end_date = end_date or (datetime.now().date() + timedelta(days=7)).isoformat()
 
     start_datetime = datetime.strptime(start_date, "%Y-%m-%d").replace(
         hour=0, minute=0, second=0, microsecond=0, tzinfo=tz
@@ -439,26 +438,13 @@ async def find_time_slots_when_everyone_is_free(
         hour=23, minute=59, second=59, microsecond=0, tzinfo=tz
     )
 
-    is_date_range_a_weekend = (
-        start_datetime.weekday() >= 5
-        and end_datetime.weekday() >= 5
-        and (end_datetime - start_datetime).days <= 1
-    )
-
-    # If the date range is within a weekend, we override the include_weekends flag to True.
-    # include_weekends is False by default because this tool is expected to be used mostly in a
-    # business context. But when the user explicitly asks for times in a weekend,
-    # LLMs do not have the awareness to set the correct flag, so we override it.
-    if not include_weekends and is_date_range_a_weekend:
-        include_weekends = True
-
     response = (
         calendar_service.freebusy()
         .query(
             body={
                 "timeMin": start_datetime.isoformat(),
                 "timeMax": end_datetime.isoformat(),
-                "timeZone": timezone,
+                "timeZone": timezone_name,
                 "items": [{"id": email_address} for email_address in email_addresses],
             }
         )
@@ -473,46 +459,11 @@ async def find_time_slots_when_everyone_is_free(
         .time()
         .replace(tzinfo=tz),
         end_time_boundary=datetime.strptime(end_time_boundary, "%H:%M").time().replace(tzinfo=tz),
-        include_weekends=include_weekends,
+        include_weekends=True,
         tz=tz,
     )
 
     return {
         "free_slots": free_slots,
-        "timezone": timezone,
+        "timezone": timezone_name,
     }
-
-
-@tool(
-    requires_auth=Google(
-        scopes=["https://www.googleapis.com/auth/calendar.readonly"],
-    ),
-)
-async def get_calendar_default_timezone(
-    context: ToolContext,
-    calendar_id: Annotated[
-        str, "The ID of the calendar to get the timezone name. Defaults to 'primary'."
-    ] = "primary",
-) -> Annotated[
-    dict[str, str | None],
-    "The timezone name (Formatted as an IANA Time Zone Database name) or None if the calendar does "
-    "not have a timezone configured.",
-]:
-    """
-    Provide the timezone configured in one of the currently logged in user's Google calendars
-    (or None, if the calendar does not have a timezone configured).
-
-    The timezone returned by the Google Calendar API is formatted as an IANA Time Zone Database name
-    (e.g., 'America/Los_Angeles').
-    """
-    credentials = Credentials(
-        context.authorization.token if context.authorization and context.authorization.token else ""
-    )
-    service = build("calendar", "v3", credentials=credentials)
-    calendar = service.calendars().get(calendarId=calendar_id).execute()
-    timezone_name = calendar.get("timeZone")
-
-    if isinstance(timezone_name, str) and timezone_name:
-        return {"timezone_name": timezone_name}
-
-    return {"timezone_name": None}
