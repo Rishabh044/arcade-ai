@@ -362,6 +362,8 @@ async def delete_event(
     )
 
 
+# TODO: would be nice to have a "min_slot_duration" parameter
+# TODO: find a way to have "include_weekends" parameter without confusing LLMs
 @tool(
     requires_auth=Google(
         scopes=["https://www.googleapis.com/auth/calendar.readonly"],
