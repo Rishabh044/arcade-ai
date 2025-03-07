@@ -633,6 +633,10 @@ def merge_intervals(intervals: list[tuple[datetime, datetime]]) -> list[tuple[da
 
 
 # Calendar utils
+def weekday_to_name(weekday: int) -> str:
+    return ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][weekday]
+
+
 def get_time_boundaries_for_date(
     current_date: datetime,
     global_start: datetime,
@@ -689,8 +693,14 @@ def subtract_busy_intervals(
     if not merged_busy:
         return [
             {
-                "start": business_start.isoformat(),
-                "end": business_end.isoformat(),
+                "start": {
+                    "datetime": business_start.isoformat(),
+                    "weekday": weekday_to_name(business_start.weekday()),
+                },
+                "end": {
+                    "datetime": business_end.isoformat(),
+                    "weekday": weekday_to_name(business_end.weekday()),
+                },
             }
         ]
 
@@ -698,14 +708,26 @@ def subtract_busy_intervals(
     for busy_start, busy_end in merged_busy:
         if current_free_start < busy_start:
             free_slots.append({
-                "start": current_free_start.isoformat(),
-                "end": busy_start.isoformat(),
+                "start": {
+                    "datetime": current_free_start.isoformat(),
+                    "weekday": weekday_to_name(current_free_start.weekday()),
+                },
+                "end": {
+                    "datetime": busy_start.isoformat(),
+                    "weekday": weekday_to_name(busy_start.weekday()),
+                },
             })
         current_free_start = max(current_free_start, busy_end)
     if current_free_start < business_end:
         free_slots.append({
-            "start": current_free_start.isoformat(),
-            "end": business_end.isoformat(),
+            "start": {
+                "datetime": current_free_start.isoformat(),
+                "weekday": weekday_to_name(current_free_start.weekday()),
+            },
+            "end": {
+                "datetime": business_end.isoformat(),
+                "weekday": weekday_to_name(business_end.weekday()),
+            },
         })
     return free_slots
 
