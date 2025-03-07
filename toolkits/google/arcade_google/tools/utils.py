@@ -1,7 +1,7 @@
 import logging
 import re
 from base64 import urlsafe_b64decode, urlsafe_b64encode
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from email.message import EmailMessage
 from email.mime.text import MIMEText
 from enum import Enum
@@ -633,29 +633,24 @@ def merge_intervals(intervals: list[tuple[datetime, datetime]]) -> list[tuple[da
 
 
 # Calendar utils
-def get_business_hours_for_day(
+def get_time_boundaries_for_date(
     current_date: datetime,
-    business_tz: timezone,
     global_start: datetime,
     global_end: datetime,
+    start_time_boundary: time,
+    end_time_boundary: time,
 ) -> tuple[datetime, datetime]:
-    """
-    Compute the allowed business hours for the given day, adjusting for global bounds.
+    """Compute the allowed start and end times for the given day, adjusting for global bounds."""
+    day_start_time = datetime.combine(current_date, start_time_boundary)
+    day_end_time = datetime.combine(current_date, end_time_boundary)
 
-    Business hours are defined as 08:00 to 19:00 in the business_tz timezone.
-    On the first and last day, the business hours are trimmed to the global_start/global_end.
-    """
-    day_business_start = datetime(
-        current_date.year, current_date.month, current_date.day, 8, 0, tzinfo=business_tz
-    )
-    day_business_end = datetime(
-        current_date.year, current_date.month, current_date.day, 19, 0, tzinfo=business_tz
-    )
     if current_date == global_start.date():
-        day_business_start = max(day_business_start, global_start)
+        day_start_time = max(day_start_time, global_start)
+
     if current_date == global_end.date():
-        day_business_end = min(day_business_end, global_end)
-    return day_business_start, day_business_end
+        day_end_time = min(day_end_time, global_end)
+
+    return day_start_time, day_end_time
 
 
 def gather_busy_intervals(
@@ -718,7 +713,10 @@ def compute_free_time_intersection(
     busy_data: dict[str, Any],
     global_start: datetime,
     global_end: datetime,
-    tz: timezone = timezone.utc,
+    start_time_boundary: time,
+    end_time_boundary: time,
+    include_weekends: bool,
+    tz: timezone,
 ) -> list[dict[str, Any]]:
     """
     Returns the free time slots across all calendars within the global bounds,
@@ -741,18 +739,25 @@ def compute_free_time_intersection(
     current_date = global_start.date()
 
     while current_date <= global_end.date():
-        # Only consider weekdays (Monday=0 to Friday=4)
-        if current_date.weekday() <= 5:
-            day_start, day_end = get_business_hours_for_day(
-                current_date, tz, global_start, global_end
-            )
-            # Skip if the day's business window is empty.
-            if day_start >= day_end:
-                current_date += timedelta(days=1)
-                continue
+        if not include_weekends and current_date.weekday() >= 5:
+            current_date += timedelta(days=1)
+            continue
 
-            busy_intervals = gather_busy_intervals(busy_data, day_start, day_end, tz)
-            free_slots.extend(subtract_busy_intervals(day_start, day_end, busy_intervals))
+        day_start, day_end = get_time_boundaries_for_date(
+            current_date=current_date,
+            global_start=global_start,
+            global_end=global_end,
+            start_time_boundary=start_time_boundary,
+            end_time_boundary=end_time_boundary,
+        )
+
+        # Skip if the day's allowed time window is empty.
+        if day_start >= day_end:
+            current_date += timedelta(days=1)
+            continue
+
+        busy_intervals = gather_busy_intervals(busy_data, day_start, day_end, tz)
+        free_slots.extend(subtract_busy_intervals(day_start, day_end, busy_intervals))
 
         current_date += timedelta(days=1)
 

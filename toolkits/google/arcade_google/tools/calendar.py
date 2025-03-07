@@ -386,6 +386,25 @@ async def find_time_slots_when_everyone_is_free(
         "The end date to search for time slots in the format 'YYYY-MM-DD'. Defaults to seven days "
         "from the start date. It will search until this date at the time 23:59:59.",
     ] = None,
+    start_time_boundary: Annotated[
+        Optional[str],
+        "Will return free slots in a given day starting from this time in the format 'HH:MM'. "
+        "Defaults to 08:00, which is the usual business hour start time.",
+    ] = "08:00",
+    end_time_boundary: Annotated[
+        Optional[str],
+        "Will return free slots in a given day until this time in the format 'HH:MM'. "
+        "Defaults to 18:00, which is the usual business hour end time.",
+    ] = "18:00",
+    timezone: Annotated[
+        Optional[str],
+        "The timezone to use for the free time search (IANA Time Zone Database name - e.g. "
+        "'America/Los_Angeles'). Defaults to the user's calendar timezone (or UTC, "
+        "if no timezone is configured for the calendar).",
+    ] = None,
+    include_weekends: Annotated[
+        bool, "Whether to include weekends in the free time slots returned. Defaults to False."
+    ] = False,
 ) -> Annotated[
     dict, "A dictionary with the free slots and the currently logged in user's timezone"
 ]:
@@ -406,16 +425,16 @@ async def find_time_slots_when_everyone_is_free(
     if user_info["email"] not in email_addresses:
         email_addresses.append(user_info["email"])
 
-    # Get the calendar's default timezone to use for the free/busy search
-    calendar_timezone = await get_calendar_default_timezone(context)
-    timezone_name = calendar_timezone["timezone_name"]
-    if not timezone_name:
-        timezone_name = "UTC"
+    if not timezone:
+        calendar_timezone = await get_calendar_default_timezone(context)
+        timezone = calendar_timezone["timezone_name"]
+        if not timezone:
+            timezone = "UTC"
 
     try:
-        tz = ZoneInfo(timezone_name)
+        tz = ZoneInfo(timezone)
     except Exception as e:
-        raise InvalidTimezoneError(timezone_name) from e
+        raise InvalidTimezoneError(timezone) from e
 
     start_datetime = datetime.strptime(start_date, "%Y-%m-%d").replace(
         hour=0, minute=0, second=0, microsecond=0, tzinfo=tz
@@ -430,18 +449,26 @@ async def find_time_slots_when_everyone_is_free(
             body={
                 "timeMin": start_datetime.isoformat(),
                 "timeMax": end_datetime.isoformat(),
-                "timeZone": timezone_name,
+                "timeZone": timezone,
                 "items": [{"id": email_address} for email_address in email_addresses],
             }
         )
         .execute()
     )
     busy_slots = response["calendars"]
-    free_slots = compute_free_time_intersection(busy_slots, start_datetime, end_datetime, tz)
+    free_slots = compute_free_time_intersection(
+        busy_data=busy_slots,
+        global_start=start_datetime,
+        global_end=end_datetime,
+        start_time_boundary=datetime.strptime(start_time_boundary, "%H:%M").time(),
+        end_time_boundary=datetime.strptime(end_time_boundary, "%H:%M").time(),
+        include_weekends=include_weekends,
+        tz=tz,
+    )
 
     return {
         "free_slots": free_slots,
-        "timezone": timezone_name,
+        "timezone": timezone,
     }
 
 
