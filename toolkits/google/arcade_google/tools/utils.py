@@ -633,23 +633,17 @@ def merge_intervals(intervals: list[tuple[datetime, datetime]]) -> list[tuple[da
 
 
 # Calendar utils
-def get_datetime_range(
+def get_freebusy_date_range(
+    start_date: Optional[str],
+    end_date: Optional[str],
     timezone_str: Optional[str] = None,
-    date_range: Optional[DateRange] = None,
-    start_date: Optional[str] = None,
-    start_time: Optional[str] = "00:00:00",
-    end_date: Optional[str] = None,
-    end_time: Optional[str] = "23:59:59",
-) -> tuple[datetime, datetime]:
+) -> tuple[str, str]:
     """
-    Get a date/time range as native Python datetime objects.
+    Get a datetime range in isoformat strings for Google Calendar free/busy search
 
-    :timezone_str: The timezone name to use for the event (supported by Python's zoneinfo).
-    :date_range: The date range to use for the event.
     :start_date: The start date in the format YYYY-MM-DD.
-    :start_time: The start time in the format HH:MM:SS.
     :end_date: The end date in the format YYYY-MM-DD.
-    :end_time: The end time in the format HH:MM:SS.
+    :timezone_str: The timezone name to use for the event (supported by Python's zoneinfo).
     """
     timezone_obj = None
 
@@ -659,20 +653,8 @@ def get_datetime_range(
         except Exception as e:
             raise InvalidTimezoneError(timezone_str) from e
 
-    start_time = datetime.strptime(start_time, "%H:%M:%S").time()
-    end_time = datetime.strptime(end_time, "%H:%M:%S").time()
-
-    if date_range:
-        start_datetime, end_datetime = date_range.to_datetime_range(
-            start_time=start_time,
-            end_time=end_time,
-            time_zone=timezone_obj,
-        )
-    else:
-        start_date = start_date or datetime.now()
-        start_datetime = datetime.combine(start_date, start_time)
-        end_date = end_date or (datetime.now() + timedelta(days=7))
-        end_datetime = datetime.combine(end_date, end_time)
+    start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
+    end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
 
     if timezone_obj:
         start_datetime = start_datetime.replace(tzinfo=timezone_obj)

@@ -14,19 +14,6 @@ class DateRange(Enum):
     NEXT_WEEK = "next_week"
     THIS_MONTH = "this_month"
     NEXT_MONTH = "next_month"
-    NEXT_2_DAYS = "next_2_days"
-    NEXT_3_DAYS = "next_3_days"
-    NEXT_4_DAYS = "next_4_days"
-    NEXT_5_DAYS = "next_5_days"
-    NEXT_6_DAYS = "next_6_days"
-    NEXT_7_DAYS = "next_7_days"
-
-    def is_next_days_delta(self) -> bool:
-        return (
-            self.value.startswith("next_")
-            and self.value.endswith("_days")
-            and self.value.split("_")[1].isdigit()
-        )
 
     def to_datetime_range(
         self,
@@ -66,9 +53,6 @@ class DateRange(Enum):
             start_date = (today.replace(day=1) + timedelta(days=31)).replace(day=1)
             next_month = start_date + timedelta(days=31)
             end_date = next_month.replace(day=1) - timedelta(days=1)
-        elif self.is_next_days_delta():
-            delta = int(self.value.split("_")[1])
-            start_date, end_date = today, today + timedelta(days=delta)
         else:
             raise ValueError(
                 f"DateRange enum value: {self} is not supported for date range conversion"
