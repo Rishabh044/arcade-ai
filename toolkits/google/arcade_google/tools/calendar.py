@@ -388,27 +388,24 @@ async def find_time_slots_when_everyone_is_free(
     ] = None,
     start_time_boundary: Annotated[
         Optional[str],
-        "Will return free slots in a given day starting from this time in the format 'HH:MM'. "
-        "Defaults to 08:00, which is the usual business hour start time.",
+        "Will return free slots in any given day starting from this time in the format 'HH:MM'. "
+        "Defaults to '08:00', which is a usual business hour start time.",
     ] = "08:00",
     end_time_boundary: Annotated[
         Optional[str],
-        "Will return free slots in a given day until this time in the format 'HH:MM'. "
-        "Defaults to 18:00, which is the usual business hour end time.",
+        "Will return free slots in any given day until this time in the format 'HH:MM'. "
+        "Defaults to '18:00', which is a usual business hour end time.",
     ] = "18:00",
-    timezone: Annotated[
-        Optional[str],
-        "The timezone to use for the free time search (IANA Time Zone Database name - e.g. "
-        "'America/Los_Angeles'). Defaults to the user's calendar timezone (or UTC, "
-        "if no timezone is configured for the calendar).",
-    ] = None,
     include_weekends: Annotated[
         bool, "Whether to include weekends in the free time slots returned. Defaults to False."
     ] = False,
 ) -> Annotated[
-    dict, "A dictionary with the free slots and the currently logged in user's timezone"
+    dict,
+    "A dictionary with the free slots and the timezone in which time slots are represented.",
 ]:
-    """Provides time slots when multiple people are free within the given date range."""
+    """
+    Provides time slots when multiple people are free within a given date range and time boundaries.
+    """
     credentials = Credentials(
         context.authorization.token if context.authorization and context.authorization.token else ""
     )
@@ -425,11 +422,10 @@ async def find_time_slots_when_everyone_is_free(
     if user_info["email"] not in email_addresses:
         email_addresses.append(user_info["email"])
 
+    calendar_timezone = await get_calendar_default_timezone(context)
+    timezone = calendar_timezone["timezone_name"]
     if not timezone:
-        calendar_timezone = await get_calendar_default_timezone(context)
-        timezone = calendar_timezone["timezone_name"]
-        if not timezone:
-            timezone = "UTC"
+        timezone = "UTC"
 
     try:
         tz = ZoneInfo(timezone)
@@ -442,6 +438,19 @@ async def find_time_slots_when_everyone_is_free(
     end_datetime = datetime.strptime(end_date, "%Y-%m-%d").replace(
         hour=23, minute=59, second=59, microsecond=0, tzinfo=tz
     )
+
+    is_date_range_a_weekend = (
+        start_datetime.weekday() >= 5
+        and end_datetime.weekday() >= 5
+        and (end_datetime - start_datetime).days <= 1
+    )
+
+    # If the date range is within a weekend, we override the include_weekends flag to True.
+    # include_weekends is False by default because this tool is expected to be used mostly in a
+    # business context. But when the user explicitly asks for times in a weekend,
+    # LLMs do not have the awareness to set the correct flag, so we override it.
+    if not include_weekends and is_date_range_a_weekend:
+        include_weekends = True
 
     response = (
         calendar_service.freebusy()
@@ -460,8 +469,10 @@ async def find_time_slots_when_everyone_is_free(
         busy_data=busy_slots,
         global_start=start_datetime,
         global_end=end_datetime,
-        start_time_boundary=datetime.strptime(start_time_boundary, "%H:%M").time(),
-        end_time_boundary=datetime.strptime(end_time_boundary, "%H:%M").time(),
+        start_time_boundary=datetime.strptime(start_time_boundary, "%H:%M")
+        .time()
+        .replace(tzinfo=tz),
+        end_time_boundary=datetime.strptime(end_time_boundary, "%H:%M").time().replace(tzinfo=tz),
         include_weekends=include_weekends,
         tz=tz,
     )

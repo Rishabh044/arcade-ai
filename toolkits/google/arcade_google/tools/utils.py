@@ -639,10 +639,11 @@ def get_time_boundaries_for_date(
     global_end: datetime,
     start_time_boundary: time,
     end_time_boundary: time,
+    tz: timezone,
 ) -> tuple[datetime, datetime]:
     """Compute the allowed start and end times for the given day, adjusting for global bounds."""
-    day_start_time = datetime.combine(current_date, start_time_boundary)
-    day_end_time = datetime.combine(current_date, end_time_boundary)
+    day_start_time = datetime.combine(current_date, start_time_boundary).replace(tzinfo=tz)
+    day_end_time = datetime.combine(current_date, end_time_boundary).replace(tzinfo=tz)
 
     if current_date == global_start.date():
         day_start_time = max(day_start_time, global_start)
@@ -749,6 +750,7 @@ def compute_free_time_intersection(
             global_end=global_end,
             start_time_boundary=start_time_boundary,
             end_time_boundary=end_time_boundary,
+            tz=tz,
         )
 
         # Skip if the day's allowed time window is empty.
