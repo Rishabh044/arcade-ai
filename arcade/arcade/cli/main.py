@@ -420,7 +420,37 @@ def evals(
     asyncio.run(run_evaluations())
 
 
-@cli.command(help="Launch Arcade locally for tool dev", rich_help_panel="Launch")
+@cli.command(
+    help="Start Arcade Worker serving tools installed in the current python environment",
+    rich_help_panel="Launch",
+)
+def serve(
+    host: str = typer.Option(
+        "127.0.0.1",
+        help="Host for the app, from settings by default.",
+        show_default=True,
+    ),
+    port: int = typer.Option(
+        "8002", "-p", "--port", help="Port for the app, defaults to ", show_default=True
+    ),
+    disable_auth: bool = typer.Option(
+        False,
+        "--no-auth",
+        help="Disable authentication for the worker. Not recommended for production.",
+        show_default=True,
+    ),
+    otel_enable: bool = typer.Option(
+        False, "--otel-enable", help="Send logs to OpenTelemetry", show_default=True
+    ),
+    debug: bool = typer.Option(False, "--debug", "-d", help="Show debug information"),
+) -> None:
+    """
+    Start a local Arcade Worker server.
+    """
+    workerup(host, port, disable_auth, otel_enable, debug)
+
+
+@cli.command(help="Launch Arcade Worker and Engine locally", rich_help_panel="Launch")
 def dev(
     host: str = typer.Option("127.0.0.1", help="Host for the worker server.", show_default=True),
     port: int = typer.Option(
@@ -445,7 +475,8 @@ def dev(
         typer.Exit(code=1)
 
 
-@cli.command(help="Start a local Arcade Worker server", rich_help_panel="Launch")
+# TODO: deprecate this next major version
+@cli.command(help="Start a local Arcade Worker server", rich_help_panel="Launch", hidden=True)
 def workerup(
     host: str = typer.Option(
         "127.0.0.1",
