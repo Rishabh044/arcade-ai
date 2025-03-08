@@ -109,11 +109,11 @@ on their use case.
 
 <table>
 <tr>
-<th>Traditional Approach</th>
-<th>Arcade Approach</th>
+<th>Without Arcade</th>
+<th>With Arcade</th>
 </tr>
 <tr>
-<td>
+<td style="font-size: 0.7em;">
 
 ```python
 # Building a Gmail tool traditionally
@@ -150,7 +150,7 @@ def list_emails(max_results=10):
 ```
 
 </td>
-<td>
+<td style="font-size: 0.7em;">
 
 ```python
 # Building a Gmail tool with Arcade SDK
@@ -190,11 +190,11 @@ async def list_emails(
 
 <table>
 <tr>
-<th>Traditional Approach</th>
-<th>Arcade Approaches</th>
+<th>Without Arcade</th>
+<th>With Arcade</th>
 </tr>
 <tr>
-<td>
+<td style="font-size: 0.7em;">
 
 ```python
 # Executing a tool traditionally
@@ -294,7 +294,7 @@ def execute_with_tools(query):
 ```
 
 </td>
-<td>
+<td style="font-size: 0.7em;">
 
 ```python
 # Method 1: Arcade LLM API (simplest)
@@ -363,17 +363,28 @@ emails = client.tools.execute(
 
 ## Why Build Tools with Arcade?
 
-The Arcade Tool SDK solves critical problems for developers building AI agent tools:
+Arcade solves key challenges for agent developers:
 
-1. **Multi-User Ready**: Tools you build automatically support multiple users with separate authentication, permissions, and data access.
+1. **Auth Native to Agents**: Authentication designed for agentic workflows — the right token is always available for each user without complex integration work.
 
-2. **OAuth Without the Pain**: Write tools that access user services (Gmail, Slack, Google Calendar) without implementing complex OAuth flows.
+2. **Multi-Tenant Tool Calling**: Enable your agent to take actions AS the specific user of the agent
 
-3. **Universal LLM Compatibility**: Tools are automatically formatted to work with any LLM (OpenAI, Anthropic, Claude, etc.) and various agent frameworks.
+3. **Better Agent Capabilities**: Build tools that securely connect to the services your users want your agent to integrate with (Gmail, Slack, Google Drive, Zoom, etc.) without complex integration code.
 
-4. **Standardized Definition**: Use simple Python annotations instead of complex JSON schemas to define your tools.
+4. **Clean Codebase**: Eliminate environment variables full of API keys and complex OAuth implementations from your application code.
 
-5. **Execution Infrastructure**: Deploy your tools to work at scale without managing your own infrastructure.
+5. **Flexible Integration**: Choose your integration approach:
+
+    - LLM API for the simplest experience with hundreds of pre-built tools
+    - Tools API for direct execution control
+    - Auth API for authentication-only integration
+    - Framework connectors for LangChain, CrewAI and others
+
+6. **Zero Schema Maintenance**: Tool definitions generate automatically from code annotations and translate to any LLM format.
+
+7. **Built-in Evaluation**: Evaluate your tools across user scenarios, llms, and context with Arcade's tool calling evaluation framework. Ensure your tools are working as expected and are useful for your agents.
+
+8. **Complete Tooling Ecosystem**: Built-in evaluation framework, scalable execution infrastructure, and flexible deployment options (including VPC, Docker, and Kubernetes).
 
 Arcade lets you focus on creating useful tool functionality rather than solving complex authentication, deployment, and integration challenges.
 
@@ -482,18 +493,10 @@ Now you're ready to build tools with Arcade!
 
 ### Sharing Your Toolkit
 
-Arcade has a community of developers who have built tools that you can use in your agentic applications. You can list your toolkit on Arcade to share it with the community. Every toolkit is assigned a designator that informs developers what they can expect from the toolkit developer.
-
--   **Arcade Toolkit:**
-    Official, production-ready tools maintained by Arcade.
-
--   **Verified Toolkit:**
-    Arcade-verified tools ensuring quality and reliability. Hosted and tested by community members.
-
--   **Community Toolkit:**
-    A diverse array of tools contributed by the developer community supported solely by the community.
-
 To list your toolkit on Arcade, you can open a PR to add your toolkit to the [arcadeai/docs](https://github.com/ArcadeAI/docs) repository.
+
+<br>
+<br>
 
 ## Using Tools with Agents
 
