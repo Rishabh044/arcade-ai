@@ -1,0 +1,67 @@
+name: Publish LangChain Arcade
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (leave empty to use version from pyproject.toml)"
+        required: false
+
+jobs:
+  test-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.8.5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Test LangChain Arcade
+        working-directory: contrib/langchain
+        run: |
+          poetry install --with dev
+          make check
+          poetry run pytest
+
+      - name: Set version if provided
+        if: inputs.version != ''
+        working-directory: contrib/langchain
+        run: |
+          poetry version ${{ inputs.version }}
+
+      - name: Publish to PyPI
+        working-directory: contrib/langchain
+        run: |
+          poetry build
+          # Extract version from pyproject.toml using poetry and save it
+          VERSION=$(poetry version -s)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
+          poetry publish
+
+      - name: Send status to Slack
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
+          payload: |
+            {
+              "status": "${{ job.status }}",
+              "project": "langchain_arcade",
+              "version": "${{ env.VERSION }}",
+              "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
