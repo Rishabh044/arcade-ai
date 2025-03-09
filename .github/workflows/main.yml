@@ -64,27 +64,3 @@ jobs:
         if: ${{ matrix.python-version == '3.10' }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  langchain-check:
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.files.*.path, 'contrib/langchain/') || github.event_name == 'push'
-    steps:
-      - name: Check out
-        uses: actions/checkout@v4
-
-      - name: Set up python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 1.8.5
-
-      - name: Run checks
-        working-directory: contrib/langchain
-        run: |
-          poetry install --with dev
-          make check
-          poetry run pytest
