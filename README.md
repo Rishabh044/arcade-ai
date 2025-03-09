@@ -388,7 +388,7 @@ Arcade solves key challenges for agent developers:
 
 Arcade lets you focus on creating useful tool functionality rather than solving complex authentication, deployment, and integration challenges.
 
-## Quickstart: Call a Tool in 5 Minutes
+## Quickstart: Call your first tool
 
 ```bash
 # Install the Arcade CLI
@@ -397,20 +397,13 @@ pip install arcade-ai
 # Log in to Arcade
 arcade login
 
-# Create a new toolkit
-arcade new
-
-# Install locally
-cd mytoolkit
-pip install -e .
-arcade show --local
-
-# Serve your toolkit
-arcade serve
+# Run Arcade Chat and call a tool
+arcade chat -s
 ```
 
-Now you can head to https://api.arcade.dev/workers and call your toolkits
-through the playground, LLM API, or Tools API of Arcade.
+Ask the LLM to read an email or send a slack message
+
+Now you can start building your own tools and use them through Arcade.
 
 ## Building Your Own Tools
 
@@ -489,7 +482,23 @@ Now you're ready to build tools with Arcade!
     arcade serve
     ```
 
-    This will serve the toolkit at `http://localhost:8000`.
+    This will serve the toolkit at `http://localhost:8002`.
+
+This last command will start a server that hosts your toolkit at `http://localhost:8002`.
+If you are running the Arcade Engine locally, go to localhost:9099 (or other local address)
+and add the worker address in the "workers" page.
+
+To use your tools in Arcade Cloud, you can use reverse proxy services like
+
+-   localtunnel (`npm install localtunnel && lt --port 8002`)
+-   tailscale
+-   ngrok
+
+that will provide a tunnel from the local server to Arcade cloud.
+
+Once hosted on a public address you can head to
+https://api.arcade.dev/workers and call your toolkits
+through the playground, LLM API, or Tools API of Arcade.
 
 ### Sharing Your Toolkit
 
