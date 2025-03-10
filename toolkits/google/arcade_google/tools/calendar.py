@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from typing import Annotated, Any, Optional
 from zoneinfo import ZoneInfo
@@ -440,7 +441,7 @@ async def find_time_slots_when_everyone_is_free(
         hour=23, minute=59, second=59, microsecond=0, tzinfo=tz
     )
 
-    response = (
+    freebusy_response = (
         calendar_service.freebusy()
         .query(
             body={
@@ -452,7 +453,28 @@ async def find_time_slots_when_everyone_is_free(
         )
         .execute()
     )
-    busy_slots = response["calendars"]
+    busy_slots = freebusy_response["calendars"]
+
+    response_errors = []
+
+    for email in email_addresses:
+        if "errors" not in busy_slots[email]:
+            continue
+        errors = busy_slots[email]["errors"]
+        for error in errors:
+            response_errors.append(
+                f"Error retrieving free slots from calendar of '{email}': "
+                f"{error.get('reason', 'not determined')}"
+            )
+
+    if response_errors:
+        raise RetryableToolError(
+            "Error retrieving free slots from calendars of one or more users.",
+            additional_prompt_content=json.dumps(response_errors),
+            retry_after_ms=1000,
+            developer_message="Error retrieving free slots from calendars of one or more users.",
+        )
+
     free_slots = compute_free_time_intersection(
         busy_data=busy_slots,
         global_start=start_datetime,
