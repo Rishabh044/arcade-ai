@@ -57,14 +57,14 @@ _Pst. hey, you, give us a star if you like it!_
 ## Table of Contents
 
 -   [The Problems with Agent Tools](#the-problems-with-agent-tools)
--   [Building Tools: Without Arcade vs. With Arcade](#building-tools-without-arcade-vs-with-arcade)
+-   [Without Arcade vs. With Arcade](#without-arcade-vs-with-arcade)
 -   [Why Build Tools with Arcade?](#why-build-tools-with-arcade)
 -   [Quickstart: Call your first tool](#quickstart-call-your-first-tool)
 -   [Building Your Own Tools](#building-your-own-tools)
     -   [Tool SDK Installation](#tool-sdk-installation)
     -   [Creating a New Tool](#creating-a-new-tool)
     -   [Sharing Your Toolkit](#sharing-your-toolkit)
--   [Using Tools with Agents](#using-tools-with-agents)
+-   [Calling your tools](#calling-your-tools)
     -   [LLM API](#llm-api)
     -   [Tools API](#tools-api)
     -   [Integrating with Agent Frameworks](#integrating-with-agent-frameworks)
@@ -236,13 +236,30 @@ pip install arcade-ai
 # Log in to Arcade
 arcade login
 
+# Show what tools are hosted by Arcade
+arcade show
+
+# show what tools are in a toolkit
+arcade show -T Google
+
+# look at the definition of a tool
+arcade show -t Google.ListEmails
+
 # Run Arcade Chat and call a tool
 arcade chat -s
 ```
 
-Ask the LLM to read an email or send a slack message
+Ask the chat to
 
-Now you can start building your own tools and use them through Arcade.
+-   Read your latest email in gmail
+-   Find latest tweets by @tryarcade
+
+If Arcade already hosts the tools you need to build your agent, you
+can navigate to the [Quickstart](https://docs.arcade.dev/home/quickstart) to
+learn how to call tools programmatically in Python, Typescript, or HTTP.
+
+However, if not, you can start building your own tools and use them through Arcade
+benefitting from all the same features (like auth) that the cloud hosted tools have.
 
 ## Building Your Own Tools
 
@@ -339,6 +356,8 @@ Once hosted on a public address you can head to
 https://api.arcade.dev/workers and call your toolkits
 through the playground, LLM API, or Tools API of Arcade.
 
+For more details on building your own tools, see the [Tool SDK Documentation](https://docs.arcade.dev/home/build-tools/create-a-tool-with-auth) and see more on calling your own tools below.
+
 ### Sharing Your Toolkit
 
 To list your toolkit on Arcade, you can open a PR to add your toolkit to the [arcadeai/docs](https://github.com/ArcadeAI/docs) repository.
@@ -346,7 +365,7 @@ To list your toolkit on Arcade, you can open a PR to add your toolkit to the [ar
 <br>
 <br>
 
-## Using Tools with Agents
+## Calling your tools
 
 Arcade provides multiple ways to use your tools with various agent frameworks. Depending on your use case, you can choose the best method for your application.
 
@@ -358,7 +377,7 @@ The LLM API provides the simplest way to integrate Arcade tools into your applic
 import os
 from openai import OpenAI
 
-prompt = "Send sam a note that I'll be late to the meeting"
+prompt = "Say hello to Sam"
 
 api_key = os.environ["ARCADE_API_KEY"]
 openai = OpenAI(
@@ -372,7 +391,7 @@ response = openai.chat.completions.create(
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": prompt},
     ],
-    tools=["Slack.SendDmToUser"],
+    tools=["Mytoolkit.SayHello"],
     tool_choice="generate",
     user="user@example.com"
 )
@@ -383,8 +402,7 @@ print(response.choices[0].message.content)
 When a user hasn't authorized a service, the API seamlessly returns an authorization link in the response:
 
 ```
-To send a Slack message, please authorize access to your Slack account:
-https://some.auth.url.arcade.will.generate.for.you...
+Please authorize the tool by visiting: https://some.auth.url.arcade.will.generate.for.you...
 
 ```
 
@@ -393,7 +411,7 @@ All you need to do is show the url to the user, and from then on, the user will 
 After authorization, the same API call returns the completed action:
 
 ```
-I've sent a message to Sam letting them know you'll be late to the meeting.
+Hello Sam!
 ```
 
 ### Tools API
@@ -410,7 +428,7 @@ client = Arcade(api_key=os.environ["ARCADE_API_KEY"])
 
 # Start the authorization process for Slack
 auth_response = client.tools.authorize(
-    tool_name="Slack.SendDmToUser",
+    tool_name="Mytoolkit.SayHello",
     user_id="user@example.com",
 )
 
@@ -426,7 +444,7 @@ tool_input = {
     "message": "I'll be late to the meeting"
 }
 response = client.tools.execute(
-    tool_name="Slack.SendDmToUser",
+    tool_name="Mytoolkit.SayHello",
     input=tool_input,
     user_id="user@example.com",
 )
@@ -456,7 +474,7 @@ arcade_api_key = os.environ["ARCADE_API_KEY"]
 openai_api_key = os.environ["OPENAI_API_KEY"]
 
 manager = ArcadeToolManager(api_key=arcade_api_key)
-tools = manager.get_tools(tools=["Slack.SendDmToUser"])
+tools = manager.get_tools(tools=["Mytoolkit.SayHello"])
 
 model = ChatOpenAI(
     model="gpt-4o",
@@ -480,7 +498,7 @@ user_input = {
         },
         {
             "role": "user",
-            "content": "Send sam a note that I'll be late to the meeting",
+            "content": "Say hello to Sam",
         },
     ]
 }
