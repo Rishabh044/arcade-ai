@@ -351,7 +351,7 @@ To use your tools in Arcade Cloud, you can use reverse proxy services like
 that will provide a tunnel from the local server to Arcade cloud.
 
 Once hosted on a public address you can head to
-https://api.arcade.dev/workers and call your toolkits
+https://api.arcade.dev/dashboard/workers and call your toolkits
 through the playground, LLM API, or Tools API of Arcade.
 
 For more details on building your own tools, see the [Tool SDK Documentation](https://docs.arcade.dev/home/build-tools/create-a-tool-with-auth) and see more on calling your own tools below.
