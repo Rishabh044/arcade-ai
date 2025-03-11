@@ -56,56 +56,36 @@ _Pst. hey, you, give us a star if you like it!_
 
 ## Table of Contents
 
--   [What is Arcade?](#what-is-arcade)
--   [Building vs. Executing Tools](#building-vs-executing-tools)
-    -   [Building Tools: Traditional vs. Arcade](#building-tools-traditional-vs-arcade)
-    -   [Executing Tools: Traditional vs. Arcade](#executing-tools-traditional-vs-arcade)
+-   [The Problems with Agent Tools](#the-problems-with-agent-tools)
+-   [Building Tools: Without Arcade vs. With Arcade](#building-tools-without-arcade-vs-with-arcade)
 -   [Why Build Tools with Arcade?](#why-build-tools-with-arcade)
--   [Quickstart: Build a Tool in 5 Minutes](#quickstart-build-a-tool-in-5-minutes)
+-   [Quickstart: Call your first tool](#quickstart-call-your-first-tool)
 -   [Building Your Own Tools](#building-your-own-tools)
     -   [Tool SDK Installation](#tool-sdk-installation)
     -   [Creating a New Tool](#creating-a-new-tool)
-    -   [Testing Your Tools](#testing-your-tools)
     -   [Sharing Your Toolkit](#sharing-your-toolkit)
 -   [Using Tools with Agents](#using-tools-with-agents)
     -   [LLM API](#llm-api)
     -   [Tools API](#tools-api)
-    -   [Auth API](#auth-api)
-    -   [Agent Frameworks](#using-arcade-with-agent-frameworks)
+    -   [Integrating with Agent Frameworks](#integrating-with-agent-frameworks)
+    -   [Arcade Auth API](#arcade-auth-api)
 -   [Client Libraries](#client-libraries)
 -   [Support and Community](#support-and-community)
 
 ## The Problems with Agent Tools
 
-Tool Calling is the process by which agents reach out to external services to gather context and perform actions.
-
 **The Auth Problem**
-
-Most Agent applications today are limited by the tools that can be called as agents
-lack authorization to access external services on the users' behalf. Most LLM tools
-today are not designed to work for multiple users. Because of this,
-many tools use API keys or single tokens with credentials stored in environment
-variables. This makes it nearly impossible to build tools that work for multiple users,
-access user specific data, or securely integrate with external systems that require user
-authentication and authorization.
-
-This limits agents to use tools that only interact with generic services like search engines,
-weather, or calculators.
+Most agent tools lack multi-user authorization capabilities. They typically rely on hardcoded API keys or environment variables, making it impossible to securely access user-specific data or integrate with services requiring user authentication and/or authorization.
 
 **The Execution Problem**
+Tool execution typically happens on the same resources as the agent, limiting scalability and preventing the use of specialized compute resources (serverless, on-premise, etc.).
 
-While "Tool Calling" might seem to imply tool execution occurs in the request, in practice, the tool execution commonly occurs on the same resources as the agent (i.e. orchestration frameworks). This limits the scalability of the tool execution and prohibits the use of diverse (i.e. serverless or on-premise) compute/storage resources.
+**The Tool Definition Problem**
+Maintaining tool definitions separately from code is difficult, especially when tools must work across multiple agent applications and LLMs with different formats.
 
-**The Tool Definition and Maintainence Problem**
+Arcade solves these challenges with standardized tool definition and execution, a robust multi-user auth system, and flexible integration APIs.
 
-Maintaining the format of a tool separately from the tool code is challenging. This is especially true when the tool is used in multiple agentic applications or when the tool is used in different LLMs that have different tool calling formats.
-
-Arcade solves these problems by providing a standardized way to define, manage and
-execute tools, a robust auth system to enable multi-user tool execution, and multiple
-levels of APIs by which developers can integrate Arcade into their own applications depending
-on their use case.
-
-## Building Tools: Traditional vs. Arcade
+## Without Arcade vs. With Arcade
 
 <table>
 <tr>
@@ -116,36 +96,29 @@ on their use case.
 <td style="font-size: 0.7em;">
 
 ```python
-# Building a Gmail tool traditionally
-# Problems:
-# - Hardcoded credentials
-# - Single-user design
-# - Manual OAuth flow implementation
-# - No standard format for LLMs
+# Building a Gmail tool without Arcade
 
+# Define the tool in code, then update
+# definition for each LLM
 def list_emails(max_results=10):
-    # Need to implement OAuth flow
-    # Need to store tokens securely
-    # Need to handle token refresh
 
     # Get credentials here? pass it in?
-    # Need error handling if token not refreshed
     creds = get_credentials()
     # Cache the token?
+    # How do we know the user?
 
-    # Initialize Gmail API client
-    # What if the user isn't authorized? kick off the auth flow?
-    # in the tool call?
+    # What if the user isn't authorized? OAuth Flow? How?e
+    # handle token refresh?
     service = build('gmail', 'v1', credentials=creds)
 
-    # Call the API
-    # Need to handle errors if it fails. Retry logic?
-    messages = service.users().messages().list(
-        userId='me', maxResults=max_results
-    ).execute()
+    ...
 
-    # Format the results for the LLM? utils.py again...
-    return messages
+# Problems:
+# - Hardcoded credentials means no multi-user support
+# - Security risks from exposing secrets/tokens/keys
+# - Manual OAuth flow implementation, if any
+# - Manually updated tool definitions
+# - No standard format translated across LLMs
 
 ```
 
@@ -154,10 +127,12 @@ def list_emails(max_results=10):
 
 ```python
 # Building a Gmail tool with Arcade SDK
+
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Google
-from typing import Annotated
 
+# Define the tool in code, automatically generate
+# tool definition for all LLMs
 @tool(
     requires_auth=Google(
         scopes=["https://www.googleapis.com/auth/gmail.readonly"],
@@ -172,189 +147,19 @@ async def list_emails(
     # Auth token automatically provided and managed by Arcade
     token = context.authorization.token
 
-    # Your implementation using token
+    # Use the token to call the Gmail API
+    # Token is guaranteed to be valid for the user
+    # No need to manually refresh tokens or handle OAuth flows
+    service = build('gmail', 'v1', credentials=token)
+
     # ...
 
 # Tool is automatically:
 # - Multi-tenant (works for any user)
+# - Compliant and secure token, secret, and key management
 # - Can access any user's data or services AS the user
 # - Tool definition is created automatically
 # - Formatted for all LLMs and ready to use
-```
-
-</td>
-</tr>
-</table>
-
-### Executing Tools: Traditional vs. Arcade
-
-<table>
-<tr>
-<th>Without Arcade</th>
-<th>With Arcade</th>
-</tr>
-<tr>
-<td style="font-size: 0.7em;">
-
-```python
-# Executing a tool traditionally
-import os
-import json
-from openai import OpenAI
-from googleapiclient.discovery import build
-
-# Have to manually maintain a registry of all tools and schemas
-TOOLS_REGISTRY = {
-    "list_emails": {
-        "function": list_emails,  # Function we defined earlier
-        "description": "List emails from Gmail",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "max_results": {
-                    "type": "integer",
-                    "description": "Maximum number of emails"
-                }
-            }
-        }
-    }
-    # Add all other tools here...
-}
-
-# Problem: Need to implement tool execution yourself
-def execute_with_tools(query):
-    # 1. Call LLM ... What if I want to use Anthropic?
-    openai = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    completion = openai.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "user", "content": query}
-        ],
-        # Manually define schema for all tools
-        tools=[TOOLS_REGISTRY["list_emails"]],
-        tool_choice="auto"
-    )
-
-    # 2. Parse response to see if tool should be called
-    response_message = completion.choices[0].message
-    # What if parsing fails? Or LLM doesn't call the tool?
-
-    # 3. If tool should be used, execute it manually
-    if hasattr(response_message, 'tool_calls'):
-        results = []
-        for tool_call in response_message.tool_calls:
-            # 4. Need to look up which tool was called
-            tool_name = tool_call.function.name
-            if tool_name not in TOOLS_REGISTRY:
-                results.append({"error": "Unknown tool"})
-                continue
-
-            # 5. Need credentials for THIS user somehow
-            creds = get_user_credentials()  # How? Auth flow?
-
-            # 6. Parse arguments from the LLM
-            try:
-                args = json.loads(tool_call.function.arguments)
-            except json.JSONDecodeError:
-                results.append({"error": "Invalid arguments"})
-                continue
-
-            # 7. Call the tool function with args
-            try:
-                tool_result = TOOLS_REGISTRY[tool_name]["function"](**args)
-                results.append(tool_result)
-            except Exception as e:
-                results.append({"error": str(e)})
-
-        # 8. Format results for LLM
-        formatted_results = json.dumps(results)
-
-        # 9. Call LLM again with results
-        second_completion = openai.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "user", "content": query},
-                response_message,
-                {"role": "function", "name": tool_name, "content": formatted_results}
-            ]
-        )
-
-        return second_completion.choices[0].message.content
-
-    return response_message.content
-
-# Problems:
-# - Must maintain tool registry manually
-# - No standard interface for different tools
-# - Each tool requires custom credential management
-# - No way to handle multi-user scenarios
-# - Manual parsing of LLM responses and tool results
-# - Error handling at multiple stages
-# - Complex retry logic if needed
-```
-
-</td>
-<td style="font-size: 0.7em;">
-
-```python
-# Method 1: Arcade LLM API (simplest)
-from openai import OpenAI
-import os
-
-# OpenAI or Arcade clients
-client = OpenAI(
-    base_url="https://api.arcade.dev/v1",
-    api_key=os.environ["ARCADE_API_KEY"]
-)
-
-# One HTTP call
-response = client.chat.completions.create(
-    model="claude-3-7-sonnet", # or gpt-4o, groq, ollama, etc.
-    messages=[
-        {"role": "user", "content": "List my recent emails"}
-    ],
-    tools=["Google.ListEmails"],
-    tool_choice="generate",
-    user="user@example.com"  # Multi-tenant by default
-)
-```
-
-```python
-# Method 2: Arcade Tools API (lower level)
-from arcadepy import Arcade
-from openai import OpenAI
-
-llm = OpenAI()
-client = Arcade(api_key=os.environ["ARCADE_API_KEY"])
-
-# Get the tool definition in OpenAI format (or anthropic, etc)
-tool = client.tools.formatted.get(name="Google.ListEmails", format="openai")
-
-# Get tool call from LLM
-tool_call = llm.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "List my recent emails"}],
-    tools=many_tools,
-    tool_choice="required"
-)
-
-# Authorize the specific user if needed
-auth = client.tools.authorize(
-    tool_name=tool_call.tool_calls[0].function.name,
-    user_id="user@example.com"
-)
-
-# OAuth flow happens automatically if needed
-if auth.status != "completed":
-    print(f"Please authorize: {auth.authorization_url}")
-    client.auth.wait_for_completion(auth)
-
-# token is automatically passed, no need to pass to tools
-emails = client.tools.execute(
-    tool_name="Google.ListEmails",
-    input={"max_results": 10},
-    user_id="user@example.com"
-).output.value
 ```
 
 </td>
@@ -557,24 +362,9 @@ After authorization, the same API call returns the completed action:
 I've sent a message to Sam letting them know you'll be late to the meeting.
 ```
 
-The LLM API eliminates common integration challenges by providing:
-
--   Support for multiple LLM providers (OpenAI, Anthropic, Groq, Ollama)
--   Automatic tool format conversion between different LLMs
--   Built-in retry logic for failed tool calls
--   Seamless OAuth flows on demand with only the OpenAI client.
--   Reduce network calls and client code sprawl with `tool_choice` options (`"generate"` or `"execute"`)
-
 ### Tools API
 
-Use the Tools API when you want to integrate Arcade's runtime for tool calling into your own agent framework (like LangChain or LangGraph), or if you're using your own approach and want to call Arcade tools or tools you've built with the Arcade Tool SDK.
-
-Features:
-
--   Tool format retrieval for conversion between different LLMs
--   Methods for customizing Auth flows
--   Authorize tools by tool name and user id
--   Execute tools by tool name and input
+Use the Tools API when you want to integrate Arcade's runtime for tool calling into an agent framework (like LangChain or LangGraph), or if you're using your own approach and want to call Arcade tools or tools you've built with the Arcade Tool SDK.
 
 Here's an example of how to use the Tools API to call a tool directly without a framework:
 
@@ -708,15 +498,6 @@ credentials = Credentials(token=token)
 gmail_service = build('gmail', 'v1', credentials=credentials)
 emails = gmail_service.users().messages().list(userId='me').execute()
 ```
-
-In this approach, you're responsible for:
-
--   LLM interactions to determine when tools should be called
--   Parsing LLM responses to extract tool calls
--   Executing the actual tool functionality
--   Formatting results for the LLM
-
-But you can enable the multi-user functionality of Arcade into your own tool execution logic by using the Auth API.
 
 ## Client Libraries
 
