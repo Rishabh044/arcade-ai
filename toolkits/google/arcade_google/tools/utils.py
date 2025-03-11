@@ -606,7 +606,7 @@ def build_docs_service(auth_token: Optional[str]) -> Resource:  # type: ignore[n
     return build("docs", "v1", credentials=Credentials(auth_token))
 
 
-def parse_rfc3339(dt_str: str, tz: timezone = timezone.utc) -> datetime:
+def parse_rfc3339_datetime_str(dt_str: str, tz: timezone = timezone.utc) -> datetime:
     """
     Parse an RFC3339 datetime string into a timezone-aware datetime.
     Converts a trailing 'Z' (UTC) into +00:00.
@@ -676,8 +676,8 @@ def gather_busy_intervals(
     busy_intervals = []
     for calendar in busy_data:
         for slot in busy_data[calendar].get("busy", []):
-            slot_start = parse_rfc3339(slot["start"]).astimezone(business_tz)
-            slot_end = parse_rfc3339(slot["end"]).astimezone(business_tz)
+            slot_start = parse_rfc3339_datetime_str(slot["start"]).astimezone(business_tz)
+            slot_end = parse_rfc3339_datetime_str(slot["end"]).astimezone(business_tz)
             if slot_end > day_start and slot_start < day_end:
                 busy_intervals.append((max(slot_start, day_start), min(slot_end, day_end)))
     return busy_intervals
