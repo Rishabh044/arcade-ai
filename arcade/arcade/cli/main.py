@@ -575,7 +575,12 @@ def deploy(
     )
 
     # Fetch deployment configuration
-    deployment = Deployment.from_toml(deployment_file)
+    try:
+        deployment = Deployment.from_toml(deployment_file)
+    except Exception as e:
+        console.print(f"❌ Failed to parse deployment file: {e}", style="bold red")
+        raise typer.Exit(code=1)
+
     with console.status(f"Deploying {len(deployment.worker)} workers"):
         for worker in deployment.worker:
             console.log(f"Deploying '{worker.config.id}...'", style="dim")

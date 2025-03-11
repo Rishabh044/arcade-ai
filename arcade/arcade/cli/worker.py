@@ -217,9 +217,10 @@ def get_toolkits(client: Arcade, worker_id: str | None) -> str:
             return ""
 
         # Get toolkit names
-        for tool in tools.items:
-            if tool.toolkit.name not in toolkits:
-                toolkits.append(tool.toolkit.name)
+        for page in tools.iter_pages():
+            for tool in page.items:
+                if tool.toolkit.name not in toolkits:
+                    toolkits.append(tool.toolkit.name)
         return ", ".join(toolkits)
     except NotFoundError:
         return ""
