@@ -114,14 +114,16 @@ def get_credentials():
 def list_emails(max_results=10):
 
     # Get credentials here? pass it in?
-    creds = get_credentials()
+    secret, token = get_credentials()
     # Cache the token?
     # How do we know the user?
 
-    # What if the user isn't authorized? OAuth Flow? How?e
+    # What if the user isn't authorized? OAuth Flow?
     # handle token refresh?
     try:
-        credentials = Credentials(token=token, secret=secret)
+        credentials = Credentials(
+            token=token,
+            secret=secret)
     except Exception as e:
         # Start the OAuth flow?
         # redirect ? how do we know the user?
@@ -131,11 +133,7 @@ def list_emails(max_results=10):
         # for EVERY SERVICE?
 
     # Call the API
-    service = build(
-        'gmail', 'v1',
-        credentials=Credentials(
-            token=token, secret=secret)
-    )
+    service = build('gmail', 'v1', credentials=credentials)
 
     messages = service.users().messages().list(
         userId='me', maxResults=max_results
@@ -159,6 +157,9 @@ def list_emails(max_results=10):
 
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Google
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
 
 # Define the tool in code, automatically generate
 # tool definition for all LLMs
@@ -166,7 +167,7 @@ from arcade.sdk.auth import Google
     requires_auth=Google(
         scopes=["https://www.googleapis.com/auth/gmail.readonly"],
     )
-)
+) # Automatically generated tool definition from annotations
 async def list_emails(
     context: ToolContext,
     max_results: Annotated[int, "Maximum emails to return"] = 10,
@@ -178,12 +179,12 @@ async def list_emails(
     token = context.authorization.token
 
     # No need to manually refresh tokens or handle OAuth flows
+    # Credentials are automatically refreshed as needed
     service = build('gmail', 'v1', credentials=token)
 
     messages = service.users().messages().list(
         userId='me', maxResults=max_results
     ).execute()
-
 
     return messages
 
