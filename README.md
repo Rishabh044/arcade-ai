@@ -44,8 +44,6 @@ Arcade is a developer platform that lets you build, deploy, and manage tools for
 
 The Tool SDK makes it easy to create powerful, secure tools that your agents can use to interact with the world.
 
-![Arcade Diagram](./diagram.png)
-
 To learn more, check out our [documentation](https://docs.arcade.dev/home).
 
 _Pst. hey, you, give us a star if you like it!_
