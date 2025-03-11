@@ -435,8 +435,8 @@ async def find_time_slots_when_everyone_is_free(
         tz = ZoneInfo("UTC")
 
     # Set default start and end dates, if not provided by the caller
-    start_date = start_date or datetime.now().date().isoformat()
-    end_date = end_date or (datetime.now().date() + timedelta(days=7)).isoformat()
+    start_date = start_date or datetime.now(tz=tz).date().isoformat()
+    end_date = end_date or (datetime.now(tz=tz).date() + timedelta(days=7)).isoformat()
 
     # Parse start and end dates to datetime objects
     start_datetime = datetime.strptime(start_date, "%Y-%m-%d").replace(
