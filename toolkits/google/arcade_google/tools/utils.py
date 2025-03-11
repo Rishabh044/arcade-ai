@@ -1,3 +1,5 @@
+import asyncio
+import functools
 import logging
 import re
 from base64 import urlsafe_b64decode, urlsafe_b64encode
@@ -5,9 +7,10 @@ from datetime import date, datetime, time, timedelta, timezone
 from email.message import EmailMessage
 from email.mime.text import MIMEText
 from enum import Enum
-from typing import Any, Optional, Union, cast
+from typing import Any, Callable, Optional, TypeVar, Union, cast
 from zoneinfo import ZoneInfo
 
+from arcade import __version__ as arcade_version
 from arcade.sdk import ToolContext
 from bs4 import BeautifulSoup
 from google.oauth2.credentials import Credentials
@@ -24,6 +27,8 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T", bound=Callable[..., Any])
 
 
 def parse_datetime(datetime_str: str, time_zone: str) -> datetime:
@@ -828,3 +833,59 @@ def search_contacts(service: Any, query: str, limit: Optional[int]) -> list[dict
     )
 
     return cast(list[dict[str, Any]], response.get("results", []))
+
+
+def require_min_arcade_version(min_version: str) -> Callable[[T], T]:
+    """
+    Decorator that raises an exception if the current Arcade version is less than the
+    required version.
+
+    Usage:
+        @require_min_arcade_version("1.0.0")
+        def my_function():
+            pass
+
+        @require_min_arcade_version("1.2.3")
+        async def my_async_function():
+            pass
+    """
+
+    def version_check(tool_name: str) -> None:
+        """Check if current version meets minimum requirements"""
+        major, minor, patch_version = (int(version) for version in arcade_version.split("."))
+        min_major, min_minor, min_patch_version = (
+            int(version) for version in min_version.split(".")
+        )
+
+        if major > min_major:
+            return
+
+        if major == min_major and minor > min_minor:
+            return
+
+        if major == min_major and minor == min_minor and patch_version >= min_patch_version:
+            return
+
+        raise ValueError(
+            f"Arcade version is '{arcade_version}'. The minimum required version by "
+            f"the tool '{tool_name}' is '{min_version}'."
+        )
+
+    def decorator(func: T) -> T:
+        tool_name = getattr(func, "__tool_name__", func.__name__)
+
+        @functools.wraps(func)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            version_check(tool_name)
+            return func(*args, **kwargs)
+
+        @functools.wraps(func)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+            version_check(tool_name)
+            return await func(*args, **kwargs)
+
+        if asyncio.iscoroutinefunction(func):
+            return cast(T, async_wrapper)
+        return cast(T, sync_wrapper)
+
+    return decorator
