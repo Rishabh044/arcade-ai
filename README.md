@@ -97,6 +97,17 @@ Arcade solves these challenges with standardized tool definition and execution, 
 
 ```python
 # Building a Gmail tool without Arcade
+import os
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
+def get_credentials():
+    # Get credentials from environment variables
+    secret = os.environ["GMAIL_CREDENTIALS"]
+    # Always same token same user
+    # Usually we dangerously elevated privileges
+    token = os.environ["GMAIL_TOKEN"]
+    return secret, token
 
 # Define the tool in code, then update
 # definition for each LLM
@@ -109,9 +120,28 @@ def list_emails(max_results=10):
 
     # What if the user isn't authorized? OAuth Flow? How?e
     # handle token refresh?
-    service = build('gmail', 'v1', credentials=creds)
+    try:
+        credentials = Credentials(token=token, secret=secret)
+    except Exception as e:
+        # Start the OAuth flow?
+        # redirect ? how do we know the user?
+        # handle token refresh?
+        # what are the right scopes?
+        # handle errors?
+        # for EVERY SERVICE?
 
-    ...
+    # Call the API
+    service = build(
+        'gmail', 'v1',
+        credentials=Credentials(
+            token=token, secret=secret)
+    )
+
+    messages = service.users().messages().list(
+        userId='me', maxResults=max_results
+    ).execute()
+
+    return messages
 
 # Problems:
 # - Hardcoded credentials means no multi-user support
@@ -119,7 +149,6 @@ def list_emails(max_results=10):
 # - Manual OAuth flow implementation, if any
 # - Manually updated tool definitions
 # - No standard format translated across LLMs
-
 ```
 
 </td>
@@ -145,16 +174,20 @@ async def list_emails(
     """Lists emails in the user's Gmail inbox."""
 
     # Auth token automatically provided and managed by Arcade
+    # Token is guaranteed to be valid for the user of the agent
     token = context.authorization.token
 
-    # Use the token to call the Gmail API
-    # Token is guaranteed to be valid for the user
     # No need to manually refresh tokens or handle OAuth flows
     service = build('gmail', 'v1', credentials=token)
 
-    # ...
+    messages = service.users().messages().list(
+        userId='me', maxResults=max_results
+    ).execute()
 
-# Tool is automatically:
+
+    return messages
+
+# Solutions with Arcade:
 # - Multi-tenant (works for any user)
 # - Compliant and secure token, secret, and key management
 # - Can access any user's data or services AS the user
