@@ -526,30 +526,32 @@ def workerup(
 @cli.command(help="Deploy worker to Arcade Cloud", rich_help_panel="Deployment")
 def deploy(
     deployment_file: str = typer.Option(
-        "worker.toml", "--deployment-file", help="The deployment file to deploy."
+        "worker.toml", "--deployment-file", "-d", help="The deployment file to deploy."
     ),
     cloud_host: str = typer.Option(
         PROD_CLOUD_HOST,
         "--cloud-host",
         "-c",
         help="The Arcade Cloud host to deploy to.",
+        hidden=True,
     ),
     cloud_port: int = typer.Option(
         None,
         "--cloud-port",
         "-cp",
         help="The port of the Arcade Cloud host.",
+        hidden=True,
     ),
-    engine_host: str = typer.Option(
+    host: str = typer.Option(
         PROD_ENGINE_HOST,
-        "--engine-host",
-        "-e",
-        help="The Arcade Engine host to deploy to.",
+        "--host",
+        "-h",
+        help="The Arcade Engine host to register the worker to.",
     ),
-    engine_port: int = typer.Option(
+    port: int = typer.Option(
         None,
-        "--engine-port",
-        "-ep",
+        "--port",
+        "-p",
         help="The port of the Arcade Engine host.",
     ),
     force_tls: bool = typer.Option(
@@ -568,7 +570,7 @@ def deploy(
     """
 
     config = validate_and_get_config()
-    engine_url = compute_base_url(force_tls, force_no_tls, engine_host, engine_port)
+    engine_url = compute_base_url(force_tls, force_no_tls, host, port)
     engine_client = Arcade(api_key=config.api.key, base_url=engine_url)
     cloud_url = compute_base_url(force_tls, force_no_tls, cloud_host, cloud_port)
     cloud_client = httpx.Client(

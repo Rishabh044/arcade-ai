@@ -158,27 +158,37 @@ def disable_worker(
 @app.command("rm", help="Remove a worker")
 def rm_worker(
     worker_id: str,
+    engine_only: bool = typer.Option(
+        False,
+        "--deregister",
+        "-d",
+        help="Deregister the worker from the engine",
+    ),
     cloud_host: str = typer.Option(
         PROD_CLOUD_HOST,
         "--cloud-host",
         "-c",
         help="The Arcade Engine host.",
+        hidden=True,
     ),
     cloud_port: int = typer.Option(
         None,
         "--cloud-port",
         "-cp",
         help="The port of the Arcade Engine host.",
+        hidden=True,
     ),
     force_tls: bool = typer.Option(
         False,
         "--tls",
         help="Whether to force TLS for the connection to the Arcade Engine.",
+        hidden=True,
     ),
     force_no_tls: bool = typer.Option(
         False,
         "--no-tls",
         help="Whether to disable TLS for the connection to the Arcade Engine.",
+        hidden=True,
     ),
 ) -> None:
     config = validate_and_get_config()
@@ -186,21 +196,34 @@ def rm_worker(
     cloud_url = compute_base_url(force_tls, force_no_tls, cloud_host, cloud_port)
 
     # First attempt to delete from the cloud
-    try:
-        client = httpx.Client()
-        response = client.delete(
-            f"{cloud_url}/api/v1/workers/{worker_id}",
-            headers={"Authorization": f"Bearer {config.api.key}"},
-        )
-        response.raise_for_status()
-    except Exception as e:
-        console.print(f"Error deleting deployment: {e}", style="bold red")
-        raise typer.Exit(code=1)
+    if not engine_only:
+        try:
+            client = httpx.Client()
+            response = client.delete(
+                f"{cloud_url}/api/v1/workers/{worker_id}",
+                headers={"Authorization": f"Bearer {config.api.key}"},
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                console.print(
+                    "Deployment not found. To deregister the worker from the engine, use the --deregister flag.",
+                    style="bold red",
+                )
+                raise typer.Exit(code=1)
+            else:
+                console.print(f"Error deleting deployment: {e}", style="bold red")
+                raise typer.Exit(code=1)
+        except Exception as e:
+            console.print(f"Error deleting deployment: {e}", style="bold red")
+            raise typer.Exit(code=1)
 
     # Then try to delete from the engine
     try:
         arcade = Arcade(api_key=config.api.key, base_url=engine_url)
         arcade.workers.delete(worker_id)
+    except NotFoundError:
+        console.print("Worker not found", style="bold red")
     except Exception as e:
         console.print(f"Error deleting worker from engine: {e}", style="bold red")
         raise typer.Exit(code=1)
