@@ -5,7 +5,13 @@ from arcade.sdk import ToolAuthorizationContext, ToolContext
 from arcade.sdk.errors import ToolExecutionError
 from googleapiclient.errors import HttpError
 
-from arcade_google.tools.calendar import create_event, delete_event, list_events, update_event
+from arcade_google.tools.calendar import (
+    create_event,
+    delete_event,
+    find_time_slots_when_everyone_is_free,
+    list_events,
+    update_event,
+)
 from arcade_google.tools.models import EventVisibility, SendUpdatesOptions
 
 
@@ -152,3 +158,35 @@ async def test_delete_event(mock_build, mock_context):
             event_id="nonexistent_event",
             send_updates=SendUpdatesOptions.ALL,
         )
+
+
+@pytest.mark.asyncio
+async def test_find_free_slots_happiest_path_single_user(mock_build, mock_context):
+    calendar_service = MagicMock()
+    oauth_service = MagicMock()
+
+    mock_build.side_effect = [calendar_service, oauth_service]
+
+    oauth_service.userinfo().get().execute.return_value = {
+        "email": "example@arcade.dev",
+    }
+
+    calendar_service.freebusy().query().execute.return_value = {
+        "calendars": {
+            "example@arcade.dev": {"busy": []},
+        }
+    }
+
+    calendar_service.calendars().get().execute.return_value = {
+        "timeZone": "America/Los_Angeles",
+    }
+
+    response = await find_time_slots_when_everyone_is_free(
+        context=mock_context,
+        email_addresses=["example@arcade.dev"],
+    )
+
+    assert response == {
+        "free_slots": [],
+        "timezone": "America/Los_Angeles",
+    }

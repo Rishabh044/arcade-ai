@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta
 from typing import Annotated, Any, Optional
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Google
@@ -408,6 +408,9 @@ async def find_time_slots_when_everyone_is_free(
     credentials = Credentials(
         context.authorization.token if context.authorization and context.authorization.token else ""
     )
+
+    # Build google api services
+    oauth_service = build("oauth2", "v2", credentials=credentials)
     calendar_service = build("calendar", "v3", credentials=credentials)
 
     email_addresses = email_addresses or []
@@ -416,24 +419,26 @@ async def find_time_slots_when_everyone_is_free(
         email_addresses = [email_addresses]
 
     # Add the currently logged in user to the list of email addresses
-    oauth_service = build("oauth2", "v2", credentials=credentials)
     user_info = oauth_service.userinfo().get().execute()
     if user_info["email"] not in email_addresses:
         email_addresses.append(user_info["email"])
 
+    # Get the timezone of the currently logged in user
     calendar = calendar_service.calendars().get(calendarId="primary").execute()
     timezone_name = calendar.get("timeZone")
 
     try:
         tz = ZoneInfo(timezone_name)
     # If the calendar timezone name is not supported by Python's zoneinfo, use UTC
-    except Exception:
+    except ZoneInfoNotFoundError:
         timezone_name = "UTC"
         tz = ZoneInfo("UTC")
 
+    # Set default start and end dates, if not provided by the caller
     start_date = start_date or datetime.now().date().isoformat()
     end_date = end_date or (datetime.now().date() + timedelta(days=7)).isoformat()
 
+    # Parse start and end dates to datetime objects
     start_datetime = datetime.strptime(start_date, "%Y-%m-%d").replace(
         hour=0, minute=0, second=0, microsecond=0, tzinfo=tz
     )
@@ -441,6 +446,7 @@ async def find_time_slots_when_everyone_is_free(
         hour=23, minute=59, second=59, microsecond=0, tzinfo=tz
     )
 
+    # Get the busy slots from the calendars of the users
     freebusy_response = (
         calendar_service.freebusy()
         .query(
@@ -475,6 +481,7 @@ async def find_time_slots_when_everyone_is_free(
             developer_message="Error retrieving free slots from calendars of one or more users.",
         )
 
+    # Compute the free slots
     free_slots = compute_free_time_intersection(
         busy_data=busy_slots,
         global_start=start_datetime,
