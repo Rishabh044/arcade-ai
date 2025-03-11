@@ -11,6 +11,9 @@
 </a>
     <a href="https://pepy.tech/project/langchain-arcade">
   <img src="https://static.pepy.tech/badge/langchain-arcade" alt="Downloads">
+  <a href="https://pypi.org/project/langchain-arcade/">
+    <img src="https://img.shields.io/pypi/v/langchain-arcade.svg" alt="PyPI">
+  </a>
 </a>
 
 </div>
