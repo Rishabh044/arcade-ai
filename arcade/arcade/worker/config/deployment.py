@@ -213,7 +213,7 @@ class Worker(BaseModel):
 
 
 class Deployment(BaseModel):
-    toml_path: str
+    toml_path: Path
     worker: list[Worker]
 
     # Validate that there are no duplicate worker names
@@ -226,7 +226,7 @@ class Deployment(BaseModel):
 
     # Load a deployment from a toml file
     @classmethod
-    def from_toml(cls, toml_path: str) -> "Deployment":
+    def from_toml(cls, toml_path: Path) -> "Deployment":
         try:
             with open(toml_path) as f:
                 toml_data = toml.load(f)
@@ -237,7 +237,7 @@ class Deployment(BaseModel):
             # Add the toml path to each worker so relative packages can be found
             if "worker" in toml_data:
                 for worker in toml_data["worker"]:
-                    worker["toml_path"] = Path(toml_path)
+                    worker["toml_path"] = toml_path
 
             return cls(**toml_data, toml_path=toml_path)
 

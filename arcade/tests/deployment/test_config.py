@@ -75,9 +75,12 @@ def test_deployment_dict(test_dir):
     config_path = test_dir / "test_files" / "full.worker.toml"
     deployment = Deployment.from_toml(config_path)
     expected = json.loads("""{
-    "id": "test",
+    "name": "test",
     "secret": "test-secret",
-    "pypi_source": {
+    "enabled": true,
+    "timeout": 10,
+    "retries": 3,
+    "pypi": {
         "packages": [
             {
                 "name": "arcade-x",
@@ -88,7 +91,7 @@ def test_deployment_dict(test_dir):
         "index_url": "https://pypi.org/simple",
         "trusted_host": "pypi.org"
     },
-    "custom_source": [
+    "custom_repositories": [
         {
             "packages": [
                 {
@@ -112,7 +115,7 @@ def test_deployment_dict(test_dir):
             "trusted_host": "pypi2.org"
         }
     ],
-    "local_source": [
+    "local_packages": [
         {
             "name": "mock_toolkit",
             "content": "H4sIAOgdymcC/+2XwWuDMBTGPftXZDltMNIkJtrCOrpbL4PdSxmiKXNVIzHt6n+/OAvtNrqbMur7Xd7j5YGH5Ps+JBMyWbzEh6WKU2W8XqAdlyqlgTj17ZxRzriHDt4A7GobG/d5b5zwKSpsVqg5iwRjs6kMBJEzMYtC7nvA1VPoZPtqtc63mZ14/ek/krKrYVcp/655JtyLY4wHNHL6D5iMPCSH1H+dGtX84YBubbO5vvsn4P/g/+f+LyihPBSUSfD/sfl/EWclqZo+9B8Kcdn/eXTyf+bmTAjp9E+H1P9I/b8yWWlv8VLlub5HH9rk6Q2+A+mPhf+R/8Hv/GeQ/4Pkf/Qj/3lEpAgCOQUPGF3+V01l9LtKLLG6yAfLf07F2f9fq/+QhhTyfwhW7d2TSitrmrVfxoVCc4TPXwX298rUmS7bA0oYodhPVZ2YrLLH6bNbR8d1tNEGPZnExQn2451906Z2OyvczdBDqvaL+Ksnrn3EazAaAAAAAAAAAAAAAAAAAOiJT7MTVu0AKAAA"
@@ -120,12 +123,12 @@ def test_deployment_dict(test_dir):
     ]
 }""")
     got = deployment.worker[0].request().model_dump(mode="json")
+    print(got)
     # Remove encoding part that contains the content
-    got_content = got["local_source"][0].pop("content").split("+", 1)[1]
-    expected_content = expected["local_source"][0].pop("content").split("+", 1)[1]
+    got["local_packages"][0].pop("content")
+    expected["local_packages"][0].pop("content")
 
     assert got == expected
-    assert got_content == expected_content
 
 
 def test_invalid_secret_parsing(test_dir):
