@@ -18,16 +18,10 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
-      - uses: actions/cache@v4
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
         with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-langchain-${{ hashFiles('contrib/langchain/.pre-commit-config.yaml') }}
-
-      - name: Set up the environment
-        uses: ./.github/actions/setup-poetry-env
-        with:
-          python-version: "3.10"
-          working-directory: contrib/langchain
+          version: 1.8.5
 
       - name: Install
         run: cd contrib/langchain && make install && make check
@@ -52,11 +46,8 @@ jobs:
         with:
           version: 1.8.5
 
-      - name: Load cached venv
-        uses: actions/cache@v4
-        with:
-          path: contrib/langchain/.tox
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('contrib/langchain/poetry.lock') }}
+      - name: Install dependencies
+        run: cd contrib/langchain && make install
 
       - name: Install tox
         run: |

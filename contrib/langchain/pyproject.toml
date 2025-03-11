@@ -8,7 +8,7 @@ repository = "https://github.com/arcadeai/arcade-ai/tree/main/contrib/langchain"
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = ">=3.10,<4"
 arcadepy = "1.1.*"
 langgraph = ">=0.2.67,<0.3.0"
 
