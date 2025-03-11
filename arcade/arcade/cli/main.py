@@ -3,6 +3,7 @@ import os
 import threading
 import uuid
 import webbrowser
+from pathlib import Path
 from typing import Any, Optional
 
 import httpx
@@ -576,7 +577,7 @@ def deploy(
 
     # Fetch deployment configuration
     try:
-        deployment = Deployment.from_toml(deployment_file)
+        deployment = Deployment.from_toml(Path(deployment_file))
     except Exception as e:
         console.print(f"❌ Failed to parse deployment file: {e}", style="bold red")
         raise typer.Exit(code=1)
