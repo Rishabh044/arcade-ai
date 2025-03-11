@@ -7,12 +7,13 @@ from typing import Any
 
 import httpx
 import toml
-from arcadepy import Arcade
+from arcadepy import Arcade, NotFoundError
 from httpx import Client
 from packaging.requirements import Requirement
 from pydantic import BaseModel, field_validator, model_validator
 
 
+# Base class for versioned packages
 class Package(BaseModel):
     name: str
     specifier: str | None = None
@@ -23,9 +24,12 @@ class Package(BaseModel):
         return cls(name=req.name, specifier=str(req.specifier) if req.specifier else None)
 
 
+# Base class for a list of packages
 class Packages(BaseModel):
     packages: list[Package]
 
+    # Convert string package i.e. "arcade>1.0.0" to a name and specifier
+    # Specifiers are currently unused
     @field_validator("packages", mode="before")
     @classmethod
     def parse_package_requirements(cls, packages: list[str]) -> list[Package]:
@@ -33,21 +37,25 @@ class Packages(BaseModel):
         return [Package.from_requirement(pkg) for pkg in packages]
 
 
+# Base class for a local package
 class LocalPackage(BaseModel):
     name: str
     content: str
 
 
+# Base class for a list of local packages
 class LocalPackages(BaseModel):
     packages: list[str]
 
 
+# Custom repository configurations
 class PackageRepository(Packages):
     index: str
     index_url: str
     trusted_host: str
 
 
+# Pypi is a special case of a package repository
 class Pypi(PackageRepository):
     index: str = "pypi"
     index_url: str = "https://pypi.org/simple"
@@ -61,6 +69,7 @@ class Config(BaseModel):
     retries: int = 3
     secret: str
 
+    # Validate that the secret is a non-empty string and not 'dev'
     @field_validator("secret")
     @classmethod
     def valid_secret(cls, v: str) -> str:
@@ -69,6 +78,7 @@ class Config(BaseModel):
         return v
 
 
+# Cloud request for deploying a worker
 class Request(BaseModel):
     name: str
     secret: str
@@ -80,6 +90,7 @@ class Request(BaseModel):
     local_packages: list[LocalPackage] | None = None
 
     def execute(self, cloud_client: Client, engine_client: Arcade) -> Any:
+        # Attempt to deploy worker to the cloud
         try:
             cloud_response = cloud_client.put(
                 str(cloud_client.base_url) + "/api/v1/workers",
@@ -87,44 +98,38 @@ class Request(BaseModel):
                 timeout=120,
             )
             cloud_response.raise_for_status()
+        except httpx.ConnectError as e:
+            raise ValueError(f"Failed to connect to cloud: {e}")
         except Exception:
             msg = cloud_response.json().get("msg", f"{cloud_response.status_code}: Unknown error")
-
             raise ValueError(f"Failed to start worker: {msg}")
 
         try:
-            # TODO: Remove this once stainless client is updated
-            client = httpx.Client()
-            request = client.get(
-                str(engine_client.base_url) + "/v1/admin/workers/" + self.name,
-                headers=cloud_client.headers,
-                timeout=120,
+            # Check if worker already exists
+            engine_client.workers.get(self.name)
+            engine_client.workers.update(
+                id=self.name,
+                enabled=self.enabled,
+                http={
+                    "uri": cloud_response.json()["data"]["worker_endpoint"],
+                    "secret": self.secret,
+                    "timeout": self.timeout,
+                    "retry": self.retries,
+                },
+            )
+        # If worker does not exist, create it
+        except NotFoundError:
+            engine_client.workers.create(
+                id=self.name,
+                enabled=self.enabled,
+                http={
+                    "uri": cloud_response.json()["data"]["worker_endpoint"],
+                    "secret": self.secret,
+                    "timeout": self.timeout,
+                    "retry": self.retries,
+                },
             )
 
-            exists = request.status_code == 200
-
-            if not exists:
-                engine_client.worker.create(
-                    id=self.name,
-                    enabled=self.enabled,
-                    http={
-                        "uri": cloud_response.json()["data"]["worker_endpoint"],
-                        "secret": self.secret,
-                        "timeout": self.timeout,
-                        "retry": self.retries,
-                    },
-                )
-            else:
-                engine_client.worker.update(
-                    id=self.name,
-                    enabled=self.enabled,
-                    http={
-                        "uri": cloud_response.json()["data"]["worker_endpoint"],
-                        "secret": self.secret,
-                        "timeout": self.timeout,
-                        "retry": self.retries,
-                    },
-                )
         except Exception as e:
             raise ValueError(f"Failed to add worker to engine: {e}")
 
@@ -153,11 +158,13 @@ class Worker(BaseModel):
             local_packages=self.compress_local_packages(),
         )
 
+    # Search for local packages and compress the source code to send
     def compress_local_packages(self) -> list[LocalPackage] | None:
         """Compress local packages into a list of LocalPackage objects."""
         if self.local_source is None:
             return None
 
+        # Compress local packages into a list of LocalPackage objects
         def process_package(package_path_str: str) -> LocalPackage:
             package_path = self.toml_path.parent / package_path_str
 
@@ -165,12 +172,15 @@ class Worker(BaseModel):
                 raise FileNotFoundError(f"Local package not found: {package_path}")
             if not package_path.is_dir():
                 raise FileNotFoundError(f"Local package is not a directory: {package_path}")
+
+            # Check that the package is a valid python package
             if (
                 not (package_path / "pyproject.toml").is_file()
                 and not (package_path / "setup.py").is_file()
             ):
                 raise ValueError(f"'{package_path}' must contain a pyproject.toml or setup.py file")
 
+            # Compress the package into a byte stream and tar
             byte_stream = io.BytesIO()
             with tarfile.open(fileobj=byte_stream, mode="w:gz") as tar:
                 tar.add(package_path, arcname=package_path.name)
@@ -183,6 +193,7 @@ class Worker(BaseModel):
 
         return list(map(process_package, self.local_source.packages))
 
+    # Validate that there are no duplicate packages for each worker
     def validate_packages(self) -> None:
         """Validate packages."""
         packages: list[str] = []
@@ -205,6 +216,7 @@ class Deployment(BaseModel):
     toml_path: str
     worker: list[Worker]
 
+    # Validate that there are no duplicate worker names
     @model_validator(mode="after")
     def validate_workers(self) -> "Deployment":
         for worker in self.worker:
@@ -212,6 +224,7 @@ class Deployment(BaseModel):
                 raise ValueError(f"Duplicate worker name: {worker.config.id}")
         return self
 
+    # Load a deployment from a toml file
     @classmethod
     def from_toml(cls, toml_path: str) -> "Deployment":
         try:
@@ -221,6 +234,7 @@ class Deployment(BaseModel):
             if not toml_data:
                 raise ValueError(f"Empty TOML file: {toml_path}")
 
+            # Add the toml path to each worker so relative packages can be found
             if "worker" in toml_data:
                 for worker in toml_data["worker"]:
                     worker["toml_path"] = Path(toml_path)

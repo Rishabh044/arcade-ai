@@ -32,7 +32,7 @@ from arcade.cli.launcher import start_servers
 from arcade.cli.show import show_logic
 from arcade.cli.utils import (
     OrderCommands,
-    compute_engine_base_url,
+    compute_base_url,
     compute_login_url,
     get_eval_files,
     get_user_input,
@@ -232,7 +232,7 @@ def chat(
         )
 
     config = validate_and_get_config()
-    base_url = compute_engine_base_url(force_tls, force_no_tls, host, port)
+    base_url = compute_base_url(force_tls, force_no_tls, host, port)
 
     client = Arcade(api_key=config.api.key, base_url=base_url)
     user_email = config.user.email if config.user else None
@@ -359,7 +359,7 @@ def evals(
     config = validate_and_get_config()
 
     host = PROD_ENGINE_HOST if cloud else host
-    base_url = compute_engine_base_url(force_tls, force_no_tls, host, port)
+    base_url = compute_base_url(force_tls, force_no_tls, host, port)
 
     models_list = models.split(",")  # Use 'models_list' to avoid shadowing
 
@@ -484,7 +484,7 @@ def dev(
 
 # TODO: deprecate this next major version
 @cli.command(help="Start a local Arcade Worker server", rich_help_panel="Launch", hidden=True)
-def workerup(
+def serve(
     host: str = typer.Option(
         "127.0.0.1",
         help="Host for the app, from settings by default.",
@@ -528,16 +528,38 @@ def deploy(
         "worker.toml", "--deployment-file", help="The deployment file to deploy."
     ),
     cloud_host: str = typer.Option(
-        "https://" + PROD_CLOUD_HOST,
+        PROD_CLOUD_HOST,
         "--cloud-host",
         "-c",
         help="The Arcade Cloud host to deploy to.",
     ),
+    cloud_port: int = typer.Option(
+        None,
+        "--cloud-port",
+        "-cp",
+        help="The port of the Arcade Cloud host.",
+    ),
     engine_host: str = typer.Option(
-        "http://" + PROD_ENGINE_HOST,
+        PROD_ENGINE_HOST,
         "--engine-host",
         "-e",
         help="The Arcade Engine host to deploy to.",
+    ),
+    engine_port: int = typer.Option(
+        None,
+        "--engine-port",
+        "-ep",
+        help="The port of the Arcade Engine host.",
+    ),
+    force_tls: bool = typer.Option(
+        False,
+        "--tls",
+        help="Whether to force TLS for the connection to the Arcade Engine. If not specified, the connection will use TLS if the engine URL uses a 'https' scheme.",
+    ),
+    force_no_tls: bool = typer.Option(
+        False,
+        "--no-tls",
+        help="Whether to disable TLS for the connection to the Arcade Engine.",
     ),
 ) -> None:
     """
@@ -545,16 +567,20 @@ def deploy(
     """
 
     config = validate_and_get_config()
-    engine_client = Arcade(api_key=config.api.key, base_url=engine_host)
+    engine_url = compute_base_url(force_tls, force_no_tls, engine_host, engine_port)
+    engine_client = Arcade(api_key=config.api.key, base_url=engine_url)
+    cloud_url = compute_base_url(force_tls, force_no_tls, cloud_host, cloud_port)
     cloud_client = httpx.Client(
-        base_url=cloud_host, headers={"Authorization": f"Bearer {config.api.key}"}
+        base_url=cloud_url, headers={"Authorization": f"Bearer {config.api.key}"}
     )
 
+    # Fetch deployment configuration
     deployment = Deployment.from_toml(deployment_file)
     with console.status(f"Deploying {len(deployment.worker)} workers"):
         for worker in deployment.worker:
             console.log(f"Deploying '{worker.config.id}...'", style="dim")
             try:
+                # Attempt to deploy worker
                 response = worker.request().execute(cloud_client, engine_client)
                 parse_deployment_response(response)
                 console.log(f"✅ Worker '{worker.config.id}' deployed successfully.", style="dim")
@@ -577,7 +603,7 @@ def main_callback(
         help="Print version and exit.",
     ),
 ) -> None:
-    excluded_commands = {login.__name__, logout.__name__, workerup.__name__}
+    excluded_commands = {login.__name__, logout.__name__, serve.__name__}
     if ctx.invoked_subcommand in excluded_commands:
         return
 
