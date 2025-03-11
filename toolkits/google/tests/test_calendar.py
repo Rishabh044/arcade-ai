@@ -1,4 +1,6 @@
+from datetime import datetime
 from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from arcade.sdk import ToolAuthorizationContext, ToolContext
@@ -161,11 +163,16 @@ async def test_delete_event(mock_build, mock_context):
 
 
 @pytest.mark.asyncio
-async def test_find_free_slots_happiest_path_single_user(mock_build, mock_context):
+@patch("arcade_google.tools.utils.get_now")
+@patch("arcade_google.tools.calendar.build")
+async def test_find_free_slots_happiest_path_single_user(mock_build, mock_get_now, mock_context):
     calendar_service = MagicMock()
     oauth_service = MagicMock()
 
-    mock_build.side_effect = [calendar_service, oauth_service]
+    mock_get_now.return_value = datetime(
+        2025, 3, 10, 9, 25, 0, tzinfo=ZoneInfo("America/Los_Angeles")
+    )
+    mock_build.side_effect = [oauth_service, calendar_service]
 
     oauth_service.userinfo().get().execute.return_value = {
         "email": "example@arcade.dev",
@@ -184,9 +191,34 @@ async def test_find_free_slots_happiest_path_single_user(mock_build, mock_contex
     response = await find_time_slots_when_everyone_is_free(
         context=mock_context,
         email_addresses=["example@arcade.dev"],
+        start_date="2025-03-10",
+        end_date="2025-03-11",
+        start_time_boundary="08:00",
+        end_time_boundary="18:00",
     )
 
     assert response == {
-        "free_slots": [],
+        "free_slots": [
+            {
+                "start": {
+                    "datetime": "2025-03-10T09:25:00-07:00",
+                    "weekday": "Monday",
+                },
+                "end": {
+                    "datetime": "2025-03-10T18:00:00-07:00",
+                    "weekday": "Monday",
+                },
+            },
+            {
+                "start": {
+                    "datetime": "2025-03-11T08:00:00-07:00",
+                    "weekday": "Tuesday",
+                },
+                "end": {
+                    "datetime": "2025-03-11T18:00:00-07:00",
+                    "weekday": "Tuesday",
+                },
+            },
+        ],
         "timezone": "America/Los_Angeles",
     }
