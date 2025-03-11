@@ -44,6 +44,8 @@ Arcade is a developer platform that lets you build, deploy, and manage tools for
 
 The Tool SDK makes it easy to create powerful, secure tools that your agents can use to interact with the world.
 
+![diagram](https://github.com/user-attachments/assets/1a567e5f-d6b4-4b1e-9918-c401ad232ebb)
+
 To learn more, check out our [documentation](https://docs.arcade.dev/home).
 
 _Pst. hey, you, give us a star if you like it!_
@@ -91,8 +93,8 @@ Arcade solves these challenges with standardized tool definition and execution, 
 <th>With Arcade</th>
 </tr>
 <tr>
-<td style="font-size: 0.7em;">
-
+<td >
+    
 ```python
 # Building a Gmail tool without Arcade
 import os
@@ -148,7 +150,7 @@ def list_emails(max_results=10):
 ```
 
 </td>
-<td style="font-size: 0.7em;">
+<td>
 
 ```python
 # Building a Gmail tool with Arcade SDK
