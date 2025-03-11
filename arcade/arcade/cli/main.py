@@ -484,7 +484,7 @@ def dev(
 
 # TODO: deprecate this next major version
 @cli.command(help="Start a local Arcade Worker server", rich_help_panel="Launch", hidden=True)
-def serve(
+def workerup(
     host: str = typer.Option(
         "127.0.0.1",
         help="Host for the app, from settings by default.",
