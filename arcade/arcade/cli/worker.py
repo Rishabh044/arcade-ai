@@ -57,7 +57,7 @@ def main(
         "--no-tls",
         help="Whether to disable TLS for the connection to the Arcade Engine.",
     ),
-):
+) -> None:
     """
     Manage users in the system.
     """
@@ -206,10 +206,17 @@ def rm_worker(
         raise typer.Exit(code=1)
 
 
-def get_toolkits(client: Arcade, worker_id: str) -> list[str]:
+def get_toolkits(client: Arcade, worker_id: str | None) -> str:
+    if worker_id is None:
+        return ""
     try:
+        # Get tools for the given worker
         tools = client.workers.tools(worker_id)
         toolkits: list[str] = []
+        if not tools.items:
+            return ""
+
+        # Get toolkit names
         for tool in tools.items:
             if tool.toolkit.name not in toolkits:
                 toolkits.append(tool.toolkit.name)
