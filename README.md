@@ -94,7 +94,7 @@ Arcade solves these challenges with standardized tool definition and execution, 
 </tr>
 <tr>
 <td >
-    
+
 ```python
 # Building a Gmail tool without Arcade
 import os
