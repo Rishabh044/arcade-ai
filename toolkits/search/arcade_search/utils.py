@@ -4,7 +4,7 @@ from typing import Any, Optional
 from arcade_search.models import GoogleMapsTravelMode
 
 
-def google_maps_travel_mode_to_serpapi(travel_mode: GoogleMapsTravelMode) -> str:
+def google_maps_travel_mode_to_serpapi(travel_mode: GoogleMapsTravelMode) -> int:
     data = {
         GoogleMapsTravelMode.BEST: 6,
         GoogleMapsTravelMode.DRIVING: 0,
