@@ -109,6 +109,7 @@ def create_new_toolkit(output_directory: str) -> None:
     toolkit_description = ask_question("Description of the toolkit?")
     toolkit_author_name = ask_question("Github owner username?")
     toolkit_author_email = ask_question("Author's email?")
+    print(ARCADE_VERSION)
 
     context = {
         "package_name": package_name,
@@ -116,7 +117,7 @@ def create_new_toolkit(output_directory: str) -> None:
         "toolkit_description": toolkit_description,
         "toolkit_author_name": toolkit_author_name,
         "toolkit_author_email": toolkit_author_email,
-        "arcade_version": f"{ARCADE_VERSION.rsplit('.', 1)[0]}.*",
+        "arcade_version": f"^{ARCADE_VERSION}",
         "creation_year": datetime.now().year,
     }
     template_directory = Path(__file__).parent.parent / "templates" / "{{ toolkit_name }}"
@@ -134,7 +135,7 @@ def create_new_toolkit(output_directory: str) -> None:
         raise
 
 
-def create_deployment(toolkit_directory: Path, toolkit_name: str):
+def create_deployment(toolkit_directory: Path, toolkit_name: str) -> None:
     worker_toml = toolkit_directory / "worker.toml"
     if not worker_toml.exists():
         create_demo_deployment(worker_toml, toolkit_name)

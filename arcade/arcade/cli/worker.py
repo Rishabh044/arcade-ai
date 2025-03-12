@@ -133,7 +133,6 @@ def print_worker_table(client: Arcade, deployments: list[dict]) -> None:
         if worker.id is None:
             continue
         engine_workers.append(worker.id)
-
         # Check if the worker is deployed in the cloud
         is_deployed = is_cloud_deployment(worker.id, deployments)
         # Get the toolkits for the worker
@@ -345,6 +344,8 @@ def worker_logs(
             for line in s.iter_lines():
                 if not line or "[DONE]" in line:  # Skip empty lines
                     continue
+                if "event: error" in line:
+                    console.print("Could not stream logs", style="bold red")
                 if line.startswith("data:"):
                     # Extract just the data portion after 'data:'
                     data = line[5:].strip()  # Remove 'data:' prefix and whitespace

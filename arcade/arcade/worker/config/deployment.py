@@ -179,7 +179,9 @@ class Worker(BaseModel):
                 not (package_path / "pyproject.toml").is_file()
                 and not (package_path / "setup.py").is_file()
             ):
-                raise ValueError(f"'{package_path}' must contain a pyproject.toml or setup.py file")
+                raise ValueError(
+                    f"package '{package_path}' must contain a pyproject.toml or setup.py file"
+                )
 
             # Compress the package into a byte stream and tar
             byte_stream = io.BytesIO()
@@ -207,7 +209,7 @@ class Worker(BaseModel):
                     packages.append(package.name)
         if self.local_source:
             for local_package in self.local_source.packages:
-                packages.append(os.path.basename(os.path.dirname(Path(local_package))))
+                packages.append(os.path.normpath(Path(local_package)))
         dupes = [x for n, x in enumerate(packages) if x in packages[:n]]
         if dupes:
             raise ValueError(f"Duplicate packages: {dupes}")
