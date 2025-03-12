@@ -14,7 +14,6 @@ from arcade_google.tools.models import EventVisibility, SendUpdatesOptions
 from arcade_google.tools.utils import (
     compute_free_time_intersection,
     parse_datetime,
-    require_min_arcade_version,
 )
 
 
@@ -371,7 +370,6 @@ async def delete_event(
         scopes=["https://www.googleapis.com/auth/calendar.readonly"],
     ),
 )
-@require_min_arcade_version("1.0.5")
 async def find_time_slots_when_everyone_is_free(
     context: ToolContext,
     email_addresses: Annotated[
