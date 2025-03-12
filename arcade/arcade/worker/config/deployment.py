@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+import secrets
 import tarfile
 from pathlib import Path
 from typing import Any
@@ -245,3 +246,43 @@ class Deployment(BaseModel):
             raise ValueError(f"Invalid TOML format in {toml_path}: {e!s}")
         except FileNotFoundError:
             raise FileNotFoundError(f"Config file not found: {toml_path}")
+
+    def save(self) -> None:
+        print("writing deployment file", self.toml_path)
+        with open(self.toml_path, "w") as f:
+            data = self.model_dump()
+            del data["toml_path"]
+            for worker in data["worker"]:
+                del worker["toml_path"]
+            toml.dump(data, f)
+
+
+def create_demo_deployment(toml_path: Path, toolkit_name: str) -> None:
+    """Create a deployment from a toml file."""
+    deployment = Deployment(
+        toml_path=toml_path,
+        worker=[
+            Worker(
+                toml_path=toml_path,
+                config=Config(
+                    id="demo-worker",
+                    enabled=True,
+                    timeout=30,
+                    retries=3,
+                    secret=secrets.token_hex(16),
+                ),
+                local_source=LocalPackages(packages=[f"./{toolkit_name}"]),
+            )
+        ],
+    )
+    deployment.save()
+
+
+def update_deployment_with_local_packages(toml_path: Path, toolkit_name: str) -> None:
+    """Update a deployment from a toml file."""
+    deployment = Deployment.from_toml(toml_path)
+    if deployment.worker[0].local_source is None:
+        deployment.worker[0].local_source = LocalPackages(packages=[f"./{toolkit_name}"])
+    else:
+        deployment.worker[0].local_source.packages.append(f"./{toolkit_name}")
+    deployment.save()
