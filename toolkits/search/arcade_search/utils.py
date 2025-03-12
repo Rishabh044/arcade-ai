@@ -108,7 +108,7 @@ def google_maps_travel_mode_to_serpapi(travel_mode: GoogleMapsTravelMode) -> int
     return data[travel_mode]
 
 
-def google_maps_distance_unit_to_serpapi(distance_unit: GoogleMapsDistanceUnit) -> str:
+def google_maps_distance_unit_to_serpapi(distance_unit: GoogleMapsDistanceUnit) -> int:
     data = {
         GoogleMapsDistanceUnit.KM: 0,
         GoogleMapsDistanceUnit.MILES: 1,
