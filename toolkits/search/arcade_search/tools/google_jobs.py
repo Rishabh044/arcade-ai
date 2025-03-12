@@ -1,7 +1,7 @@
 from typing import Annotated, Optional
 
-import serpapi
 from arcade.sdk import ToolContext, tool
+from serpapi import Client as SerpClient
 
 from arcade_search.constants import DEFAULT_GOOGLE_JOBS_LANGUAGE
 from arcade_search.exceptions import LanguageNotFoundError
@@ -18,8 +18,8 @@ async def search_jobs(
     ] = None,
     language: Annotated[
         str,
-        "Simulates a user searching for jobs in this specific language. "
-        f"Defaults to {DEFAULT_GOOGLE_JOBS_LANGUAGE}.",
+        "2-letter language code to use in the Google Jobs search. "
+        f"Defaults to '{DEFAULT_GOOGLE_JOBS_LANGUAGE}'.",
     ] = DEFAULT_GOOGLE_JOBS_LANGUAGE,
     limit: Annotated[int, "Number of results to retrieve"] = 10,
     next_page_token: Annotated[Optional[str], "Next page token to paginate results"] = None,
@@ -29,7 +29,7 @@ async def search_jobs(
         raise LanguageNotFoundError(language)
 
     api_key = context.get_secret("SERP_API_KEY")
-    client = serpapi.Client(api_key=api_key)
+    client = SerpClient(api_key=api_key)
     params = {
         "engine": "google_jobs",
         "q": query,
