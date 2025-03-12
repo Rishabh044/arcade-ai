@@ -334,17 +334,16 @@ def worker_logs(
 ) -> None:
     config = validate_and_get_config()
     cloud_url = compute_base_url(force_tls, force_no_tls, cloud_host, cloud_port)
-
     try:
         with httpx.stream(
             "GET",
             f"{cloud_url}/api/v1/workers/logs/{worker_id}",
-            headers={"Authorization": f"Bearer {config.api.key}"},
+            headers={"Authorization": f"Bearer {config.api.key}", "Accept": "text/event-stream"},
             # allow the connection to stay open indefinitely
             timeout=None,  # noqa: S113
         ) as s:
             for line in s.iter_lines():
-                if not line:  # Skip empty lines
+                if not line or "[DONE]" in line:  # Skip empty lines
                     continue
                 if line.startswith("data:"):
                     # Extract just the data portion after 'data:'
