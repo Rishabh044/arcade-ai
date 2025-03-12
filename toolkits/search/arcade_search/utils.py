@@ -46,14 +46,15 @@ def get_google_maps_directions(
     :param travel_mode: Travel mode to use in the Google Maps search. Defaults to 'best'
         (best mode).
     """
+    language = language.lower()
 
     if language not in LANGUAGE_CODES:
         raise LanguageNotFoundError(language)
 
     params = {
-        "engine": "google_maps",
+        "engine": "google_maps_directions",
         "hl": language,
-        "distance_unit": distance_unit.value,
+        "distance_unit": google_maps_distance_unit_to_serpapi(distance_unit),
         "travel_mode": google_maps_travel_mode_to_serpapi(travel_mode),
     }
 
@@ -70,13 +71,14 @@ def get_google_maps_directions(
         params["end_coords"] = f"{destination_latitude},{destination_longitude}"
 
     elif all([origin_address, destination_address]):
-        params["start_address"] = str(origin_address)
-        params["end_address"] = str(destination_address)
+        params["start_addr"] = str(origin_address)
+        params["end_addr"] = str(destination_address)
 
     else:
         raise ValueError("Either coordinates or addresses must be provided")
 
     if country:
+        country = country.lower()
         if country not in COUNTRY_CODES:
             raise CountryNotFoundError(country)
         params["gl"] = country
@@ -85,7 +87,10 @@ def get_google_maps_directions(
     results = cast(dict[str, Any], search.as_dict())
 
     for direction in results["directions"]:
-        direction["arrive_around"] = enrich_google_maps_arrive_around(direction["arrive_around"])
+        if "arrive_around" in direction:
+            direction["arrive_around"] = enrich_google_maps_arrive_around(
+                direction["arrive_around"]
+            )
 
     return results
 
@@ -101,6 +106,14 @@ def google_maps_travel_mode_to_serpapi(travel_mode: GoogleMapsTravelMode) -> int
         GoogleMapsTravelMode.FLIGHT: 4,
     }
     return data[travel_mode]
+
+
+def google_maps_distance_unit_to_serpapi(distance_unit: GoogleMapsDistanceUnit) -> str:
+    data = {
+        GoogleMapsDistanceUnit.KM: 0,
+        GoogleMapsDistanceUnit.MILES: 1,
+    }
+    return data[distance_unit]
 
 
 def enrich_google_maps_arrive_around(timestamp: Optional[int]) -> dict[str, Any]:
