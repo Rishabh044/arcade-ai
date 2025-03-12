@@ -249,16 +249,19 @@ class Deployment(BaseModel):
         except FileNotFoundError:
             raise FileNotFoundError(f"Config file not found: {toml_path}")
 
+    # Save the deployment to a toml file
     def save(self) -> None:
         print("writing deployment file", self.toml_path)
         with open(self.toml_path, "w") as f:
             data = self.model_dump()
+            # Remove the toml_path from the deployment file
             del data["toml_path"]
             for worker in data["worker"]:
                 del worker["toml_path"]
             toml.dump(data, f)
 
 
+# Create a demo deployment file with one worker
 def create_demo_deployment(toml_path: Path, toolkit_name: str) -> None:
     """Create a deployment from a toml file."""
     deployment = Deployment(
@@ -280,6 +283,7 @@ def create_demo_deployment(toml_path: Path, toolkit_name: str) -> None:
     deployment.save()
 
 
+# Get a currently existing deployment and add an additional local package
 def update_deployment_with_local_packages(toml_path: Path, toolkit_name: str) -> None:
     """Update a deployment from a toml file."""
     deployment = Deployment.from_toml(toml_path)
