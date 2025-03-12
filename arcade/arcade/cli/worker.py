@@ -163,9 +163,10 @@ def is_cloud_deployment(name: str, deployments: list[dict]) -> bool:
 def compare_endpoints(worker_id: str, engine_endpoint: str, deployments: list[dict]) -> str:
     if is_cloud_deployment(worker_id, deployments):
         for deployment in deployments:
-            if deployment["endpoint"] == engine_endpoint:
+            deployment_endpoint = deployment["endpoint"]
+            if deployment_endpoint == engine_endpoint:
                 return engine_endpoint
-            return f"[red]Endpoint Mismatch[/red]\n[yellow]Registered Endpoint: {engine_endpoint}[/yellow]\n[green]Actual Endpoint:     {deployment["endpoint"]}[/green]"
+            return f"[red]Endpoint Mismatch[/red]\n[yellow]Registered Endpoint: {engine_endpoint}[/yellow]\n[green]Actual Endpoint:     {deployment_endpoint}[/green]"
     return engine_endpoint
 
 
