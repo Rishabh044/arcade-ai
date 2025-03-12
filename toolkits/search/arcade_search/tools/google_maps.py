@@ -20,7 +20,8 @@ async def get_directions_between_addresses(
     destination_address: Annotated[str, "The destination address"],
     language: Annotated[
         str,
-        f"Language to use in the Google Maps search. Defaults to '{DEFAULT_GOOGLE_MAPS_LANGUAGE}'.",
+        "2-letter language code to use in the Google Maps search. "
+        f"Defaults to '{DEFAULT_GOOGLE_MAPS_LANGUAGE}'.",
     ] = DEFAULT_GOOGLE_MAPS_LANGUAGE,
     country: Annotated[
         Optional[str],
@@ -62,7 +63,8 @@ async def get_directions_between_coordinates(
     destination_longitude: Annotated[str, "The destination longitude"],
     language: Annotated[
         str,
-        f"Language to use in the Google Maps search. Defaults to '{DEFAULT_GOOGLE_MAPS_LANGUAGE}'.",
+        "2-letter language code to use in the Google Maps search. "
+        f"Defaults to '{DEFAULT_GOOGLE_MAPS_LANGUAGE}'.",
     ] = DEFAULT_GOOGLE_MAPS_LANGUAGE,
     country: Annotated[
         Optional[str],
