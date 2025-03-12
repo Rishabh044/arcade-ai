@@ -165,7 +165,7 @@ def compare_endpoints(worker_id: str, engine_endpoint: str, deployments: list[di
         for deployment in deployments:
             if deployment["endpoint"] == engine_endpoint:
                 return engine_endpoint
-            return f"[red]Endpoint Mismatch\nRegistered Endpoint: {engine_endpoint}\nActual Endpoint {deployment["endpoint"]}[/red]"
+            return f"[red]Endpoint Mismatch[/red]\n[yellow]Registered Endpoint: {engine_endpoint}[/yellow]\n[green]Actual Endpoint:     {deployment["endpoint"]}[/green]"
     return engine_endpoint
 
 
