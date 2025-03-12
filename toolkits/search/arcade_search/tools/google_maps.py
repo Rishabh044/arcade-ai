@@ -1,130 +1,97 @@
-import json
 from typing import Annotated, Optional
 
 import serpapi
-from arcade.core.errors import RetryableToolError
 from arcade.sdk import ToolContext, tool
 
-from arcade_search.google_maps_data import COUNTRY_CODES, LANGUAGE_CODES
+from arcade_search.constants import (
+    DEFAULT_GOOGLE_MAPS_COUNTRY,
+    DEFAULT_GOOGLE_MAPS_DISTANCE_UNIT,
+    DEFAULT_GOOGLE_MAPS_LANGUAGE,
+    DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
+)
 from arcade_search.models import GoogleMapsDistanceUnit, GoogleMapsTravelMode
-from arcade_search.utils import enrich_google_maps_arrive_around, google_maps_travel_mode_to_serpapi
+from arcade_search.utils import get_google_maps_directions
 
 
 @tool(requires_secrets=["SERP_API_KEY"])
-async def get_directions_by_address(
+async def get_directions_between_addresses(
     context: ToolContext,
-    origin: Annotated[str, "The origin location or address"],
-    destination: Annotated[str, "The destination location or address"],
+    origin_address: Annotated[str, "The origin address"],
+    destination_address: Annotated[str, "The destination address"],
     language: Annotated[
-        str, "Language to use in the Google Maps search. Defaults to 'en' (English)."
-    ] = "en",
+        str,
+        f"Language to use in the Google Maps search. Defaults to '{DEFAULT_GOOGLE_MAPS_LANGUAGE}'.",
+    ] = DEFAULT_GOOGLE_MAPS_LANGUAGE,
     country: Annotated[
         Optional[str],
-        "2-letter country code to use in the Google Maps search. Defaults to None "
-        "(no country is specified).",
-    ] = None,
+        f"2-letter country code to use in the Google Maps search. Defaults to "
+        f"'{DEFAULT_GOOGLE_MAPS_COUNTRY}'.",
+    ] = DEFAULT_GOOGLE_MAPS_COUNTRY,
     distance_unit: Annotated[
         GoogleMapsDistanceUnit,
-        "Distance unit to use in the Google Maps search. Defaults to 'km' (kilometers).",
-    ] = GoogleMapsDistanceUnit.KM,
+        f"Distance unit to use in the Google Maps search. Defaults to "
+        f"'{DEFAULT_GOOGLE_MAPS_DISTANCE_UNIT}'.",
+    ] = DEFAULT_GOOGLE_MAPS_DISTANCE_UNIT,
     travel_mode: Annotated[
         GoogleMapsTravelMode,
-        "Travel mode to use in the Google Maps search. Defaults to 'best' (best mode).",
-    ] = GoogleMapsTravelMode.BEST,
-) -> str:
+        f"Travel mode to use in the Google Maps search. Defaults to "
+        f"'{DEFAULT_GOOGLE_MAPS_TRAVEL_MODE}'.",
+    ] = DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
+) -> Annotated[dict, "The directions from Google Maps"]:
     """Get directions from Google Maps."""
-
-    if language not in LANGUAGE_CODES:
-        raise RetryableToolError(
-            f"Invalid language: {language}",
-            additional_prompt_content=f"Valid languages are: {json.dumps(LANGUAGE_CODES)}",
-        )
-
     api_key = context.get_secret("SERP_API_KEY")
-
     client = serpapi.Client(api_key=api_key)
-    params = {
-        "engine": "google_maps",
-        "start_addr": origin,
-        "end_addr": destination,
-        "hl": language,
-        "distance_unit": distance_unit.value,
-        "travel_mode": google_maps_travel_mode_to_serpapi(travel_mode),
-    }
 
-    if country:
-        if country not in COUNTRY_CODES:
-            raise RetryableToolError(
-                f"Invalid country: {country}",
-                additional_prompt_content=f"Valid countries are: {json.dumps(COUNTRY_CODES)}",
-            )
-        params["gl"] = country
-
-    search = client.search(params)
-    results = search.as_dict()
-
-    for direction in results["directions"]:
-        direction["arrive_around"] = enrich_google_maps_arrive_around(direction["arrive_time"])
-
-    return json.dumps(results)
+    return get_google_maps_directions(
+        serp_client=client,
+        origin_address=origin_address,
+        destination_address=destination_address,
+        language=language,
+        country=country,
+        distance_unit=distance_unit,
+        travel_mode=travel_mode,
+    )
 
 
 @tool(requires_secrets=["SERP_API_KEY"])
-async def get_directions_by_coordinates(
+async def get_directions_between_coordinates(
     context: ToolContext,
-    origin_latitude: Annotated[float, "The origin latitude"],
-    origin_longitude: Annotated[float, "The origin longitude"],
-    destination_latitude: Annotated[float, "The destination latitude"],
-    destination_longitude: Annotated[float, "The destination longitude"],
+    origin_latitude: Annotated[str, "The origin latitude"],
+    origin_longitude: Annotated[str, "The origin longitude"],
+    destination_latitude: Annotated[str, "The destination latitude"],
+    destination_longitude: Annotated[str, "The destination longitude"],
     language: Annotated[
-        str, "Language to use in the Google Maps search. Defaults to 'en' (English)."
-    ] = "en",
+        str,
+        f"Language to use in the Google Maps search. Defaults to '{DEFAULT_GOOGLE_MAPS_LANGUAGE}'.",
+    ] = DEFAULT_GOOGLE_MAPS_LANGUAGE,
     country: Annotated[
         Optional[str],
-        "2-letter country code to use in the Google Maps search. Defaults to None "
-        "(no country is specified).",
-    ] = None,
+        f"2-letter country code to use in the Google Maps search. Defaults to "
+        f"'{DEFAULT_GOOGLE_MAPS_COUNTRY}'.",
+    ] = DEFAULT_GOOGLE_MAPS_COUNTRY,
     distance_unit: Annotated[
         GoogleMapsDistanceUnit,
-        "Distance unit to use in the Google Maps search. Defaults to 'km' (kilometers).",
-    ] = GoogleMapsDistanceUnit.KM,
+        f"Distance unit to use in the Google Maps search. Defaults to "
+        f"'{DEFAULT_GOOGLE_MAPS_DISTANCE_UNIT}'.",
+    ] = DEFAULT_GOOGLE_MAPS_DISTANCE_UNIT,
     travel_mode: Annotated[
         GoogleMapsTravelMode,
-        "Travel mode to use in the Google Maps search. Defaults to 'best' (best mode).",
-    ] = GoogleMapsTravelMode.BEST,
-) -> str:
+        f"Travel mode to use in the Google Maps search. Defaults to "
+        f"'{DEFAULT_GOOGLE_MAPS_TRAVEL_MODE}'.",
+    ] = DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
+) -> Annotated[dict, "The directions from Google Maps"]:
     """Get directions from Google Maps."""
-
-    if language not in LANGUAGE_CODES:
-        raise RetryableToolError(
-            f"Invalid language: {language}",
-            additional_prompt_content=f"Valid languages are: {json.dumps(LANGUAGE_CODES)}",
-        )
-
     api_key = context.get_secret("SERP_API_KEY")
-
     client = serpapi.Client(api_key=api_key)
-    params = {
-        "engine": "google_maps",
-        "start_coords": f"{origin_latitude},{origin_longitude}",
-        "end_coords": f"{destination_latitude},{destination_longitude}",
-        "hl": language,
-        "distance_unit": distance_unit.value,
-        "travel_mode": google_maps_travel_mode_to_serpapi(travel_mode),
-    }
 
-    if country:
-        if country not in COUNTRY_CODES:
-            raise RetryableToolError(
-                f"Invalid country: {country}",
-                additional_prompt_content=f"Valid countries are: {json.dumps(COUNTRY_CODES)}",
-            )
-        params["gl"] = country
-
-    search = client.search(params)
-    results = search.as_dict()
-
-    for direction in results["directions"]:
-        direction["arrive_around"] = enrich_google_maps_arrive_around(direction["arrive_time"])
-
-    return json.dumps(results)
+    return get_google_maps_directions(
+        serp_client=client,
+        origin_latitude=origin_latitude,
+        origin_longitude=origin_longitude,
+        destination_latitude=destination_latitude,
+        destination_longitude=destination_longitude,
+        language=language,
+        country=country,
+        distance_unit=distance_unit,
+        travel_mode=travel_mode,
+    )
