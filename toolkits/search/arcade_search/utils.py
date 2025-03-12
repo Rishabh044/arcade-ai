@@ -1,5 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Optional, cast
+from zoneinfo import ZoneInfo
 
 from arcade_search.constants import (
     DEFAULT_GOOGLE_MAPS_COUNTRY,
@@ -84,7 +85,7 @@ def get_google_maps_directions(
     results = cast(dict[str, Any], search.as_dict())
 
     for direction in results["directions"]:
-        direction["arrive_around"] = enrich_google_maps_arrive_around(direction["arrive_time"])
+        direction["arrive_around"] = enrich_google_maps_arrive_around(direction["arrive_around"])
 
     return results
 
@@ -106,5 +107,5 @@ def enrich_google_maps_arrive_around(timestamp: Optional[int]) -> dict[str, Any]
     if not timestamp:
         return {}
 
-    dt = datetime.fromtimestamp(timestamp).replace(tzinfo=timezone.utc).isoformat()
+    dt = datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC")).isoformat()
     return {"datetime": dt, "timestamp": timestamp}
