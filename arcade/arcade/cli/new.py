@@ -109,7 +109,6 @@ def create_new_toolkit(output_directory: str) -> None:
     toolkit_description = ask_question("Description of the toolkit?")
     toolkit_author_name = ask_question("Github owner username?")
     toolkit_author_email = ask_question("Author's email?")
-    print(ARCADE_VERSION)
 
     context = {
         "package_name": package_name,
