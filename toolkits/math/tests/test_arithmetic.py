@@ -12,10 +12,24 @@ from arcade_math.tools.arithmetic import (
 )
 
 
-def test_add():
-    assert add(1, 2) == 3
-    assert add(-1, 1) == 0
-    assert add(0.5, 10.9) == 11.4
+@pytest.mark.parametrize(
+    "a, b, expected",
+    [
+        ("1", "2", "3"),
+        ("-1", "1", "0"),
+        ("0.5", "10.9", "11.4"),
+        # Big ints
+        ("12345678901234567890", "9876543210987654321", "22222222112222222211"),
+        # Big floats
+        (
+            "12345678901234567890.120",
+            "9876543210987654321.987",
+            "22222222112222222212.107",
+        ),
+    ],
+)
+def test_add(a, b, expected):
+    assert add(a, b) == expected
 
 
 def test_subtract():
