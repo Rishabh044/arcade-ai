@@ -350,7 +350,7 @@ def worker_logs(
                 if line.startswith("data:"):
                     # Extract just the data portion after 'data:'
                     data = line[5:].strip()  # Remove 'data:' prefix and whitespace
-                    console.print(data)
+                    console.print(data, markup=False)
     except Exception as e:
         console.print(f"Error connecting to log stream: {e}", style="bold red")
         raise typer.Exit(code=1)
