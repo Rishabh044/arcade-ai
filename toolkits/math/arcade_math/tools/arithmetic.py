@@ -158,8 +158,8 @@ def avg(
     Returns "0.0" if the list is empty.
     """
     # Use Decimal for arbitrary precision
-    numbers = [Decimal(n) for n in numbers]
-    return str(sum(numbers) / len(numbers)) if numbers else "0.0"
+    d_numbers = [Decimal(n) for n in numbers]
+    return str(sum(d_numbers) / len(d_numbers)) if d_numbers else "0.0"
 
 
 @tool
@@ -171,8 +171,8 @@ def median(
     Returns "0.0" if the list is empty.
     """
     # Use Decimal for arbitrary precision
-    numbers = [Decimal(n) for n in numbers]
-    return str(stats_median(numbers)) if numbers else "0.0"
+    d_numbers = [Decimal(n) for n in numbers]
+    return str(stats_median(d_numbers)) if d_numbers else "0.0"
 
 
 @tool
@@ -262,7 +262,7 @@ def lcm(
     Calculate the least common multiple (LCM) of two integers.
     Returns "0" if either integer is 0.
     """
-    a, b = int(a), int(b)
-    if a == 0 or b == 0:
+    a_int, b_int = int(a), int(b)
+    if a_int == 0 or b_int == 0:
         return "0"
-    return str(abs(a * b) // math.gcd(a, b))
+    return str(abs(a_int * b_int) // math.gcd(a_int, b_int))

@@ -1,5 +1,4 @@
 import random
-from decimal import Decimal
 from typing import Annotated, Optional
 
 from arcade.sdk import tool
@@ -19,7 +18,7 @@ def generate_random_int(
     if seed is not None:
         random.seed(int(seed))
 
-    return random.randint(int(min_value), int(max_value))  # noqa: S311
+    return str(random.randint(int(min_value), int(max_value)))  # noqa: S311
 
 
 @tool
@@ -36,4 +35,4 @@ def generate_random_float(
     if seed is not None:
         random.seed(int(seed))
 
-    return random.uniform(Decimal(min_value), Decimal(max_value))  # noqa: S311
+    return str(random.uniform(float(min_value), float(max_value)))  # noqa: S311
