@@ -2,27 +2,27 @@ import pytest
 from arcade.sdk.errors import ToolExecutionError
 
 from arcade_math.tools.arithmetic import (
-    add,
-    subtract,
-    multiply,
-    divide,
-    sqrt,
-    sum_list,
-    sum_range,
-    mod,
-    power,
     abs_val,
-    log,
+    add,
     avg,
-    median,
-    factorial,
-    deg_to_rad,
-    rad_to_deg,
     ceil,
+    deg_to_rad,
+    divide,
+    factorial,
     floor,
-    round_num,
     gcd,
     lcm,
+    log,
+    median,
+    mod,
+    multiply,
+    power,
+    rad_to_deg,
+    round_num,
+    sqrt,
+    subtract,
+    sum_list,
+    sum_range,
 )
 
 
@@ -78,7 +78,7 @@ def test_subtract(a, b, expected):
         (
             "12345678901234567890",
             "18000000162000001474380013420000",
-            "2.222222222222222222222222223E+50"
+            "2.222222222222222222222222223E+50",
         ),
         # Big floats
         (
@@ -99,11 +99,7 @@ def test_multiply(a, b, expected):
         ("-10", "1", "-10"),
         ("0.5", "10.9", "0.04587155963302752293577981651"),
         # Big ints
-        (
-            "152407406035740740602050",
-            "12345678901234567890",
-            "12345"
-        ),
+        ("152407406035740740602050", "12345678901234567890", "12345"),
         # Big floats
         (
             "152407406035740740603531.400",

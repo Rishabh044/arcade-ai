@@ -68,7 +68,7 @@ def sqrt(
 ) -> Annotated[str, "The square root of the number as a string"]:
     """
     Get the square root of a number
-    If 
+    If
     """
     # Use Decimal for arbitrary precision
     a_decimal = Decimal(a)
@@ -123,13 +123,13 @@ def power(
     Calculate one number raised to the power of another.
     """
     # Use Decimal for arbitrary precision
-    return str(Decimal(a)**Decimal(b))
+    return str(Decimal(a) ** Decimal(b))
 
 
 @tool
 def abs_val(
-    a: Annotated[int, "The number as a string"],
-) -> Annotated[int, "The absolute value of the number as a string"]:
+    a: Annotated[str, "The number as a string"],
+) -> Annotated[str, "The absolute value of the number as a string"]:
     """
     Calculate the absolute value of a number.
     """

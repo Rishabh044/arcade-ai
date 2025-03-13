@@ -1,6 +1,6 @@
 import random
-from typing import Annotated, Optional
 from decimal import Decimal
+from typing import Annotated, Optional
 
 from arcade.sdk import tool
 
@@ -11,7 +11,8 @@ def generate_random_int(
     max_value: Annotated[str, "The maximum value of the random integer as a string"],
     seed: Annotated[
         Optional[str],
-        "The seed for the random number generator as a string. If None, the current system time is used.",
+        "The seed for the random number generator as a string."
+        " If None, the current system time is used.",
     ] = None,
 ) -> Annotated[str, "A random integer between min_value and max_value as a string"]:
     """Generate a random integer between min_value and max_value (inclusive)."""
@@ -27,7 +28,8 @@ def generate_random_float(
     max_value: Annotated[str, "The maximum value of the random float as a string"],
     seed: Annotated[
         Optional[str],
-        "The seed for the random number generator as a string. If None, the current system time is used.",
+        "The seed for the random number generator as a string."
+        " If None, the current system time is used.",
     ] = None,
 ) -> Annotated[str, "A random float between min_value and max_value as a string"]:
     """Generate a random float between min_value and max_value."""

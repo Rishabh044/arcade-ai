@@ -9,27 +9,27 @@ from arcade.sdk.eval import (
 
 import arcade_math
 from arcade_math.tools.arithmetic import (
-    add,
-    subtract,
-    multiply,
-    divide,
-    sqrt,
-    sum_list,
-    sum_range,
-    mod,
-    power,
     abs_val,
-    log,
+    add,
     avg,
-    median,
-    factorial,
-    deg_to_rad,
-    rad_to_deg,
     ceil,
+    deg_to_rad,
+    divide,
+    factorial,
     floor,
-    round_num,
     gcd,
     lcm,
+    log,
+    median,
+    mod,
+    multiply,
+    power,
+    rad_to_deg,
+    round_num,
+    sqrt,
+    subtract,
+    sum_list,
+    sum_range,
 )
 
 # Evaluation rubric
@@ -58,73 +58,45 @@ def math_eval_suite():
         (sqrt, "What's the square root of {a}?", {"a": "25"}),
         (abs_val, "What's the absolute value of {a}?", {"a": "-10"}),
         (factorial, "What's the factorial of {a}?", {"a": "5"}),
-        (
-            deg_to_rad,
-            "Convert {degrees} from degrees to radians",
-            {"degrees": "180"}
-        ),
-        (
-            rad_to_deg,
-            "Convert {radians} from radias to degrees",
-            {"radians": "3.14"}
-        ),
+        (deg_to_rad, "Convert {degrees} from degrees to radians", {"degrees": "180"}),
+        (rad_to_deg, "Convert {radians} from radias to degrees", {"radians": "3.14"}),
         (ceil, "Compute the ceiling of {a}", {"a": "3.14"}),
         (floor, "Compute the floor of {a}", {"a": "3.14"}),
         # binary
         (add, "Add {a} and {b}", {"a": "12345", "b": "987654321"}),
         (subtract, "Subtract {b} from {a}", {"a": "987654321", "b": "12345"}),
         (multiply, "Multiply {a} and {b}", {"a": "12345", "b": "567890"}),
-        (
-            divide,
-            "What is {a} divided by {b}?",
-            {"a": "1234123479", "b": "123"}
-        ),
+        (divide, "What is {a} divided by {b}?", {"a": "1234123479", "b": "123"}),
         (
             sum_range,
             "What's the sum of all numbers from {start} to {end}?",
-            {"start": "10", "end": "345"}
+            {"start": "10", "end": "345"},
         ),
-        (
-            mod,
-            "What's the remainder of dividing {a} by {b}?",
-            {"a": "234", "b": "17"}
-        ),
+        (mod, "What's the remainder of dividing {a} by {b}?", {"a": "234", "b": "17"}),
         (power, "Raise {a} to the power of {b}", {"a": "2", "b": "8"}),
-        (
-            log,
-            "What's the logarithm of {a} with base {base}?",
-            {"a": "8", "base": "2"}
-        ),
+        (log, "What's the logarithm of {a} with base {base}?", {"a": "8", "base": "2"}),
         (
             round_num,
             "Round {value} to {ndigits} decimal places",
-            {"value": "12.23746234", "ndigits": "3"}
+            {"value": "12.23746234", "ndigits": "3"},
         ),
-        (
-            gcd,
-            "Find the greatest common divisor of {a} and {b}",
-            {"a": "50", "b": "10"}
-        ),
-        (
-            lcm,
-            "FInd the least common multiple of {a} and {b}",
-            {"a": "7", "b": "13"}
-        ),
+        (gcd, "Find the greatest common divisor of {a} and {b}", {"a": "50", "b": "10"}),
+        (lcm, "FInd the least common multiple of {a} and {b}", {"a": "7", "b": "13"}),
         # n-nary
         (
             sum_list,
             f"Calculate the sum of these numbers: {' '.join(list_param)}",
-            {"numbers": list_param}
+            {"numbers": list_param},
         ),
         (
             avg,
             f"Find the average of these numbers: {' '.join(list_param)}",
-            {"numbers": list_param}
+            {"numbers": list_param},
         ),
         (
             median,
             f"Find the median of these numbers: {' '.join(list_param)}",
-            {"numbers": list_param}
+            {"numbers": list_param},
         ),
     ]
 
@@ -141,10 +113,7 @@ def math_eval_suite():
                 )
             ],
             rubric=rubric,
-            critics=[
-                BinaryCritic(critic_field=param, weight=1.0/num_params)
-                for param in params
-            ],
+            critics=[BinaryCritic(critic_field=param, weight=1.0 / num_params) for param in params],
         )
 
     return suite
