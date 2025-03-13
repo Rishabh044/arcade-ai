@@ -11,7 +11,6 @@ from rich.console import Console
 
 from arcade.worker.config.deployment import (
     create_demo_deployment,
-    update_deployment_with_local_packages,
 )
 
 console = Console()
@@ -139,4 +138,6 @@ def create_deployment(toolkit_directory: Path, toolkit_name: str) -> None:
     if not worker_toml.exists():
         create_demo_deployment(worker_toml, toolkit_name)
     else:
-        update_deployment_with_local_packages(worker_toml, toolkit_name)
+        pass
+        # Disabled pending bug fix
+        # update_deployment_with_local_packages(worker_toml, toolkit_name)
