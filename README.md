@@ -107,11 +107,13 @@ try calling the GitHub.SetStarred tool with a message like "Star the arcade-ai r
 
 Chatting with Arcade Engine at https://api.arcade.dev
 
-User sam@arcade.dev: (/? for help)
+User sam@arcade.dev:
 star the arcadeai/arcade-ai repo
+
+Assistant:
 Thanks for authorizing the action! Sending your request...
 
-Assistant (gpt-4o):
+Assistant:
 I have successfully starred the repository arcadeai/arcade-ai for you.
 ```
 
@@ -119,8 +121,8 @@ If Arcade already hosts the tools you need to build your agent, you
 can navigate to the [Quickstart](https://docs.arcade.dev/home/quickstart) to
 learn how to call tools programmatically in Python, Typescript, or HTTP.
 
-However, if not, you can start building your own tools and use them through Arcade
-benefitting from all the same features (like auth) that the cloud hosted tools have.
+You can also build your own tools with the SDK and deploy them in one command
+on Arcade Cloud
 
 ## Build LLM Tools with Arcade SDK
 
@@ -181,7 +183,7 @@ To create a new toolkit, you can use the `arcade new` command. This will create 
 2. **Install your new toolkit:**
 
     ```bash
-    # make sure you have python and poetry installed
+    # make sure you have python installed
     python --version
 
     # install your new toolkit
@@ -191,7 +193,10 @@ To create a new toolkit, you can use the `arcade new` command. This will create 
 
     This will install the toolkit in your local python environment using poetry.
 
-3. **Show the tools in the template Toolkit:**
+    The template is meant to be customized so feel free to change anything about the structure,
+    package management, linting, etc.
+
+4. **Show the tools in the template Toolkit:**
 
     ```bash
     # show the tools in Mytoolkit
@@ -216,6 +221,9 @@ The `worker.toml` file created in the directory where you ran `arcade new` will 
 In that directory, run the following command to deploy your toolkit:
 
 ```bash
+# from inside the mytoolkit dir
+cd ../
+
 arcade deploy
 ```
 
