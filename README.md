@@ -56,14 +56,11 @@ _Pst. hey, you, give us a star if you like it!_
 
 ## Table of Contents
 
--   [The Problems with Agent Tools](#the-problems-with-agent-tools)
--   [Without Arcade vs. With Arcade](#without-arcade-vs-with-arcade)
--   [Why Build Tools with Arcade?](#why-build-tools-with-arcade)
--   [Quickstart: Call your first tool](#quickstart-call-your-first-tool)
--   [Building Your Own Tools](#building-your-own-tools)
+-   [Quickstart: Install and call a tool](#quickstart-install-and-call-a-tool)
+-   [Build LLM Tools with Arcade SDK](#build-llm-tools-with-arcade-sdk)
     -   [Tool SDK Installation](#tool-sdk-installation)
-    -   [Creating a New Tool](#creating-a-new-tool)
-    -   [Sharing Your Toolkit](#sharing-your-toolkit)
+    -   [Creating a new Toolkit](#creating-a-new-toolkit)
+    -   [Deploy your tools to call with LLMs](#deploy-your-tools-to-call-with-llms)
 -   [Calling your tools](#calling-your-tools)
     -   [LLM API](#llm-api)
     -   [Tools API](#tools-api)
@@ -72,162 +69,7 @@ _Pst. hey, you, give us a star if you like it!_
 -   [Client Libraries](#client-libraries)
 -   [Support and Community](#support-and-community)
 
-## The Problems with Agent Tools
-
-**The Auth Problem**
-Most agent tools lack multi-user authorization capabilities. They typically rely on hardcoded API keys or environment variables, making it impossible to securely access user-specific data or integrate with services requiring user authentication and/or authorization.
-
-**The Execution Problem**
-Tool execution typically happens on the same resources as the agent, limiting scalability and preventing the use of specialized compute resources (serverless, on-premise, etc.).
-
-**The Tool Definition Problem**
-Maintaining tool definitions separately from code is difficult, especially when tools must work across multiple agent applications and LLMs with different formats.
-
-Arcade solves these challenges with standardized tool definition and execution, a robust multi-user auth system, and flexible integration APIs.
-
-## Without Arcade vs. With Arcade
-
-<table>
-<tr>
-<th>Without Arcade</th>
-<th>With Arcade</th>
-</tr>
-<tr>
-<td >
-
-```python
-# Building a Gmail tool without Arcade
-import os
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-
-def get_credentials():
-    # Get credentials from environment variables
-    secret = os.environ["GMAIL_CREDENTIALS"]
-    # Always same token same user
-    # Usually we dangerously elevated privileges
-    token = os.environ["GMAIL_TOKEN"]
-    return secret, token
-
-# Define the tool in code, then update
-# definition for each LLM
-def list_emails(max_results=10):
-
-    # Get credentials here? pass it in?
-    secret, token = get_credentials()
-    # Cache the token?
-    # How do we know the user?
-
-    # What if the user isn't authorized? OAuth Flow?
-    # handle token refresh?
-    try:
-        credentials = Credentials(
-            token=token,
-            secret=secret)
-    except Exception as e:
-        # Start the OAuth flow?
-        # redirect ? how do we know the user?
-        # handle token refresh?
-        # what are the right scopes?
-        # handle errors?
-        # for EVERY SERVICE?
-
-    # Call the API
-    service = build('gmail', 'v1', credentials=credentials)
-
-    messages = service.users().messages().list(
-        userId='me', maxResults=max_results
-    ).execute()
-
-    return messages
-
-# Problems:
-# - Hardcoded credentials means no multi-user support
-# - Security risks from exposing secrets/tokens/keys
-# - Manual OAuth flow implementation, if any
-# - Manually updated tool definitions
-# - No standard format translated across LLMs
-```
-
-</td>
-<td>
-
-```python
-# Building a Gmail tool with Arcade SDK
-
-from arcade.sdk import ToolContext, tool
-from arcade.sdk.auth import Google
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-
-
-# Define the tool in code, automatically generate
-# tool definition for all LLMs
-@tool(
-    requires_auth=Google(
-        scopes=["https://www.googleapis.com/auth/gmail.readonly"],
-    )
-) # Automatically generated tool definition from annotations
-async def list_emails(
-    context: ToolContext,
-    max_results: Annotated[int, "Maximum emails to return"] = 10,
-) -> Annotated[dict, "List of emails"]:
-    """Lists emails in the user's Gmail inbox."""
-
-    # Auth token automatically provided and managed by Arcade
-    # Token is guaranteed to be valid for the user of the agent
-    token = context.authorization.token
-
-    # No need to manually refresh tokens or handle OAuth flows
-    # Credentials are automatically refreshed as needed
-    service = build('gmail', 'v1', credentials=token)
-
-    messages = service.users().messages().list(
-        userId='me', maxResults=max_results
-    ).execute()
-
-    return messages
-
-# Solutions with Arcade:
-# - Multi-tenant (works for any user)
-# - Compliant and secure token, secret, and key management
-# - Can access any user's data or services AS the user
-# - Tool definition is created automatically
-# - Formatted for all LLMs and ready to use
-```
-
-</td>
-</tr>
-</table>
-
-## Why Build Tools with Arcade?
-
-Arcade solves key challenges for agent developers:
-
-1. **Auth Native to Agents**: Authentication designed for agentic workflows — the right token is always available for each user without complex integration work.
-
-2. **Multi-Tenant Tool Calling**: Enable your agent to take actions AS the specific user of the agent
-
-3. **Better Agent Capabilities**: Build tools that securely connect to the services your users want your agent to integrate with (Gmail, Slack, Google Drive, Zoom, etc.) without complex integration code.
-
-4. **Clean Codebase**: Eliminate environment variables full of API keys and complex OAuth implementations from your application code.
-
-5. **Flexible Integration**: Choose your integration approach:
-
-    - LLM API for the simplest experience with hundreds of pre-built tools
-    - Tools API for direct execution control
-    - Auth API for authentication-only integration
-    - Framework connectors for LangChain, CrewAI and others
-
-6. **Zero Schema Maintenance**: Tool definitions generate automatically from code annotations and translate to any LLM format.
-
-7. **Built-in Evaluation**: Evaluate your tools across user scenarios, llms, and context with Arcade's tool calling evaluation framework. Ensure your tools are working as expected and are useful for your agents.
-
-8. **Complete Tooling Ecosystem**: Built-in evaluation framework, scalable execution infrastructure, and flexible deployment options (including VPC, Docker, and Kubernetes).
-
-Arcade lets you focus on creating useful tool functionality rather than solving complex authentication, deployment, and integration challenges.
-
-## Quickstart: Call your first tool
+## Quickstart: Install and call a tool
 
 ```bash
 # Install the Arcade CLI
@@ -240,19 +82,38 @@ arcade login
 arcade show
 
 # show what tools are in a toolkit
-arcade show -T Google
+arcade show -T GitHub
 
 # look at the definition of a tool
-arcade show -t Google.ListEmails
-
-# Run Arcade Chat and call a tool
-arcade chat -s
+arcade show -t GitHub.SetStarred
 ```
 
-Ask the chat to
+The GitHub.SetStarred tool is hosted by Arcade, so you can call it directly
+without any additional setup of OAuth or servers. A simple way to test tools,
+wether hosted by Arcade or not, is to use the `arcade chat` app.
 
--   Read your latest email in gmail
--   Find latest tweets by @tryarcade
+```bash
+arcade chat
+```
+
+This will start a chat with an LLM that can call tools.
+
+try calling the GitHub.SetStarred tool with a message like "Star the arcade-ai repo"
+
+```
+> arcade chat
+
+=== Arcade Chat ===
+
+Chatting with Arcade Engine at https://api.arcade.dev
+
+User sam@arcade.dev: (/? for help)
+star the arcadeai/arcade-ai repo
+Thanks for authorizing the action! Sending your request...
+
+Assistant (gpt-4o):
+I have successfully starred the repository arcadeai/arcade-ai for you.
+```
 
 If Arcade already hosts the tools you need to build your agent, you
 can navigate to the [Quickstart](https://docs.arcade.dev/home/quickstart) to
@@ -261,7 +122,7 @@ learn how to call tools programmatically in Python, Typescript, or HTTP.
 However, if not, you can start building your own tools and use them through Arcade
 benefitting from all the same features (like auth) that the cloud hosted tools have.
 
-## Building Your Own Tools
+## Build LLM Tools with Arcade SDK
 
 Arcade provides a tool SDK that allows you to build your own tools and use them in your agentic applications just like the existing tools Arcade provides. This is useful for building new tools, customizing existing tools to fit your needs, combining multiple tools, or building tools that are not yet supported by Arcade.
 
@@ -269,8 +130,7 @@ Arcade provides a tool SDK that allows you to build your own tools and use them 
 
 **Prerequisites**
 
--   **Python 3.10+**
--   **Arcade Account:** [Sign up here](https://api.arcade.dev/signup) to get started.
+-   **Python 3.10+** and **pip**
 
 Now you can install the Tool SDK through pip.
 
@@ -290,16 +150,28 @@ Now you can install the Tool SDK through pip.
     ```bash
     arcade login
     ```
-    This will prompt you to open a browser and authorize the CLI. It will then save the credentials to your machine typically in `~/.arcade/credentials.json`.
+    This will prompt you to open a browser and authorize the CLI. It will then save the credentials to your machine typically in `~/.arcade/credentials.json`. If you haven't used the CLI before, you will need to create an account on this page.
 
 Now you're ready to build tools with Arcade!
 
-### Creating a New Tool
+### Creating a New Toolkit
 
-1. **Generate a new toolkit:**
+Toolkits are the main building blocks of Arcade. They are a collection of tools that are related to a specific service, use case,
+or agent. Toolkits are created and distributed python packages to facilitate version, dependency, and distribution.
+
+To create a new toolkit, you can use the `arcade new` command. This will create a new toolkit in the current directory.
+
+1. **Generate a new toolkit template:**
 
     ```bash
     arcade new
+    ```
+
+    ```text
+    Name of the new toolkit?: mytoolkit
+    Description of the toolkit?: myToolkit is a toolkit for ...
+    Github owner username?: mytoolkit
+    Author's email?: user@example.com
     ```
 
     This will create a new toolkit in the current directory.
@@ -311,14 +183,15 @@ Now you're ready to build tools with Arcade!
     ```bash
     # make sure you have python and poetry installed
     python --version
-    pip install "poetry<2"
 
     # install your new toolkit
     cd mytoolkit
     make install
     ```
 
-3. **Show the tools in the new Toolkit:**
+    This will install the toolkit in your local python environment using poetry.
+
+3. **Show the tools in the template Toolkit:**
 
     ```bash
     # show the tools in Mytoolkit
@@ -331,39 +204,51 @@ Now you're ready to build tools with Arcade!
     arcade show --local
     ```
 
-4. **Serve the toolkit:**
+Now you can edit the `mytoolkit/tool.py` file to customize the behavior of your tool. Next,
+you can host your tools to call with LLMs by deploying your toolkit to Arcade Cloud.
 
-    ```bash
-    # serve the toolkit
-    arcade serve
-    ```
+### Deploy your tools to call with LLMs
 
-    This will serve the toolkit at `http://localhost:8002`.
+To make your tools in the toolkit available to call with LLMs, you can deploy your toolkit to Arcade Cloud.
 
-This last command will start a server that hosts your toolkit at `http://localhost:8002`.
+The `worker.toml` file created in the directory where you ran `arcade new` will be used to deploy your toolkit.
+
+In that directory, run the following command to deploy your toolkit:
+
+```bash
+arcade deploy
+```
+
+This command will package your toolkit and deploy it as a worker instance in Arcade's cloud infrastructure:
+
+```
+[11:52:44] Deploying 'demo-worker...'
+⠦ Deploying 1 workers             Changed Packages
+┏━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Added    ┃ Removed ┃ Updated ┃ No Changes ┃
+┡━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━┩
+│ Mytoolkit│         │         │            │
+└──────────┴─────────┴─────────┴────────────┘
+[11:53:13] ✅ Worker 'demo-worker' deployed successfully.
+```
+
+You can manage your deployed workers with the following commands:
+
+```bash
+# List all workers (both local and cloud-deployed)
+arcade worker list
+
+# Remove a deployed worker
+arcade worker rm demo-worker
+```
+
+Once deployed, your toolkit is immediately available through the Arcade platform. You can now call your tools through the playground, LLM API, or Tools API without any additional setup.
+
+For local development and testing when running the Arcade Engine locally or tunneling to it, you can
+use `arcade serve` to host your toolkit locally and connect it to the Arcade Engine.
+
 If you are running the Arcade Engine locally, go to localhost:9099 (or other local address)
 and add the worker address in the "workers" page.
-
-To use your tools in Arcade Cloud, you can use reverse proxy services like
-
--   localtunnel (`npm install localtunnel && lt --port 8002`)
--   tailscale
--   ngrok
-
-that will provide a tunnel from the local server to Arcade cloud.
-
-Once hosted on a public address you can head to
-https://api.arcade.dev/dashboard/workers and call your toolkits
-through the playground, LLM API, or Tools API of Arcade.
-
-For more details on building your own tools, see the [Tool SDK Documentation](https://docs.arcade.dev/home/build-tools/create-a-tool-with-auth) and see more on calling your own tools below.
-
-### Sharing Your Toolkit
-
-To list your toolkit on Arcade, you can open a PR to add your toolkit to the [arcadeai/docs](https://github.com/ArcadeAI/docs) repository.
-
-<br>
-<br>
 
 ## Calling your tools
 
