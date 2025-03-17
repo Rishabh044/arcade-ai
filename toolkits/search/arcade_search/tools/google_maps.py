@@ -1,7 +1,6 @@
 from typing import Annotated, Optional
 
 from arcade.sdk import ToolContext, tool
-from serpapi import Client as SerpClient
 
 from arcade_search.constants import (
     DEFAULT_GOOGLE_MAPS_COUNTRY,
@@ -44,11 +43,8 @@ async def get_directions_between_addresses(
     ] = DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
 ) -> Annotated[dict, "The directions from Google Maps"]:
     """Get directions from Google Maps."""
-    api_key = context.get_secret("SERP_API_KEY")
-    client = SerpClient(api_key=api_key)
-
     return get_google_maps_directions(
-        serp_client=client,
+        context=context,
         origin_address=origin_address,
         destination_address=destination_address,
         language=language,
@@ -87,11 +83,8 @@ async def get_directions_between_coordinates(
     ] = DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
 ) -> Annotated[dict, "The directions from Google Maps"]:
     """Get directions from Google Maps."""
-    api_key = context.get_secret("SERP_API_KEY")
-    client = SerpClient(api_key=api_key)
-
     return get_google_maps_directions(
-        serp_client=client,
+        context=context,
         origin_latitude=origin_latitude,
         origin_longitude=origin_longitude,
         destination_latitude=destination_latitude,

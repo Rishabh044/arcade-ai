@@ -3,9 +3,9 @@ from datetime import datetime
 from typing import Any, Optional, cast
 from zoneinfo import ZoneInfo
 
-import serpapi
 from arcade.sdk import ToolContext
 from arcade.sdk.errors import ToolExecutionError
+from serpapi import Client as SerpClient
 
 from arcade_search.constants import (
     DEFAULT_GOOGLE_MAPS_COUNTRY,
@@ -50,10 +50,10 @@ def call_serpapi(context: ToolContext, params: dict) -> dict:
         The search results as a dictionary.
     """
     api_key = context.get_secret("SERP_API_KEY")
-    client = serpapi.Client(api_key=api_key)
+    client = SerpClient(api_key=api_key)
     try:
         search = client.search(params)
-        return search.as_dict()  # type: ignore[no-any-return]
+        return cast(dict[str, Any], search.as_dict())  # type: ignore[no-any-return]
     except Exception as e:
         # SerpAPI error messages sometimes contain the API key, so we need to sanitize it
         sanitized_e = re.sub(r"(api_key=)[^ &]+", r"\1***", str(e))
@@ -67,7 +67,7 @@ def call_serpapi(context: ToolContext, params: dict) -> dict:
 # Google Maps utils
 # ------------------------------------------------------------------------------------------------
 def get_google_maps_directions(
-    serp_client: Any,
+    context: ToolContext,
     origin_address: Optional[str] = None,
     destination_address: Optional[str] = None,
     origin_latitude: Optional[str] = None,
@@ -85,7 +85,7 @@ def get_google_maps_directions(
     all(origin_latitude, origin_longitude, destination_latitude, destination_longitude).
 
     Args:
-        serp_client: SerpAPI client to use in the Google Maps search.
+        context: Tool context containing required Serp API Key secret.
         origin_address: Origin address.
         destination_address: Destination address.
         origin_latitude: Origin latitude.
@@ -108,12 +108,12 @@ def get_google_maps_directions(
     if language not in LANGUAGE_CODES:
         raise LanguageNotFoundError(language)
 
-    params = {
-        "engine": "google_maps_directions",
-        "hl": language,
-        "distance_unit": google_maps_distance_unit_to_serpapi(distance_unit),
-        "travel_mode": google_maps_travel_mode_to_serpapi(travel_mode),
-    }
+    params = prepare_params(
+        engine="google_maps_directions",
+        hl=language,
+        distance_unit=google_maps_distance_unit_to_serpapi(distance_unit),
+        travel_mode=google_maps_travel_mode_to_serpapi(travel_mode),
+    )
 
     if any([
         origin_latitude,
@@ -140,8 +140,7 @@ def get_google_maps_directions(
             raise CountryNotFoundError(country)
         params["gl"] = country
 
-    search = serp_client.search(params)
-    results = cast(dict[str, Any], search.as_dict())
+    results = call_serpapi(context, params)
 
     for direction in results["directions"]:
         if "arrive_around" in direction:
@@ -157,9 +156,9 @@ def google_maps_travel_mode_to_serpapi(travel_mode: GoogleMapsTravelMode) -> int
         GoogleMapsTravelMode.BEST: 6,
         GoogleMapsTravelMode.DRIVING: 0,
         GoogleMapsTravelMode.MOTORCYCLE: 9,
-        GoogleMapsTravelMode.TRANSIT: 3,
+        GoogleMapsTravelMode.PUBLIC_TRANSPORTATION: 3,
         GoogleMapsTravelMode.WALKING: 2,
-        GoogleMapsTravelMode.CYCLING: 1,
+        GoogleMapsTravelMode.BICYCLE: 1,
         GoogleMapsTravelMode.FLIGHT: 4,
     }
     return data[travel_mode]

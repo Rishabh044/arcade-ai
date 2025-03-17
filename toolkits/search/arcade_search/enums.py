@@ -95,10 +95,10 @@ class GoogleHotelsSortBy(Enum):
 class GoogleMapsTravelMode(Enum):
     BEST = "best"
     DRIVING = "driving"
-    MOTORCYCLE = "two_wheel"
-    TRANSIT = "transit"
+    MOTORCYCLE = "motorcycle"
+    PUBLIC_TRANSPORTATION = "public_transportation"
     WALKING = "walking"
-    CYCLING = "cycling"
+    BICYCLE = "bicycle"
     FLIGHT = "flight"
 
 

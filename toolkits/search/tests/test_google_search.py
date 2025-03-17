@@ -16,7 +16,7 @@ def mock_context():
 @pytest.mark.asyncio
 async def test_search_google_success(mock_context):
     with (
-        patch("serpapi.Client") as MockClient,
+        patch("arcade_search.utils.SerpClient") as MockClient,
     ):
         mock_client_instance = MockClient.return_value
         mock_client_instance.search.return_value.as_dict.return_value = {
@@ -39,7 +39,7 @@ async def test_search_google_success(mock_context):
 @pytest.mark.asyncio
 async def test_search_google_no_results(mock_context):
     with (
-        patch("serpapi.Client") as MockClient,
+        patch("arcade_search.utils.SerpClient") as MockClient,
     ):
         mock_client_instance = MockClient.return_value
         mock_client_instance.search.return_value.as_dict.return_value = {"organic_results": []}

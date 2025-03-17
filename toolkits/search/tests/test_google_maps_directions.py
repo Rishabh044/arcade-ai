@@ -17,7 +17,7 @@ def mock_context():
 
 
 @pytest.mark.asyncio
-@patch("arcade_search.tools.google_maps.SerpClient")
+@patch("arcade_search.utils.SerpClient")
 async def test_get_directions_between_coordinates_success(mock_serp_client, mock_context):
     mock_serp_client_instance = mock_serp_client.return_value
     mock_serp_client_instance.search.return_value.as_dict.return_value = {
@@ -53,7 +53,7 @@ async def test_get_directions_between_coordinates_success(mock_serp_client, mock
 
 
 @pytest.mark.asyncio
-@patch("arcade_search.tools.google_maps.SerpClient")
+@patch("arcade_search.utils.SerpClient")
 async def test_get_directions_between_addresses_success(mock_serp_client, mock_context):
     mock_serp_client_instance = mock_serp_client.return_value
     mock_serp_client_instance.search.return_value.as_dict.return_value = {
@@ -87,7 +87,7 @@ async def test_get_directions_between_addresses_success(mock_serp_client, mock_c
 
 
 @pytest.mark.asyncio
-@patch("arcade_search.tools.google_maps.SerpClient")
+@patch("arcade_search.utils.SerpClient")
 async def test_get_directions_between_addresses_country_not_found(mock_serp_client, mock_context):
     mock_serp_client_instance = mock_serp_client.return_value
     mock_serp_client_instance.search.return_value.as_dict.return_value = {
@@ -110,7 +110,7 @@ async def test_get_directions_between_addresses_country_not_found(mock_serp_clie
 
 
 @pytest.mark.asyncio
-@patch("arcade_search.tools.google_maps.SerpClient")
+@patch("arcade_search.utils.SerpClient")
 async def test_get_directions_between_addresses_language_not_found(mock_serp_client, mock_context):
     mock_serp_client_instance = mock_serp_client.return_value
     mock_serp_client_instance.search.return_value.as_dict.return_value = {
