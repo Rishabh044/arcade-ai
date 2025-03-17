@@ -15,7 +15,7 @@ from arcade_search.constants import (
     DEFAULT_GOOGLE_MAPS_LANGUAGE,
     DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
 )
-from arcade_search.models import GoogleMapsDistanceUnit, GoogleMapsTravelMode
+from arcade_search.enums import GoogleMapsDistanceUnit, GoogleMapsTravelMode
 from arcade_search.tools.google_maps import (
     get_directions_between_addresses,
     get_directions_between_coordinates,

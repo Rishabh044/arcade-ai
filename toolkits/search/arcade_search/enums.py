@@ -1,6 +1,9 @@
 from enum import Enum
 
 
+# ------------------------------------------------------------------------------------------------
+# Google Finance enumerations
+# ------------------------------------------------------------------------------------------------
 class GoogleFinanceWindow(Enum):
     ONE_DAY = "1D"
     FIVE_DAYS = "5D"
@@ -12,6 +15,9 @@ class GoogleFinanceWindow(Enum):
     MAX = "MAX"
 
 
+# ------------------------------------------------------------------------------------------------
+# Google Flights enumerations
+# ------------------------------------------------------------------------------------------------
 class GoogleFlightsTravelClass(Enum):
     ECONOMY = "ECONOMY"
     PREMIUM_ECONOMY = "PREMIUM_ECONOMY"
@@ -64,6 +70,9 @@ class GoogleFlightsSortBy(Enum):
         return _map[self.value]
 
 
+# ------------------------------------------------------------------------------------------------
+# Google Hotels enumerations
+# ------------------------------------------------------------------------------------------------
 class GoogleHotelsSortBy(Enum):
     RELEVANCE = "RELEVANCE"
     LOWEST_PRICE = "LOWEST_PRICE"
@@ -78,3 +87,21 @@ class GoogleHotelsSortBy(Enum):
             "MOST_REVIEWED": 13,
         }
         return _map[self.value]
+
+
+# ------------------------------------------------------------------------------------------------
+# Google Maps enumerations
+# ------------------------------------------------------------------------------------------------
+class GoogleMapsTravelMode(Enum):
+    BEST = "best"
+    DRIVING = "driving"
+    MOTORCYCLE = "two_wheel"
+    TRANSIT = "transit"
+    WALKING = "walking"
+    CYCLING = "cycling"
+    FLIGHT = "flight"
+
+
+class GoogleMapsDistanceUnit(Enum):
+    KM = "km"
+    MILES = "mi"

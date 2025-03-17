@@ -1,6 +1,6 @@
 import os
 
-from arcade_search.models import GoogleMapsDistanceUnit, GoogleMapsTravelMode
+from arcade_search.enums import GoogleMapsDistanceUnit, GoogleMapsTravelMode
 
 DEFAULT_GOOGLE_MAPS_LANGUAGE = os.getenv("GOOGLE_MAPS_LANGUAGE", "en")
 DEFAULT_GOOGLE_MAPS_COUNTRY = os.getenv("GOOGLE_MAPS_COUNTRY", None)

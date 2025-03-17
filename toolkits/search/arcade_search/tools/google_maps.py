@@ -9,7 +9,7 @@ from arcade_search.constants import (
     DEFAULT_GOOGLE_MAPS_LANGUAGE,
     DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
 )
-from arcade_search.models import GoogleMapsDistanceUnit, GoogleMapsTravelMode
+from arcade_search.enums import GoogleMapsDistanceUnit, GoogleMapsTravelMode
 from arcade_search.utils import get_google_maps_directions
 
 

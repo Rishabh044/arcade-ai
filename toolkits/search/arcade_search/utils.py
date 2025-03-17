@@ -13,9 +13,9 @@ from arcade_search.constants import (
     DEFAULT_GOOGLE_MAPS_LANGUAGE,
     DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
 )
+from arcade_search.enums import GoogleMapsDistanceUnit, GoogleMapsTravelMode
 from arcade_search.exceptions import CountryNotFoundError, LanguageNotFoundError
 from arcade_search.google_maps_data import COUNTRY_CODES, LANGUAGE_CODES
-from arcade_search.models import GoogleMapsDistanceUnit, GoogleMapsTravelMode
 
 
 # ------------------------------------------------------------------------------------------------
