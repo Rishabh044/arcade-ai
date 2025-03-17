@@ -14,12 +14,12 @@ async def search_jobs(
     query: Annotated[str, "Search query"],
     location: Annotated[
         Optional[str],
-        "Simulates a user searching for jobs in this specific location. Defaults to None.",
+        "Location to search for jobs. Defaults to None.",
     ] = None,
     language: Annotated[
         str,
-        "2-letter language code to use in the Google Jobs search. "
-        f"Defaults to '{DEFAULT_GOOGLE_JOBS_LANGUAGE}'.",
+        "2-character language code to use in the Google Jobs search. ",
+        f"E.g. 'en' for English. Defaults to '{DEFAULT_GOOGLE_JOBS_LANGUAGE}'.",
     ] = DEFAULT_GOOGLE_JOBS_LANGUAGE,
     limit: Annotated[int, "Number of results to retrieve"] = 10,
     next_page_token: Annotated[Optional[str], "Next page token to paginate results"] = None,

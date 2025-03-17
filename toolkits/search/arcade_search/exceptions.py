@@ -3,7 +3,7 @@ from typing import Optional
 
 from arcade.core.errors import RetryableToolError
 
-from arcade_search.google_maps_data import COUNTRY_CODES, LANGUAGE_CODES
+from arcade_search.google_data import COUNTRY_CODES, LANGUAGE_CODES
 
 
 class GoogleMapsRetryableError(RetryableToolError):

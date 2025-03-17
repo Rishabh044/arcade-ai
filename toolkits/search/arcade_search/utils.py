@@ -15,7 +15,7 @@ from arcade_search.constants import (
 )
 from arcade_search.enums import GoogleMapsDistanceUnit, GoogleMapsTravelMode
 from arcade_search.exceptions import CountryNotFoundError, LanguageNotFoundError
-from arcade_search.google_maps_data import COUNTRY_CODES, LANGUAGE_CODES
+from arcade_search.google_data import COUNTRY_CODES, LANGUAGE_CODES
 
 
 # ------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ def call_serpapi(context: ToolContext, params: dict) -> dict:
     client = SerpClient(api_key=api_key)
     try:
         search = client.search(params)
-        return cast(dict[str, Any], search.as_dict())  # type: ignore[no-any-return]
+        return cast(dict[str, Any], search.as_dict())
     except Exception as e:
         # SerpAPI error messages sometimes contain the API key, so we need to sanitize it
         sanitized_e = re.sub(r"(api_key=)[^ &]+", r"\1***", str(e))
