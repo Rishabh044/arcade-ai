@@ -103,13 +103,13 @@ class GoogleMapsTravelMode(Enum):
 
     def to_api_value(self) -> int:
         _map = {
-            self.BEST.value: 6,
-            self.DRIVING.value: 0,
-            self.MOTORCYCLE.value: 9,
-            self.PUBLIC_TRANSPORTATION.value: 3,
-            self.WALKING.value: 2,
-            self.BICYCLE.value: 1,
-            self.FLIGHT.value: 4,
+            self.BEST: 6,
+            self.DRIVING: 0,
+            self.MOTORCYCLE: 9,
+            self.PUBLIC_TRANSPORTATION: 3,
+            self.WALKING: 2,
+            self.BICYCLE: 1,
+            self.FLIGHT: 4,
         }
         return _map[self.value]
 
@@ -120,7 +120,7 @@ class GoogleMapsDistanceUnit(Enum):
 
     def to_api_value(self) -> int:
         _map = {
-            self.KM.value: 0,
-            self.MILES.value: 1,
+            self.KM: 0,
+            self.MILES: 1,
         }
         return _map[self.value]

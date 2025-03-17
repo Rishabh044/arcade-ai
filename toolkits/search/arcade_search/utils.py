@@ -143,7 +143,7 @@ def get_google_maps_directions(
 
     results = call_serpapi(context, params)
 
-    directions = results.get("directions", [])
+    directions = cast(list[dict[str, Any]], results.get("directions", []))
 
     for direction in directions:
         clean_google_maps_direction(direction)
