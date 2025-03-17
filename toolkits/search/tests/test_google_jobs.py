@@ -14,7 +14,7 @@ def mock_context():
 
 
 @pytest.mark.asyncio
-@patch("arcade_search.tools.google_jobs.SerpClient")
+@patch("arcade_search.utils.SerpClient")
 async def test_search_jobs_success(mock_serp_client, mock_context):
     mock_serp_client_instance = mock_serp_client.return_value
     mock_serp_client_instance.search().as_dict.return_value = {
@@ -35,7 +35,7 @@ async def test_search_jobs_success(mock_serp_client, mock_context):
 
 
 @pytest.mark.asyncio
-@patch("arcade_search.tools.google_jobs.SerpClient")
+@patch("arcade_search.utils.SerpClient")
 async def test_search_jobs_success_with_custom_language_and_location(
     mock_serp_client, mock_context
 ):
@@ -73,7 +73,7 @@ async def test_search_jobs_success_with_custom_language_and_location(
 
 
 @pytest.mark.asyncio
-@patch("arcade_search.tools.google_jobs.SerpClient")
+@patch("arcade_search.utils.SerpClient")
 async def test_search_jobs_language_not_found_error(mock_serp_client, mock_context):
     mock_serp_client_instance = mock_serp_client.return_value
     mock_serp_client_instance.search().as_dict.return_value = {
