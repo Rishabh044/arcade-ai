@@ -15,7 +15,7 @@ __all__ = [
     "search_one_way_flights",  # Google Flights
     "search_roundtrip_flights",  # Google Flights
     "search_hotels",  # Google Hotels
-    "search_jobs",  # Google Jobs
     "get_directions_between_addresses",  # Google Maps
     "get_directions_between_coordinates",  # Google Maps
+    "search_jobs",  # Google Jobs
 ]
