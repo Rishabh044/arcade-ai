@@ -111,7 +111,7 @@ class GoogleMapsTravelMode(Enum):
             self.BICYCLE: 1,
             self.FLIGHT: 4,
         }
-        return _map[self.value]
+        return _map[self]
 
 
 class GoogleMapsDistanceUnit(Enum):
@@ -123,4 +123,4 @@ class GoogleMapsDistanceUnit(Enum):
             self.KM: 0,
             self.MILES: 1,
         }
-        return _map[self.value]
+        return _map[self]
