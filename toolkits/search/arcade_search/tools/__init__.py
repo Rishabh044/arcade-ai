@@ -1,6 +1,10 @@
 from arcade_search.tools.google_finance import get_stock_historical_data, get_stock_summary
 from arcade_search.tools.google_flights import search_one_way_flights, search_roundtrip_flights
 from arcade_search.tools.google_hotels import search_hotels
+from arcade_search.tools.google_maps import (
+    get_directions_between_addresses,
+    get_directions_between_coordinates,
+)
 from arcade_search.tools.google_search import search_google
 
 __all__ = [
@@ -10,4 +14,6 @@ __all__ = [
     "search_one_way_flights",  # Google Flights
     "search_roundtrip_flights",  # Google Flights
     "search_hotels",  # Google Hotels
+    "get_directions_between_addresses",  # Google Maps
+    "get_directions_between_coordinates",  # Google Maps
 ]
