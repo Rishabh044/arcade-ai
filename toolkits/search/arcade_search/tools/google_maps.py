@@ -16,17 +16,21 @@ from arcade_search.utils import get_google_maps_directions
 @tool(requires_secrets=["SERP_API_KEY"])
 async def get_directions_between_addresses(
     context: ToolContext,
-    origin_address: Annotated[str, "The origin address"],
-    destination_address: Annotated[str, "The destination address"],
+    origin_address: Annotated[
+        str, "The origin address. Example: '123 Main St, New York, NY 10001'"
+    ],
+    destination_address: Annotated[
+        str, "The destination address. Example: '456 Main St, New York, NY 10001'"
+    ],
     language: Annotated[
         str,
-        "2-letter language code to use in the Google Maps search. "
+        "2-character language code to use in the Google Maps search. "
         f"Defaults to '{DEFAULT_GOOGLE_MAPS_LANGUAGE}'.",
     ] = DEFAULT_GOOGLE_MAPS_LANGUAGE,
     country: Annotated[
         Optional[str],
-        f"2-letter country code to use in the Google Maps search. Defaults to "
-        f"'{DEFAULT_GOOGLE_MAPS_COUNTRY}'.",
+        "2-character country code to use in the Google Maps search. "
+        f"Defaults to '{DEFAULT_GOOGLE_MAPS_COUNTRY}'.",
     ] = DEFAULT_GOOGLE_MAPS_COUNTRY,
     distance_unit: Annotated[
         GoogleMapsDistanceUnit,
@@ -57,10 +61,10 @@ async def get_directions_between_addresses(
 @tool(requires_secrets=["SERP_API_KEY"])
 async def get_directions_between_coordinates(
     context: ToolContext,
-    origin_latitude: Annotated[str, "The origin latitude"],
-    origin_longitude: Annotated[str, "The origin longitude"],
-    destination_latitude: Annotated[str, "The destination latitude"],
-    destination_longitude: Annotated[str, "The destination longitude"],
+    origin_latitude: Annotated[str, "The origin latitude. E.g. '40.7128'"],
+    origin_longitude: Annotated[str, "The origin longitude. E.g. '-74.0060'"],
+    destination_latitude: Annotated[str, "The destination latitude. E.g. '40.7128'"],
+    destination_longitude: Annotated[str, "The destination longitude. E.g. '-74.0060'"],
     language: Annotated[
         str,
         "2-letter language code to use in the Google Maps search. "

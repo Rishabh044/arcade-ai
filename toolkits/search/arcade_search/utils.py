@@ -31,20 +31,24 @@ def get_google_maps_directions(
     Provide either all(origin_address, destination_address) or
     all(origin_latitude, origin_longitude, destination_latitude, destination_longitude).
 
-    :param serp_client: SerpAPI client to use in the Google Maps search.
-    :param origin_address: Origin address.
-    :param destination_address: Destination address.
-    :param origin_latitude: Origin latitude.
-    :param origin_longitude: Origin longitude.
-    :param destination_latitude: Destination latitude.
-    :param destination_longitude: Destination longitude.
-    :param language: Language to use in the Google Maps search. Defaults to 'en' (English).
-    :param country: 2-letter country code to use in the Google Maps search. Defaults to None
-        (no country is specified).
-    :param distance_unit: Distance unit to use in the Google Maps search. Defaults to 'km'
-        (kilometers).
-    :param travel_mode: Travel mode to use in the Google Maps search. Defaults to 'best'
-        (best mode).
+    Args:
+        serp_client: SerpAPI client to use in the Google Maps search.
+        origin_address: Origin address.
+        destination_address: Destination address.
+        origin_latitude: Origin latitude.
+        origin_longitude: Origin longitude.
+        destination_latitude: Destination latitude.
+        destination_longitude: Destination longitude.
+        language: Language to use in the Google Maps search. Defaults to 'en' (English).
+        country: 2-letter country code to use in the Google Maps search. Defaults to None
+            (no country is specified).
+        distance_unit: Distance unit to use in the Google Maps search. Defaults to 'km'
+            (kilometers).
+        travel_mode: Travel mode to use in the Google Maps search. Defaults to 'best'
+            (best mode).
+
+    Returns:
+        The directions from Google Maps.
     """
     language = language.lower()
 
@@ -99,7 +103,7 @@ def google_maps_travel_mode_to_serpapi(travel_mode: GoogleMapsTravelMode) -> int
     data = {
         GoogleMapsTravelMode.BEST: 6,
         GoogleMapsTravelMode.DRIVING: 0,
-        GoogleMapsTravelMode.TWO_WHEELER: 9,
+        GoogleMapsTravelMode.MOTORCYCLE: 9,
         GoogleMapsTravelMode.TRANSIT: 3,
         GoogleMapsTravelMode.WALKING: 2,
         GoogleMapsTravelMode.CYCLING: 1,

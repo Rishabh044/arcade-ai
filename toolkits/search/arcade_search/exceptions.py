@@ -12,25 +12,15 @@ class GoogleMapsRetryableError(RetryableToolError):
 
 class CountryNotFoundError(GoogleMapsRetryableError):
     def __init__(self, country: Optional[str]) -> None:
-        try:
-            valid_countries = json.dumps(COUNTRY_CODES)
-        except Exception:
-            valid_countries = str(COUNTRY_CODES)
-
-        super().__init__(
-            f"Country not found: '{country}'",
-            additional_prompt_content=f"Valid countries are: {valid_countries}",
-        )
+        valid_countries = json.dumps(COUNTRY_CODES, default=str)
+        message = f"Country not found: '{country}'."
+        additional_message = f"Valid countries are: {valid_countries}"
+        super().__init__(message, additional_prompt_content=additional_message)
 
 
 class LanguageNotFoundError(GoogleMapsRetryableError):
     def __init__(self, language: Optional[str]) -> None:
-        try:
-            valid_languages = json.dumps(LANGUAGE_CODES)
-        except Exception:
-            valid_languages = str(LANGUAGE_CODES)
-
-        super().__init__(
-            f"Language not found: '{language}'",
-            additional_prompt_content=f"Valid languages are: {valid_languages}",
-        )
+        valid_languages = json.dumps(LANGUAGE_CODES, default=str)
+        message = f"Language not found: '{language}'."
+        additional_message = f"Valid languages are: {valid_languages}"
+        super().__init__(message, additional_prompt_content=additional_message)
