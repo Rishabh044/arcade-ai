@@ -2,6 +2,7 @@
 # ruff: noqa: S105
 # ruff: noqa: S106
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from arcade.worker.config.deployment import (
     Package,
     PackageRepository,
     Pypi,
+    Secret,
     Worker,
 )
 
@@ -41,7 +43,7 @@ def test_deployment_parsing(test_dir):
     assert deployment.worker[0].config.enabled is True
     assert deployment.worker[0].config.timeout == 10
     assert deployment.worker[0].config.retries == 3
-    assert deployment.worker[0].config.secret == "test-secret"
+    assert deployment.worker[0].config.secret == Secret(value="test-secret", pattern=None)
 
     # Test pypi section
     assert deployment.worker[0].pypi_source.packages == [Package(name="arcade-x")]
@@ -123,7 +125,6 @@ def test_deployment_dict(test_dir):
     ]
 }""")
     got = deployment.worker[0].request().model_dump(mode="json")
-    print(got)
     # Remove encoding part that contains the content
     got["local_packages"][0].pop("content")
     expected["local_packages"][0].pop("content")
@@ -161,7 +162,7 @@ def test_unconfigured_local_package(test_dir):
 def test_duplicate_pypi_packages():
     worker = Worker(
         toml_path=Path(__file__),
-        config=Config(id="test", secret="test-secret"),
+        config=Config(id="test", secret=Secret(value="test-secret", pattern=None)),
         pypi_source=Pypi(packages=["arcade-slack", "arcade-slack"]),
     )
     with pytest.raises(ValueError):
@@ -171,7 +172,7 @@ def test_duplicate_pypi_packages():
 def test_duplicate_custom_repository_packages():
     worker = Worker(
         toml_path=Path(__file__),
-        config=Config(id="test", secret="test-secret"),
+        config=Config(id="test", secret=Secret(value="test-secret", pattern=None)),
         custom_source=[
             PackageRepository(
                 index="pypi",
@@ -188,7 +189,7 @@ def test_duplicate_custom_repository_packages():
 def test_duplicate_local_packages():
     worker = Worker(
         toml_path=Path(__file__),
-        config=Config(id="test", secret="test-secret"),
+        config=Config(id="test", secret=Secret(value="test-secret", pattern=None)),
         local_source=LocalPackages(packages=["./mock_toolkit", "./mock_toolkit"]),
     )
     with pytest.raises(ValueError):
@@ -198,7 +199,7 @@ def test_duplicate_local_packages():
 def test_duplicate_all_typed_packages():
     worker = Worker(
         toml_path=Path(__file__),
-        config=Config(id="test", secret="test-secret"),
+        config=Config(id="test", secret=Secret(value="test-secret", pattern=None)),
         pypi_source=Pypi(packages=["arcade-slack"]),
         custom_source=[
             PackageRepository(
@@ -217,11 +218,19 @@ def test_duplicate_all_typed_packages():
 def test_duplicate_worker_names():
     worker = Worker(
         toml_path=Path(__file__),
-        config=Config(id="test", secret="test-secret"),
+        config=Config(id="test", secret=Secret(value="test-secret", pattern=None)),
     )
     worker2 = Worker(
         toml_path=Path(__file__),
-        config=Config(id="test", secret="test-secret"),
+        config=Config(id="test", secret=Secret(value="test-secret", pattern=None)),
     )
     with pytest.raises(ValueError):
         Deployment(workers=[worker, worker2])
+
+
+def test_secret_parsing(test_dir):
+    os.environ["TEST_WORKER_SECRET"] = "test-secret"
+    deployment = Deployment.from_toml(test_dir / "test_files" / "env.secret.worker.toml")
+    assert deployment.worker[0].config.secret == Secret(
+        value="test-secret", pattern="TEST_WORKER_SECRET"
+    )
