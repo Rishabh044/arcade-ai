@@ -112,8 +112,8 @@ def get_google_maps_directions(
     params = prepare_params(
         engine="google_maps_directions",
         hl=language,
-        distance_unit=google_maps_distance_unit_to_serpapi(distance_unit),
-        travel_mode=google_maps_travel_mode_to_serpapi(travel_mode),
+        distance_unit=distance_unit.to_api_value(),
+        travel_mode=travel_mode.to_api_value(),
     )
 
     if any([
@@ -156,7 +156,7 @@ def get_google_maps_directions(
     return directions
 
 
-def clean_google_maps_direction(direction: dict[str, Any]) -> dict[str, Any]:
+def clean_google_maps_direction(direction: dict[str, Any]) -> None:
     for trip in direction.get("trips", []):
         with contextlib.suppress(KeyError):
             del trip["start_stop"]["data_id"]
@@ -170,27 +170,6 @@ def clean_google_maps_direction(direction: dict[str, Any]) -> dict[str, Any]:
         for stop in trip.get("stops", []):
             with contextlib.suppress(KeyError):
                 del stop["data_id"]
-
-
-def google_maps_travel_mode_to_serpapi(travel_mode: GoogleMapsTravelMode) -> int:
-    data = {
-        GoogleMapsTravelMode.BEST: 6,
-        GoogleMapsTravelMode.DRIVING: 0,
-        GoogleMapsTravelMode.MOTORCYCLE: 9,
-        GoogleMapsTravelMode.PUBLIC_TRANSPORTATION: 3,
-        GoogleMapsTravelMode.WALKING: 2,
-        GoogleMapsTravelMode.BICYCLE: 1,
-        GoogleMapsTravelMode.FLIGHT: 4,
-    }
-    return data[travel_mode]
-
-
-def google_maps_distance_unit_to_serpapi(distance_unit: GoogleMapsDistanceUnit) -> int:
-    data = {
-        GoogleMapsDistanceUnit.KM: 0,
-        GoogleMapsDistanceUnit.MILES: 1,
-    }
-    return data[distance_unit]
 
 
 def enrich_google_maps_arrive_around(timestamp: Optional[int]) -> dict[str, Any]:
