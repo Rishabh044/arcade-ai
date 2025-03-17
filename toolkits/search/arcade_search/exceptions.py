@@ -6,11 +6,11 @@ from arcade.core.errors import RetryableToolError
 from arcade_search.google_data import COUNTRY_CODES, LANGUAGE_CODES
 
 
-class GoogleMapsRetryableError(RetryableToolError):
+class GoogleRetryableError(RetryableToolError):
     pass
 
 
-class CountryNotFoundError(GoogleMapsRetryableError):
+class CountryNotFoundError(GoogleRetryableError):
     def __init__(self, country: Optional[str]) -> None:
         valid_countries = json.dumps(COUNTRY_CODES, default=str)
         message = f"Country not found: '{country}'."
@@ -18,7 +18,7 @@ class CountryNotFoundError(GoogleMapsRetryableError):
         super().__init__(message, additional_prompt_content=additional_message)
 
 
-class LanguageNotFoundError(GoogleMapsRetryableError):
+class LanguageNotFoundError(GoogleRetryableError):
     def __init__(self, language: Optional[str]) -> None:
         valid_languages = json.dumps(LANGUAGE_CODES, default=str)
         message = f"Language not found: '{language}'."

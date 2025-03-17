@@ -59,6 +59,30 @@ def google_jobs_eval_suite() -> EvalSuite:
     )
 
     suite.add_case(
+        name="Search for 'senior backend engineer' jobs that are part-time",
+        user_message="Search for senior backend engineer jobs that are part-time",
+        expected_tool_calls=[
+            ExpectedToolCall(
+                func=search_jobs,
+                args={
+                    "query": "part-time senior backend engineer",
+                    "location": None,
+                    "language": DEFAULT_GOOGLE_JOBS_LANGUAGE,
+                    "limit": 10,
+                    "next_page_token": None,
+                },
+            )
+        ],
+        critics=[
+            SimilarityCritic(critic_field="query", weight=0.5),
+            NoneCritic(critic_field="location", weight=0.1),
+            BinaryCritic(critic_field="language", weight=0.1),
+            BinaryCritic(critic_field="limit", weight=0.1),
+            NoneCritic(critic_field="next_page_token", weight=0.1),
+        ],
+    )
+
+    suite.add_case(
         name="Search for 'backend engineer' jobs in San Francisco",
         user_message="Search for 'backend engineer' jobs in San Francisco",
         expected_tool_calls=[

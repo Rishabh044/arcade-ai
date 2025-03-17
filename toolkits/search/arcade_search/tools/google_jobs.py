@@ -1,17 +1,21 @@
 from typing import Annotated, Optional
 
 from arcade.sdk import ToolContext, tool
-from serpapi import Client as SerpClient
 
 from arcade_search.constants import DEFAULT_GOOGLE_JOBS_LANGUAGE
 from arcade_search.exceptions import LanguageNotFoundError
 from arcade_search.google_data import LANGUAGE_CODES
+from arcade_search.utils import call_serpapi, prepare_params
 
 
 @tool(requires_secrets=["SERP_API_KEY"])
 async def search_jobs(
     context: ToolContext,
-    query: Annotated[str, "Search query"],
+    query: Annotated[
+        str,
+        "Search query. Provide a job title, company name, and/or any keywords in general "
+        "representing what kind of jobs the user is looking for.",
+    ],
     location: Annotated[
         Optional[str],
         "Location to search for jobs. Defaults to None.",
@@ -28,13 +32,11 @@ async def search_jobs(
     if language not in LANGUAGE_CODES:
         raise LanguageNotFoundError(language)
 
-    api_key = context.get_secret("SERP_API_KEY")
-    client = SerpClient(api_key=api_key)
-    params = {
-        "engine": "google_jobs",
-        "q": query,
-        "hl": language,
-    }
+    params = prepare_params(
+        engine="google_jobs",
+        q=query,
+        hl=language,
+    )
 
     if location:
         params["location"] = location
@@ -42,8 +44,7 @@ async def search_jobs(
     if next_page_token:
         params["next_page_token"] = next_page_token
 
-    search = client.search(params)
-    results = search.as_dict()
+    results = call_serpapi(context, params)
     jobs_results = results.get("jobs_results", [])
 
     try:
