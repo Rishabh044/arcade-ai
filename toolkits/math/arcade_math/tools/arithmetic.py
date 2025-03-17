@@ -1,4 +1,4 @@
-import math
+from decimal import Decimal
 from typing import Annotated
 
 from arcade.sdk import tool
@@ -6,70 +6,89 @@ from arcade.sdk import tool
 
 @tool
 def add(
-    a: Annotated[int, "The first number"], b: Annotated[int, "The second number"]
-) -> Annotated[int, "The sum of the two numbers"]:
+    a: Annotated[str, "The first number as a string"],
+    b: Annotated[str, "The second number as a string"],
+) -> Annotated[str, "The sum of the two numbers as a string"]:
     """
     Add two numbers together
     """
-    return a + b
+    # Use Decimal for arbitrary precision
+    a_decimal = Decimal(a)
+    b_decimal = Decimal(b)
+    return str(a_decimal + b_decimal)
 
 
 @tool
 def subtract(
-    a: Annotated[int, "The first number"], b: Annotated[int, "The second number"]
-) -> Annotated[int, "The difference of the two numbers"]:
+    a: Annotated[str, "The first number as a string"],
+    b: Annotated[str, "The second number as a string"],
+) -> Annotated[str, "The difference of the two numbers as a string"]:
     """
     Subtract two numbers
     """
-    return a - b
+    # Use Decimal for arbitrary precision
+    a_decimal = Decimal(a)
+    b_decimal = Decimal(b)
+    return str(a_decimal - b_decimal)
 
 
 @tool
 def multiply(
-    a: Annotated[int, "The first number"], b: Annotated[int, "The second number"]
-) -> Annotated[int, "The product of the two numbers"]:
+    a: Annotated[str, "The first number as a string"],
+    b: Annotated[str, "The second number as a string"],
+) -> Annotated[str, "The product of the two numbers as a string"]:
     """
     Multiply two numbers together
     """
-    return a * b
+    # Use Decimal for arbitrary precision
+    a_decimal = Decimal(a)
+    b_decimal = Decimal(b)
+    return str(a_decimal * b_decimal)
 
 
 @tool
 def divide(
-    a: Annotated[int, "The first number"], b: Annotated[int, "The second number"]
-) -> Annotated[float, "The quotient of the two numbers"]:
+    a: Annotated[str, "The first number as a string"],
+    b: Annotated[str, "The second number as a string"],
+) -> Annotated[str, "The quotient of the two numbers as a string"]:
     """
     Divide two numbers
     """
-    return a / b
-
-
-@tool
-def sqrt(
-    a: Annotated[int, "The number to square root"],
-) -> Annotated[float, "The square root of the number"]:
-    """
-    Get the square root of a number
-    """
-    return math.sqrt(a)
+    # Use Decimal for arbitrary precision
+    a_decimal = Decimal(a)
+    b_decimal = Decimal(b)
+    return str(a_decimal / b_decimal)
 
 
 @tool
 def sum_list(
-    numbers: Annotated[list[float], "The list of numbers"],
-) -> Annotated[float, "The sum of the numbers in the list"]:
+    numbers: Annotated[list[str], "The list of numbers as strings"],
+) -> Annotated[str, "The sum of the numbers in the list as a string"]:
     """
     Sum all numbers in a list
     """
-    return sum(numbers)
+    # Use Decimal for arbitrary precision
+    return str(sum([Decimal(n) for n in numbers]))
 
 
 @tool
 def sum_range(
-    start: Annotated[int, "The start of the range to sum"],
-    end: Annotated[int, "The end of the range to sum"],
-) -> Annotated[int, "The sum of the numbers in the list"]:
+    start: Annotated[str, "The start of the range to sum as a string"],
+    end: Annotated[str, "The end of the range to sum as a string"],
+) -> Annotated[str, "The sum of the numbers in the list as a string"]:
     """
     Sum all numbers from start through end
     """
-    return sum(list(range(start, end + 1)))
+    return str(sum(list(range(int(start), int(end) + 1))))
+
+
+@tool
+def mod(
+    a: Annotated[str, "The dividend as a string"],
+    b: Annotated[str, "The divisor as a string"],
+) -> Annotated[str, "The remainder after dividing a by b as a string"]:
+    """
+    Calculate the remainder (modulus) of one number divided by another
+    """
+    # Use Decimal for arbitrary precision
+    return str(Decimal(a) % Decimal(b))
