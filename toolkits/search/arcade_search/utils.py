@@ -1,3 +1,4 @@
+import contextlib
 import re
 from datetime import datetime
 from typing import Any, Optional, cast
@@ -78,7 +79,7 @@ def get_google_maps_directions(
     country: Optional[str] = DEFAULT_GOOGLE_MAPS_COUNTRY,
     distance_unit: GoogleMapsDistanceUnit = DEFAULT_GOOGLE_MAPS_DISTANCE_UNIT,
     travel_mode: GoogleMapsTravelMode = DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
-) -> dict:
+) -> list[dict[str, Any]]:
     """Get directions from Google Maps.
 
     Provide either all(origin_address, destination_address) or
@@ -142,13 +143,33 @@ def get_google_maps_directions(
 
     results = call_serpapi(context, params)
 
-    for direction in results["directions"]:
+    directions = results.get("directions", [])
+
+    for direction in directions:
+        clean_google_maps_direction(direction)
+
         if "arrive_around" in direction:
             direction["arrive_around"] = enrich_google_maps_arrive_around(
                 direction["arrive_around"]
             )
 
-    return results
+    return directions
+
+
+def clean_google_maps_direction(direction: dict[str, Any]) -> dict[str, Any]:
+    for trip in direction.get("trips", []):
+        with contextlib.suppress(KeyError):
+            del trip["start_stop"]["data_id"]
+            del trip["end_stop"]["data_id"]
+
+        for detail in trip.get("details", []):
+            with contextlib.suppress(KeyError):
+                del detail["geo_photo"]
+                del detail["gps_coordinates"]
+
+        for stop in trip.get("stops", []):
+            with contextlib.suppress(KeyError):
+                del stop["data_id"]
 
 
 def google_maps_travel_mode_to_serpapi(travel_mode: GoogleMapsTravelMode) -> int:

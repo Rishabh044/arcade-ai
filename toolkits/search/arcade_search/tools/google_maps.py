@@ -43,15 +43,17 @@ async def get_directions_between_addresses(
     ] = DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
 ) -> Annotated[dict, "The directions from Google Maps"]:
     """Get directions from Google Maps."""
-    return get_google_maps_directions(
-        context=context,
-        origin_address=origin_address,
-        destination_address=destination_address,
-        language=language,
-        country=country,
-        distance_unit=distance_unit,
-        travel_mode=travel_mode,
-    )
+    return {
+        "directions": get_google_maps_directions(
+            context=context,
+            origin_address=origin_address,
+            destination_address=destination_address,
+            language=language,
+            country=country,
+            distance_unit=distance_unit,
+            travel_mode=travel_mode,
+        ),
+    }
 
 
 @tool(requires_secrets=["SERP_API_KEY"])
@@ -83,14 +85,16 @@ async def get_directions_between_coordinates(
     ] = DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
 ) -> Annotated[dict, "The directions from Google Maps"]:
     """Get directions from Google Maps."""
-    return get_google_maps_directions(
-        context=context,
-        origin_latitude=origin_latitude,
-        origin_longitude=origin_longitude,
-        destination_latitude=destination_latitude,
-        destination_longitude=destination_longitude,
-        language=language,
-        country=country,
-        distance_unit=distance_unit,
-        travel_mode=travel_mode,
-    )
+    return {
+        "directions": get_google_maps_directions(
+            context=context,
+            origin_latitude=origin_latitude,
+            origin_longitude=origin_longitude,
+            destination_latitude=destination_latitude,
+            destination_longitude=destination_longitude,
+            language=language,
+            country=country,
+            distance_unit=distance_unit,
+            travel_mode=travel_mode,
+        ),
+    }
