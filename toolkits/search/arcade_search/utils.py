@@ -1,5 +1,5 @@
 import re
-from typing import Any
+from typing import Any, Optional
 
 import serpapi
 from arcade.sdk import ToolContext
@@ -72,3 +72,24 @@ def parse_flight_results(results: dict[str, Any]) -> dict[str, Any]:
     flight_data["flights"] = flights
 
     return flight_data
+
+
+# ------------------------------------------------------------------------------------------------
+# Google News utils
+# ------------------------------------------------------------------------------------------------
+def extract_news_results(
+    results: dict[str, Any], limit: Optional[int] = None
+) -> list[dict[str, Any]]:
+    news_results = []
+    for result in results.get("news_results", []):
+        news_results.append({
+            "title": result.get("title"),
+            "snippet": result.get("snippet"),
+            "link": result.get("link"),
+            "date": result.get("date"),
+            "source": result.get("source", {}).get("name"),
+        })
+
+    if limit:
+        return news_results[:limit]
+    return news_results
