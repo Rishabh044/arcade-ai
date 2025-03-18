@@ -30,7 +30,10 @@ async def search_jobs(
         int,
         "Maximum number of results to retrieve. Defaults to 10 (max supported by the API).",
     ] = 10,
-    next_page_token: Annotated[Optional[str], "Next page token to paginate results."] = None,
+    next_page_token: Annotated[
+        Optional[str],
+        "Next page token to paginate results. Defaults to None (start from the first page).",
+    ] = None,
 ) -> Annotated[dict, "Google Jobs results"]:
     """Search Google Jobs using SerpAPI."""
     if language not in LANGUAGE_CODES:
