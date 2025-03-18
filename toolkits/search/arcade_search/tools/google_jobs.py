@@ -14,19 +14,23 @@ async def search_jobs(
     query: Annotated[
         str,
         "Search query. Provide a job title, company name, and/or any keywords in general "
-        "representing what kind of jobs the user is looking for.",
+        "representing what kind of jobs the user is looking for. E.g. 'software engineer' "
+        "or 'data analyst at Apple'.",
     ],
     location: Annotated[
         Optional[str],
-        "Location to search for jobs. Defaults to None.",
+        "Location to search for jobs. E.g. 'United States' or 'New York, NY'. Defaults to None.",
     ] = None,
     language: Annotated[
         str,
         "2-character language code to use in the Google Jobs search. ",
         f"E.g. 'en' for English. Defaults to '{DEFAULT_GOOGLE_JOBS_LANGUAGE}'.",
     ] = DEFAULT_GOOGLE_JOBS_LANGUAGE,
-    limit: Annotated[int, "Number of results to retrieve"] = 10,
-    next_page_token: Annotated[Optional[str], "Next page token to paginate results"] = None,
+    limit: Annotated[
+        int,
+        "Maximum number of results to retrieve. Defaults to 10 (max supported by the API).",
+    ] = 10,
+    next_page_token: Annotated[Optional[str], "Next page token to paginate results."] = None,
 ) -> Annotated[dict, "Google Jobs results"]:
     """Search Google Jobs using SerpAPI."""
     if language not in LANGUAGE_CODES:
