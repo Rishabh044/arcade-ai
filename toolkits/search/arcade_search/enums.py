@@ -1,6 +1,9 @@
 from enum import Enum
 
 
+# ------------------------------------------------------------------------------------------------
+# Google Finance enumerations
+# ------------------------------------------------------------------------------------------------
 class GoogleFinanceWindow(Enum):
     ONE_DAY = "1D"
     FIVE_DAYS = "5D"
@@ -12,6 +15,9 @@ class GoogleFinanceWindow(Enum):
     MAX = "MAX"
 
 
+# ------------------------------------------------------------------------------------------------
+# Google Flights enumerations
+# ------------------------------------------------------------------------------------------------
 class GoogleFlightsTravelClass(Enum):
     ECONOMY = "ECONOMY"
     PREMIUM_ECONOMY = "PREMIUM_ECONOMY"
@@ -64,6 +70,9 @@ class GoogleFlightsSortBy(Enum):
         return _map[self.value]
 
 
+# ------------------------------------------------------------------------------------------------
+# Google Hotels enumerations
+# ------------------------------------------------------------------------------------------------
 class GoogleHotelsSortBy(Enum):
     RELEVANCE = "RELEVANCE"
     LOWEST_PRICE = "LOWEST_PRICE"
@@ -78,3 +87,40 @@ class GoogleHotelsSortBy(Enum):
             "MOST_REVIEWED": 13,
         }
         return _map[self.value]
+
+
+# ------------------------------------------------------------------------------------------------
+# Google Maps enumerations
+# ------------------------------------------------------------------------------------------------
+class GoogleMapsTravelMode(Enum):
+    BEST = "best"
+    DRIVING = "driving"
+    MOTORCYCLE = "motorcycle"
+    PUBLIC_TRANSPORTATION = "public_transportation"
+    WALKING = "walking"
+    BICYCLE = "bicycle"
+    FLIGHT = "flight"
+
+    def to_api_value(self) -> int:
+        _map = {
+            str(self.BEST): 6,
+            str(self.DRIVING): 0,
+            str(self.MOTORCYCLE): 9,
+            str(self.PUBLIC_TRANSPORTATION): 3,
+            str(self.WALKING): 2,
+            str(self.BICYCLE): 1,
+            str(self.FLIGHT): 4,
+        }
+        return _map[str(self)]
+
+
+class GoogleMapsDistanceUnit(Enum):
+    KM = "km"
+    MILES = "mi"
+
+    def to_api_value(self) -> int:
+        _map = {
+            str(self.KM): 0,
+            str(self.MILES): 1,
+        }
+        return _map[str(self)]
