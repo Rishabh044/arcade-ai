@@ -89,7 +89,7 @@ class Config(BaseModel):
         else:
             raise TypeError("Secret must be a string or a Secret object")
         # Check that the secret is not the default dev secret or empty
-        if secret.value.strip("") == "" or secret.value == "dev":
+        if secret.value.strip() == "" or secret.value == "dev":
             raise ValueError("Secret must be a non-empty string and not 'dev'")
         return secret
 
