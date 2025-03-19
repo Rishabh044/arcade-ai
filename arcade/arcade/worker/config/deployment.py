@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+import re
 import secrets
 import tarfile
 from pathlib import Path
@@ -11,7 +12,7 @@ import toml
 from arcadepy import Arcade, NotFoundError
 from httpx import Client
 from packaging.requirements import Requirement
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_serializer, field_validator, model_validator
 
 
 # Base class for versioned packages
@@ -63,32 +64,57 @@ class Pypi(PackageRepository):
     trusted_host: str = "pypi.org"
 
 
+class Secret(BaseModel):
+    value: str
+    pattern: str | None = None
+
+
 class Config(BaseModel):
     id: str
     enabled: bool = True
     timeout: int = 30
     retries: int = 3
-    secret: str
+    secret: Secret | None = None
 
-    # Validate that the secret is a non-empty string and not 'dev'
-    @field_validator("secret")
+    # Validate and parse the secret if required
+    @field_validator("secret", mode="before")
     @classmethod
-    def valid_secret(cls, v: str) -> str:
-        if v.strip("") == "" or v == "dev":
+    def valid_secret(cls, v: str | Secret | None) -> Secret:
+        # If the secret is a string, attempt to parse it as an environment variable or return the secret
+        if isinstance(v, str):
+            secret = get_env_secret(v)
+        # If the secret has been manually set, return it
+        elif isinstance(v, Secret):
+            secret = v
+        else:
+            raise TypeError("Secret must be a string or a Secret object")
+        # Check that the secret is not the default dev secret or empty
+        if secret.value.strip() == "" or secret.value == "dev":
             raise ValueError("Secret must be a non-empty string and not 'dev'")
-        return v
+        return secret
+
+    @field_serializer("secret")
+    def serialize_secret(self, secret: Secret) -> str:
+        if secret.pattern:
+            return f"$env:{secret.pattern}"
+        else:
+            return secret.value
 
 
 # Cloud request for deploying a worker
 class Request(BaseModel):
     name: str
-    secret: str
+    secret: Secret
     enabled: bool
     timeout: int
     retries: int
     pypi: Pypi | None = None
     custom_repositories: list[PackageRepository] | None = None
     local_packages: list[LocalPackage] | None = None
+
+    @field_serializer("secret")
+    def serialize_secret(self, secret: Secret) -> str:
+        return secret.value
 
     def execute(self, cloud_client: Client, engine_client: Arcade) -> Any:
         # Attempt to deploy worker to the cloud
@@ -113,7 +139,7 @@ class Request(BaseModel):
                 enabled=self.enabled,
                 http={
                     "uri": cloud_response.json()["data"]["worker_endpoint"],
-                    "secret": self.secret,
+                    "secret": self.secret.value,
                     "timeout": self.timeout,
                     "retry": self.retries,
                 },
@@ -125,7 +151,7 @@ class Request(BaseModel):
                 enabled=self.enabled,
                 http={
                     "uri": cloud_response.json()["data"]["worker_endpoint"],
-                    "secret": self.secret,
+                    "secret": self.secret.value,
                     "timeout": self.timeout,
                     "retry": self.retries,
                 },
@@ -148,6 +174,8 @@ class Worker(BaseModel):
         """Convert Deployment to a Request object."""
         self.validate_packages()
         self.compress_local_packages()
+        if self.config.secret is None:
+            raise ValueError("Secret is required")
         return Request(
             name=self.config.id,
             secret=self.config.secret,
@@ -274,7 +302,7 @@ def create_demo_deployment(toml_path: Path, toolkit_name: str) -> None:
                     enabled=True,
                     timeout=30,
                     retries=3,
-                    secret=secrets.token_hex(16),
+                    secret=Secret(value=secrets.token_hex(16), pattern=None),
                 ),
                 local_source=LocalPackages(packages=[f"./{toolkit_name}"]),
             )
@@ -292,3 +320,25 @@ def update_deployment_with_local_packages(toml_path: Path, toolkit_name: str) ->
     else:
         deployment.worker[0].local_source.packages.append(f"./{toolkit_name}")
     deployment.save()
+
+
+def get_env_secret(secret: str) -> Secret:
+    """Parse a secret from an environment variable."""
+    # Check if the secret contains the "${env:}" syntax
+    pattern = r"\${env:([^}]+)}"
+    matches = re.findall(pattern, secret)
+
+    # Only allow a single match
+    if matches and len(matches) == 1:
+        match = matches[0].strip()
+        # Attempt to lookup and create the secret
+        print(f"Looking up secret: {match}")
+        value = os.getenv(match)
+        if value:
+            return Secret(value=value, pattern=match)
+        else:
+            raise ValueError(f"Environment variable not found: {match}")
+    elif matches and len(matches) > 1:
+        raise ValueError(f"Multiple environment variables found in secret: {secret}")
+    # If no matches are found, return the secret as is
+    return Secret(value=secret, pattern=None)
