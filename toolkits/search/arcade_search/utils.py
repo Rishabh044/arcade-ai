@@ -285,6 +285,23 @@ def extract_video_id_from_link(link: str) -> str:
     return query_params.get("v", [""])[0]
 
 
+def extract_video_description(
+    video: dict[str, Any],
+    max_description_length: int = YOUTUBE_MAX_DESCRIPTION_LENGTH,
+) -> str:
+    description = video.get("description", "")
+
+    if isinstance(description, dict):
+        description = description.get("content", "")
+
+    if isinstance(description, str):
+        too_long = len(description) > max_description_length
+        if too_long:
+            description = description[:max_description_length] + " [truncated]"
+
+    return description
+
+
 def extract_video_results(
     results: dict[str, Any],
     max_description_length: int = YOUTUBE_MAX_DESCRIPTION_LENGTH,
@@ -292,16 +309,10 @@ def extract_video_results(
     videos = []
 
     for video in results.get("video_results", []):
-        description = video.get("description")
-        if isinstance(description, str):
-            too_long = len(description) > max_description_length
-            if too_long:
-                description = description[:max_description_length] + " [truncated]"
-
         videos.append({
             "id": extract_video_id_from_link(video.get("link")),
             "title": video.get("title"),
-            "description": description,
+            "description": extract_video_description(video, max_description_length),
             "link": video.get("link"),
             "published_date": video.get("published_date"),
             "duration": video.get("duration"),
@@ -312,3 +323,21 @@ def extract_video_results(
         })
 
     return videos
+
+
+def extract_video_details(results: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": extract_video_id_from_link(results.get("link")),
+        "title": results.get("title"),
+        "description": extract_video_description(
+            results.get("description"), YOUTUBE_MAX_DESCRIPTION_LENGTH
+        ),
+        "published_date": results.get("published_date"),
+        "channel": {
+            "name": results.get("channel", {}).get("name"),
+            "link": results.get("channel", {}).get("link"),
+        },
+        "like_count": results.get("extracted_likes"),
+        "view_count": results.get("extracted_views"),
+        "live": results.get("live", False),
+    }
