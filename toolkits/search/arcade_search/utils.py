@@ -9,6 +9,8 @@ from arcade.sdk.errors import ToolExecutionError
 from serpapi import Client as SerpClient
 
 from arcade_search.constants import (
+    DEFAULT_GOOGLE_COUNTRY,
+    DEFAULT_GOOGLE_LANGUAGE,
     DEFAULT_GOOGLE_MAPS_COUNTRY,
     DEFAULT_GOOGLE_MAPS_DISTANCE_UNIT,
     DEFAULT_GOOGLE_MAPS_LANGUAGE,
@@ -62,6 +64,53 @@ def call_serpapi(context: ToolContext, params: dict) -> dict:
             message="Failed to fetch search results",
             developer_message=sanitized_e,
         )
+
+
+# ------------------------------------------------------------------------------------------------
+# Google general utils
+# ------------------------------------------------------------------------------------------------
+def default_language_code(default_service_language_code: Optional[str] = None) -> str:
+    if isinstance(default_service_language_code, str):
+        return default_service_language_code.lower()
+    elif isinstance(DEFAULT_GOOGLE_LANGUAGE, str):
+        return DEFAULT_GOOGLE_LANGUAGE.lower()
+    return None
+
+
+def default_country_code(default_service_country_code: Optional[str] = None) -> str:
+    if isinstance(default_service_country_code, str):
+        return default_service_country_code.lower()
+    elif isinstance(DEFAULT_GOOGLE_COUNTRY, str):
+        return DEFAULT_GOOGLE_COUNTRY.lower()
+    return None
+
+
+def resolve_language_code(
+    language_code: Optional[str] = None,
+    default_service_language_code: Optional[str] = None,
+) -> str:
+    language_code = language_code or default_language_code(default_service_language_code)
+
+    if isinstance(language_code, str):
+        language_code = language_code.lower()
+        if language_code not in LANGUAGE_CODES:
+            raise LanguageNotFoundError(language_code)
+
+    return language_code
+
+
+def resolve_country_code(
+    country_code: Optional[str] = None,
+    default_service_country_code: Optional[str] = None,
+) -> str:
+    country_code = country_code or default_country_code(default_service_country_code)
+
+    if isinstance(country_code, str):
+        country_code = country_code.lower()
+        if country_code not in COUNTRY_CODES:
+            raise CountryNotFoundError(country_code)
+
+    return country_code
 
 
 # ------------------------------------------------------------------------------------------------

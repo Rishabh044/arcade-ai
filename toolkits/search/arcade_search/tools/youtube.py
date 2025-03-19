@@ -3,9 +3,14 @@ from typing import Annotated, Any, Optional
 from arcade.sdk import ToolContext, tool
 
 from arcade_search.constants import DEFAULT_YOUTUBE_SEARCH_COUNTRY, DEFAULT_YOUTUBE_SEARCH_LANGUAGE
-from arcade_search.exceptions import CountryNotFoundError, LanguageNotFoundError
-from arcade_search.google_data import COUNTRY_CODES, LANGUAGE_CODES
-from arcade_search.utils import call_serpapi, prepare_params
+from arcade_search.utils import (
+    call_serpapi,
+    default_country_code,
+    default_language_code,
+    prepare_params,
+    resolve_country_code,
+    resolve_language_code,
+)
 
 
 @tool(requires_secrets=["SERP_API_KEY"])
@@ -18,12 +23,12 @@ async def search_youtube_videos(
     language_code: Annotated[
         Optional[str],
         "2-character language code to search for. E.g. 'en' for English. "
-        "Defaults to `None` (no language filters).",
+        f"Defaults to '{default_language_code(DEFAULT_YOUTUBE_SEARCH_LANGUAGE)}'.",
     ] = None,
     country_code: Annotated[
         Optional[str],
         "2-character country code to search for. E.g. 'us' for United States. "
-        "Defaults to `None` (no country filters).",
+        f"Defaults to '{default_country_code(DEFAULT_YOUTUBE_SEARCH_COUNTRY)}'.",
     ] = None,
     next_page_token: Annotated[
         Optional[str],
@@ -31,15 +36,8 @@ async def search_youtube_videos(
         "Defaults to `None` (start from the first page).",
     ] = None,
 ) -> Annotated[dict[str, Any], "List of YouTube videos related to the query."]:
-    if language_code is None and DEFAULT_YOUTUBE_SEARCH_LANGUAGE:
-        language_code = DEFAULT_YOUTUBE_SEARCH_LANGUAGE
-    if country_code is None and DEFAULT_YOUTUBE_SEARCH_COUNTRY:
-        country_code = DEFAULT_YOUTUBE_SEARCH_COUNTRY
-
-    if language_code and language_code not in LANGUAGE_CODES:
-        raise LanguageNotFoundError(language_code)
-    if country_code and country_code not in COUNTRY_CODES:
-        raise CountryNotFoundError(country_code)
+    language_code = resolve_language_code(language_code, DEFAULT_YOUTUBE_SEARCH_LANGUAGE)
+    country_code = resolve_country_code(country_code, DEFAULT_YOUTUBE_SEARCH_COUNTRY)
 
     params = prepare_params(
         "youtube",
