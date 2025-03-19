@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any, Optional, cast
 
 from arcade.sdk import ToolContext, tool
 from arcade.sdk.errors import ToolExecutionError
@@ -53,7 +53,8 @@ async def search_youtube_videos(
     results = call_serpapi(context, params)
 
     if results.get("error"):
-        raise ToolExecutionError(results.get("error"))
+        error_msg = cast(str, results.get("error"))
+        raise ToolExecutionError(error_msg)
 
     return {
         "videos": extract_video_results(results),
@@ -92,7 +93,8 @@ async def get_youtube_video_details(
     results = call_serpapi(context, params)
 
     if results.get("error"):
-        raise ToolExecutionError(results.get("error"))
+        error_msg = cast(str, results.get("error"))
+        raise ToolExecutionError(error_msg)
 
     return {
         "video": extract_video_details(results),
