@@ -7,6 +7,7 @@ from arcade_search.utils import (
     call_serpapi,
     default_country_code,
     default_language_code,
+    extract_video_results,
     prepare_params,
     resolve_country_code,
     resolve_language_code,
@@ -36,15 +37,19 @@ async def search_youtube_videos(
         "Defaults to `None` (start from the first page).",
     ] = None,
 ) -> Annotated[dict[str, Any], "List of YouTube videos related to the query."]:
+    """Search for YouTube videos related to the query."""
     language_code = resolve_language_code(language_code, DEFAULT_YOUTUBE_SEARCH_LANGUAGE)
     country_code = resolve_country_code(country_code, DEFAULT_YOUTUBE_SEARCH_COUNTRY)
 
     params = prepare_params(
         "youtube",
-        q=keywords,
+        search_query=keywords,
         hl=language_code,
         gl=country_code,
         sp=next_page_token,
     )
     results = call_serpapi(context, params)
-    return results
+    return {
+        "videos": extract_video_results(results),
+        "next_page_token": results.get("serpapi_pagination", {}).get("next_page_token"),
+    }
