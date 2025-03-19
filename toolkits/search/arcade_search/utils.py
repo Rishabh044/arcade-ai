@@ -279,7 +279,10 @@ def extract_news_results(
 # ------------------------------------------------------------------------------------------------
 # YouTube utils
 # ------------------------------------------------------------------------------------------------
-def extract_video_id_from_link(link: str) -> str:
+def extract_video_id_from_link(link: Optional[str]) -> Optional[str]:
+    if not isinstance(link, str):
+        return None
+
     parsed_url = urlparse(link)
     query_params = parse_qs(parsed_url.query)
     return query_params.get("v", [""])[0]
@@ -288,7 +291,7 @@ def extract_video_id_from_link(link: str) -> str:
 def extract_video_description(
     video: dict[str, Any],
     max_description_length: int = YOUTUBE_MAX_DESCRIPTION_LENGTH,
-) -> str:
+) -> Optional[str]:
     description = video.get("description", "")
 
     if isinstance(description, dict):
@@ -299,7 +302,10 @@ def extract_video_description(
         if too_long:
             description = description[:max_description_length] + " [truncated]"
 
-    return description
+    if description is not None:
+        description = str(description).strip()
+
+    return cast(Optional[str], description)
 
 
 def extract_video_results(
@@ -325,19 +331,17 @@ def extract_video_results(
     return videos
 
 
-def extract_video_details(results: dict[str, Any]) -> dict[str, Any]:
+def extract_video_details(video: dict[str, Any]) -> dict[str, Any]:
     return {
-        "id": extract_video_id_from_link(results.get("link")),
-        "title": results.get("title"),
-        "description": extract_video_description(
-            results.get("description"), YOUTUBE_MAX_DESCRIPTION_LENGTH
-        ),
-        "published_date": results.get("published_date"),
+        "id": extract_video_id_from_link(video.get("link")),
+        "title": video.get("title"),
+        "description": extract_video_description(video, YOUTUBE_MAX_DESCRIPTION_LENGTH),
+        "published_date": video.get("published_date"),
         "channel": {
-            "name": results.get("channel", {}).get("name"),
-            "link": results.get("channel", {}).get("link"),
+            "name": video.get("channel", {}).get("name"),
+            "link": video.get("channel", {}).get("link"),
         },
-        "like_count": results.get("extracted_likes"),
-        "view_count": results.get("extracted_views"),
-        "live": results.get("live", False),
+        "like_count": video.get("extracted_likes"),
+        "view_count": video.get("extracted_views"),
+        "live": video.get("live", False),
     }
