@@ -1,6 +1,7 @@
 from typing import Annotated, Any, Optional
 
 from arcade.sdk import ToolContext, tool
+from arcade.sdk.errors import ToolExecutionError
 
 from arcade_search.constants import DEFAULT_YOUTUBE_SEARCH_COUNTRY, DEFAULT_YOUTUBE_SEARCH_LANGUAGE
 from arcade_search.utils import (
@@ -50,6 +51,10 @@ async def search_youtube_videos(
         sp=next_page_token,
     )
     results = call_serpapi(context, params)
+
+    if results.get("error"):
+        raise ToolExecutionError(results.get("error"))
+
     return {
         "videos": extract_video_results(results),
         "next_page_token": results.get("serpapi_pagination", {}).get("next_page_token"),
@@ -85,6 +90,9 @@ async def get_youtube_video_details(
         gl=country_code,
     )
     results = call_serpapi(context, params)
+
+    if results.get("error"):
+        raise ToolExecutionError(results.get("error"))
 
     return {
         "video": extract_video_details(results),
