@@ -7,8 +7,9 @@ from arcade.sdk.tool import tool
 from arcade_search.enums import WalmartSortBy
 from arcade_search.utils import (
     call_serpapi,
+    extract_walmart_product_details,
     extract_walmart_results,
-    get_walmart_total_pages,
+    get_walmart_last_page_integer,
     prepare_params,
 )
 
@@ -66,5 +67,29 @@ async def search_walmart_products(
     return {
         "products": extract_walmart_results(response.get("organic_results", [])),
         "current_page": page,
-        "total_pages": get_walmart_total_pages(response),
+        "last_available_page": get_walmart_last_page_integer(response),
     }
+
+
+@tool(requires_secrets=["SERP_API_KEY"])
+async def get_product_details(
+    context: ToolContext,
+    item_id: Annotated[
+        str,
+        "Item ID. E.g. '414600577'. This can be retrieved from the search results of the "
+        f"{search_walmart_products.__tool_name__} tool.",
+    ],
+) -> Annotated[dict[str, Any], "Product details"]:
+    """Get product details from Walmart."""
+    params = prepare_params("walmart_product", product_id=item_id)
+    response = call_serpapi(context, params)
+
+    product_result = response.get("product_result")
+
+    if not product_result:
+        return {
+            "product_details": None,
+            "message": f"No product details found for item ID '{item_id}'.",
+        }
+
+    return {"product_details": extract_walmart_product_details(product_result)}
