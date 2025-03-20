@@ -72,7 +72,7 @@ async def search_walmart_products(
 
 
 @tool(requires_secrets=["SERP_API_KEY"])
-async def get_product_details(
+async def get_walmart_product_details(
     context: ToolContext,
     item_id: Annotated[
         str,
