@@ -222,3 +222,35 @@ def extract_news_results(
     if limit:
         return news_results[:limit]
     return news_results
+
+
+# ------------------------------------------------------------------------------------------------
+# Walmart utils
+# ------------------------------------------------------------------------------------------------
+def extract_walmart_results(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "item_id": result.get("us_item_id"),
+            "title": result.get("title"),
+            "description": result.get("description"),
+            "rating": result.get("rating"),
+            "reviews_count": result.get("reviews"),
+            "seller": {
+                "id": result.get("seller_id"),
+                "name": result.get("seller_name"),
+            },
+            "price": {
+                "value": result.get("primary_offer", {}).get("offer_price"),
+                "currency": result.get("primary_offer", {}).get("offer_currency"),
+            },
+            "link": result.get("product_page_url"),
+        }
+        for result in results
+    ]
+
+
+def get_walmart_total_pages(results: dict[str, Any]) -> int:
+    try:
+        return int(list(results["pagination"]["other_pages"].keys())[-1])
+    except (KeyError, IndexError, ValueError):
+        return 1
