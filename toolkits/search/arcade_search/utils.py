@@ -2,6 +2,7 @@ import contextlib
 import re
 from datetime import datetime
 from typing import Any, Optional, cast
+from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
 
 from arcade.sdk import ToolContext
@@ -9,10 +10,13 @@ from arcade.sdk.errors import ToolExecutionError
 from serpapi import Client as SerpClient
 
 from arcade_search.constants import (
+    DEFAULT_GOOGLE_COUNTRY,
+    DEFAULT_GOOGLE_LANGUAGE,
     DEFAULT_GOOGLE_MAPS_COUNTRY,
     DEFAULT_GOOGLE_MAPS_DISTANCE_UNIT,
     DEFAULT_GOOGLE_MAPS_LANGUAGE,
     DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
+    YOUTUBE_MAX_DESCRIPTION_LENGTH,
 )
 from arcade_search.enums import GoogleMapsDistanceUnit, GoogleMapsTravelMode
 from arcade_search.exceptions import CountryNotFoundError, LanguageNotFoundError
@@ -65,6 +69,53 @@ def call_serpapi(context: ToolContext, params: dict) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------
+# Google general utils
+# ------------------------------------------------------------------------------------------------
+def default_language_code(default_service_language_code: Optional[str] = None) -> Optional[str]:
+    if isinstance(default_service_language_code, str):
+        return default_service_language_code.lower()
+    elif isinstance(DEFAULT_GOOGLE_LANGUAGE, str):
+        return DEFAULT_GOOGLE_LANGUAGE.lower()
+    return None
+
+
+def default_country_code(default_service_country_code: Optional[str] = None) -> Optional[str]:
+    if isinstance(default_service_country_code, str):
+        return default_service_country_code.lower()
+    elif isinstance(DEFAULT_GOOGLE_COUNTRY, str):
+        return DEFAULT_GOOGLE_COUNTRY.lower()
+    return None
+
+
+def resolve_language_code(
+    language_code: Optional[str] = None,
+    default_service_language_code: Optional[str] = None,
+) -> Optional[str]:
+    language_code = language_code or default_language_code(default_service_language_code)
+
+    if isinstance(language_code, str):
+        language_code = language_code.lower()
+        if language_code not in LANGUAGE_CODES:
+            raise LanguageNotFoundError(language_code)
+
+    return language_code
+
+
+def resolve_country_code(
+    country_code: Optional[str] = None,
+    default_service_country_code: Optional[str] = None,
+) -> Optional[str]:
+    country_code = country_code or default_country_code(default_service_country_code)
+
+    if isinstance(country_code, str):
+        country_code = country_code.lower()
+        if country_code not in COUNTRY_CODES:
+            raise CountryNotFoundError(country_code)
+
+    return country_code
+
+
+# ------------------------------------------------------------------------------------------------
 # Google Maps utils
 # ------------------------------------------------------------------------------------------------
 def get_google_maps_directions(
@@ -75,7 +126,7 @@ def get_google_maps_directions(
     origin_longitude: Optional[str] = None,
     destination_latitude: Optional[str] = None,
     destination_longitude: Optional[str] = None,
-    language: str = DEFAULT_GOOGLE_MAPS_LANGUAGE,
+    language: Optional[str] = DEFAULT_GOOGLE_MAPS_LANGUAGE,
     country: Optional[str] = DEFAULT_GOOGLE_MAPS_COUNTRY,
     distance_unit: GoogleMapsDistanceUnit = DEFAULT_GOOGLE_MAPS_DISTANCE_UNIT,
     travel_mode: GoogleMapsTravelMode = DEFAULT_GOOGLE_MAPS_TRAVEL_MODE,
@@ -104,7 +155,8 @@ def get_google_maps_directions(
     Returns:
         The directions from Google Maps.
     """
-    language = language.lower()
+    if isinstance(language, str):
+        language = language.lower()
 
     if language not in LANGUAGE_CODES:
         raise LanguageNotFoundError(language)
@@ -297,3 +349,74 @@ def extract_walmart_variant_options(variant_swatches: list[dict[str, Any]]) -> l
         variants.append({variant_name: options})
 
     return variants
+
+
+# ------------------------------------------------------------------------------------------------
+# YouTube utils
+# ------------------------------------------------------------------------------------------------
+def extract_video_id_from_link(link: Optional[str]) -> Optional[str]:
+    if not isinstance(link, str):
+        return None
+
+    parsed_url = urlparse(link)
+    query_params = parse_qs(parsed_url.query)
+    return query_params.get("v", [""])[0]
+
+
+def extract_video_description(
+    video: dict[str, Any],
+    max_description_length: int = YOUTUBE_MAX_DESCRIPTION_LENGTH,
+) -> Optional[str]:
+    description = video.get("description", "")
+
+    if isinstance(description, dict):
+        description = description.get("content", "")
+
+    if isinstance(description, str):
+        too_long = len(description) > max_description_length
+        if too_long:
+            description = description[:max_description_length] + " [truncated]"
+
+    if description is not None:
+        description = str(description).strip()
+
+    return cast(Optional[str], description)
+
+
+def extract_video_results(
+    results: dict[str, Any],
+    max_description_length: int = YOUTUBE_MAX_DESCRIPTION_LENGTH,
+) -> list[dict[str, Any]]:
+    videos = []
+
+    for video in results.get("video_results", []):
+        videos.append({
+            "id": extract_video_id_from_link(video.get("link")),
+            "title": video.get("title"),
+            "description": extract_video_description(video, max_description_length),
+            "link": video.get("link"),
+            "published_date": video.get("published_date"),
+            "duration": video.get("duration"),
+            "channel": {
+                "name": video.get("channel", {}).get("name"),
+                "link": video.get("channel", {}).get("link"),
+            },
+        })
+
+    return videos
+
+
+def extract_video_details(video: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": extract_video_id_from_link(video.get("link")),
+        "title": video.get("title"),
+        "description": extract_video_description(video, YOUTUBE_MAX_DESCRIPTION_LENGTH),
+        "published_date": video.get("published_date"),
+        "channel": {
+            "name": video.get("channel", {}).get("name"),
+            "link": video.get("channel", {}).get("link"),
+        },
+        "like_count": video.get("extracted_likes"),
+        "view_count": video.get("extracted_views"),
+        "live": video.get("live", False),
+    }
