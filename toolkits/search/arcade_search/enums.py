@@ -138,13 +138,13 @@ class WalmartSortBy(Enum):
     RATING_HIGH = "highest_rating_first"
     NEW_ARRIVALS = "new_arrivals_first"
 
-    def to_api_value(self) -> Optional[str]:
+    def to_api_value(self: "WalmartSortBy") -> Optional[str]:
         _map = {
-            self.RELEVANCE: None,
-            self.PRICE_LOW_TO_HIGH: "price_low",
-            self.PRICE_HIGH_TO_LOW: "price_high",
-            self.BEST_SELLING: "best_seller",
-            self.RATING_HIGH: "rating_high",
-            self.NEW_ARRIVALS: "new",
+            str(self.RELEVANCE): None,
+            str(self.PRICE_LOW_TO_HIGH): "price_low",
+            str(self.PRICE_HIGH_TO_LOW): "price_high",
+            str(self.BEST_SELLING): "best_seller",
+            str(self.RATING_HIGH): "rating_high",
+            str(self.NEW_ARRIVALS): "new",
         }
-        return _map[self]
+        return _map[str(self)]
