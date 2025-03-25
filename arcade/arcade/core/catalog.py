@@ -243,9 +243,9 @@ class ToolCatalog(BaseModel):
                     tool_func = getattr(module, tool_name)
                     self.add_tool(tool_func, toolkit, module)
 
-                except AttributeError:
+                except AttributeError as e:
                     raise ToolDefinitionError(
-                        f"Could not find tool {tool_name} in module {module_name}"
+                        f"Could not import tool {tool_name} in module {module_name}. Reason: {e}"
                     )
                 except ImportError as e:
                     raise ToolDefinitionError(f"Could not import module {module_name}. Reason: {e}")
