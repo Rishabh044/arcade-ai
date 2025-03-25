@@ -17,7 +17,8 @@ async def download_file(
     context: ToolContext,
     file_path: Annotated[
         Optional[str],
-        "The path to the file to get the contents of. E.g. '/path/to/file.txt'. Defaults to None.",
+        "The path to the file to get the contents of. E.g. '/AcmeInc/Reports/Q1_2025.txt'. "
+        "Defaults to None.",
     ] = None,
     file_id: Annotated[
         Optional[str],
@@ -27,7 +28,7 @@ async def download_file(
 ) -> Annotated[dict, "Contents of the specified file"]:
     """Downloads the specified file.
 
-    Either `file_path` or `file_id` must be provided.
+    Note: either one of `file_path` or `file_id` must be provided.
     """
     if not file_path and not file_id:
         raise ToolExecutionError("Either `file_path` or `file_id` must be provided.")

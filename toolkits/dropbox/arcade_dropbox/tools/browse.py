@@ -17,7 +17,7 @@ async def list_items_in_folder(
     context: ToolContext,
     folder_path: Annotated[
         str,
-        "The path to the folder to list the contents of. E.g. '/path/to/folder'. "
+        "The path to the folder to list the contents of. E.g. '/AcmeInc/Reports'. "
         "Defaults to an empty string (list items in the Dropbox root folder).",
     ] = "",
     limit: Annotated[
@@ -73,7 +73,7 @@ async def search_files_and_folders(
     ],
     search_in_folder_path: Annotated[
         str,
-        "Restricts the search to the specified folder path. "
+        "Restricts the search to the specified folder path. E.g. '/AcmeInc/Reports'. "
         "Defaults to an empty string (search in the entire Dropbox).",
     ] = "",
     filter_by_category: Annotated[
