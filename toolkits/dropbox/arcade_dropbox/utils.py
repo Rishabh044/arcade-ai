@@ -67,8 +67,8 @@ def clean_dropbox_entry(entry: dict, default_type: Optional[str] = None) -> dict
         "id": entry.get("id"),
         "name": entry.get("name"),
         "path": entry.get("path_display"),
-        "size": entry.get("size"),
-        "modified_time": entry.get("server_modified"),
+        "size_in_bytes": entry.get("size"),
+        "modified_datetime": entry.get("server_modified"),
     }
 
 

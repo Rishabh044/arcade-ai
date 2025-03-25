@@ -4,7 +4,7 @@ from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Dropbox
 from arcade.sdk.errors import ToolExecutionError
 
-from arcade_dropbox.enums import Endpoint, FileCategory
+from arcade_dropbox.enums import Endpoint, ItemCategory
 from arcade_dropbox.utils import build_dropbox_json, clean_dropbox_entries, send_dropbox_request
 
 
@@ -45,7 +45,7 @@ async def list_items_in_folder(
 
     return {
         "items": clean_dropbox_entries(result["entries"]),
-        "next_page_token": result.get("cursor"),
+        "cursor": result.get("cursor"),
         "has_more": result.get("has_more", False),
     }
 
@@ -67,10 +67,10 @@ async def search_files_and_folders(
         "Restricts the search to the specified folder path. "
         "Defaults to an empty string (search in the entire Dropbox).",
     ] = "",
-    file_categories: Annotated[
-        Optional[list[FileCategory]],
-        "Restricts the search to the specified file category. Defaults to "
-        "None (returns all file categories).",
+    filter_by_category: Annotated[
+        Optional[list[ItemCategory]],
+        "Restricts the search to the specified category(ies) of items. "
+        "Provide None, one or multiple, if needed. Defaults to None (returns all categories).",
     ] = None,
     limit: Annotated[
         int,
@@ -95,7 +95,7 @@ async def search_files_and_folders(
 
     limit = min(limit, 1000)
 
-    file_categories = file_categories or []
+    filter_by_category = filter_by_category or []
 
     result = await send_dropbox_request(
         None if not context.authorization else context.authorization.token,
@@ -106,13 +106,15 @@ async def search_files_and_folders(
             filename_only=False,
             path=search_in_folder_path,
             max_results=limit,
-            file_categories=[category.value for category in file_categories],
+            file_categories=[category.value for category in filter_by_category],
         ),
         cursor=cursor,
     )
 
     return {
-        "items": result["matches"],
-        "next_page_token": result.get("cursor"),
+        "items": clean_dropbox_entries([
+            match["metadata"]["metadata"] for match in result["matches"]
+        ]),
+        "cursor": result.get("cursor"),
         "has_more": result.get("has_more", False),
     }

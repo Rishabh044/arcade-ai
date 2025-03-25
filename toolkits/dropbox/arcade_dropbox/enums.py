@@ -12,7 +12,7 @@ class Endpoint(Enum):
     DOWNLOAD_FILE = "/files/download"
 
 
-class FileCategory(Enum):
+class ItemCategory(Enum):
     IMAGE = "image"
     DOCUMENT = "document"
     PDF = "pdf"
