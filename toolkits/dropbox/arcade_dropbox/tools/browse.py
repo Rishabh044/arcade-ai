@@ -35,6 +35,10 @@ async def list_items_in_folder(
     """Provides a dictionary containing the list of items in the specified folder path."""
     limit = min(limit, 2000)
 
+    # If cursor is provided, the folder path must not be provided again to avoid API error
+    if cursor:
+        folder_path = None
+
     result = await send_dropbox_request(
         None if not context.authorization else context.authorization.token,
         endpoint=Endpoint.LIST_FOLDER,
@@ -97,17 +101,24 @@ async def search_files_and_folders(
 
     filter_by_category = filter_by_category or []
 
+    options = build_dropbox_json(
+        file_status="active",
+        filename_only=False,
+        path=search_in_folder_path,
+        max_results=limit,
+        file_categories=[category.value for category in filter_by_category],
+    )
+
+    # If cursor is provided, every other argument must be ignored to avoid API error
+    if cursor:
+        options = None
+        keywords = None
+
     result = await send_dropbox_request(
         None if not context.authorization else context.authorization.token,
         endpoint=Endpoint.SEARCH_FILES,
         query=keywords,
-        options=build_dropbox_json(
-            file_status="active",
-            filename_only=False,
-            path=search_in_folder_path,
-            max_results=limit,
-            file_categories=[category.value for category in filter_by_category],
-        ),
+        options=options,
         cursor=cursor,
     )
 
