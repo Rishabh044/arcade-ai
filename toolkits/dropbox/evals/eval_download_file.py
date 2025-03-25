@@ -69,7 +69,7 @@ def download_file_eval_suite() -> EvalSuite:
     )
 
     suite.add_case(
-        name="Download file in the root folder by file ID",
+        name="Download file by ID",
         user_message="Download the file id:a4ayc_80_OEAAAAAAAAAYa from Dropbox",
         expected_tool_calls=[
             ExpectedToolCall(
