@@ -1,15 +1,15 @@
+import json
 from typing import Any, Optional
 
 import httpx
 
-from arcade_dropbox.constants import DROPBOX_API_VERSION, DROPBOX_BASE_URL, DROPBOX_ENDPOINT_URL_MAP
-from arcade_dropbox.enums import DropboxEndpoint
+from arcade_dropbox.constants import API_BASE_URL, API_VERSION, ENDPOINT_URL_MAP
+from arcade_dropbox.enums import Endpoint, EndpointType
 
 
-def build_dropbox_url(endpoint: DropboxEndpoint) -> str:
-    return (
-        f"{DROPBOX_BASE_URL}/{DROPBOX_API_VERSION}/{DROPBOX_ENDPOINT_URL_MAP[endpoint].strip('/')}"
-    )
+def build_dropbox_url(endpoint_type: EndpointType, endpoint_path: str) -> str:
+    base_url = API_BASE_URL.format(endpoint_type=endpoint_type.value)
+    return f"{base_url}/{API_VERSION}/{endpoint_path.strip('/')}"
 
 
 def build_dropbox_headers(token: Optional[str]) -> dict[str, str]:
@@ -22,25 +22,37 @@ def build_dropbox_json(**kwargs: Any) -> dict:
 
 async def send_dropbox_request(
     authorization_token: Optional[str],
-    endpoint: DropboxEndpoint,
+    endpoint: Endpoint,
     **kwargs: Any,
 ) -> Any:
-    url = build_dropbox_url(endpoint)
+    endpoint_type, endpoint_path = ENDPOINT_URL_MAP[endpoint]
+    url = build_dropbox_url(endpoint_type, endpoint_path)
     headers = build_dropbox_headers(authorization_token)
-    json = build_dropbox_json(**kwargs)
+    json_data = build_dropbox_json(**kwargs)
 
-    if "cursor" in json:
+    if "cursor" in json_data:
         url += "/continue"
 
+    if endpoint_type == EndpointType.CONTENT:
+        headers["Dropbox-API-Arg"] = json.dumps(json_data)
+        json_data = None
+
     async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=headers, json=json)
+        response = await client.post(url, headers=headers, json=json_data)
         response.raise_for_status()
+
+        if endpoint_type == EndpointType.CONTENT:
+            data = json.loads(response.headers["Dropbox-API-Result"])
+            data = clean_dropbox_entry(data, default_type="file")
+            data["content"] = response.text
+            return data
+
         return response.json()
 
 
-def clean_dropbox_entry(entry: dict) -> dict:
+def clean_dropbox_entry(entry: dict, default_type: Optional[str] = None) -> dict:
     return {
-        "type": entry.get(".tag"),
+        "type": entry.get(".tag", default_type),
         "id": entry.get("id"),
         "name": entry.get("name"),
         "path": entry.get("path_display"),

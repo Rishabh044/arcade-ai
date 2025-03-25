@@ -1,8 +1,9 @@
-from arcade_dropbox.enums import DropboxEndpoint
+from arcade_dropbox.enums import Endpoint, EndpointType
 
-DROPBOX_BASE_URL = "https://api.dropboxapi.com"
-DROPBOX_API_VERSION = "2"
-DROPBOX_ENDPOINT_URL_MAP = {
-    DropboxEndpoint.LIST_FOLDER: "files/list_folder",
-    DropboxEndpoint.SEARCH_FILES: "files/search",
+API_BASE_URL = "https://{endpoint_type}.dropboxapi.com"
+API_VERSION = "2"
+ENDPOINT_URL_MAP = {
+    Endpoint.LIST_FOLDER: (EndpointType.API, "files/list_folder"),
+    Endpoint.SEARCH_FILES: (EndpointType.API, "files/search"),
+    Endpoint.DOWNLOAD_FILE: (EndpointType.CONTENT, "files/download"),
 }

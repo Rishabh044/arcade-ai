@@ -4,7 +4,7 @@ from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Dropbox
 from arcade.sdk.errors import ToolExecutionError
 
-from arcade_dropbox.enums import DropboxEndpoint
+from arcade_dropbox.enums import Endpoint
 from arcade_dropbox.utils import build_dropbox_json, clean_dropbox_entries, send_dropbox_request
 
 
@@ -34,7 +34,7 @@ async def list_items_in_folder(
 
     result = await send_dropbox_request(
         None if not context.authorization else context.authorization.token,
-        endpoint=DropboxEndpoint.LIST_FOLDER,
+        endpoint=Endpoint.LIST_FOLDER,
         path=folder_path,
         limit=limit,
         cursor=cursor,
@@ -85,7 +85,7 @@ async def search_items_by_keywords(
 
     result = await send_dropbox_request(
         None if not context.authorization else context.authorization.token,
-        endpoint=DropboxEndpoint.SEARCH_FILES,
+        endpoint=Endpoint.SEARCH_FILES,
         query=keywords,
         options=build_dropbox_json(
             path=search_in_folder_path,
