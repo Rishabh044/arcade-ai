@@ -6,7 +6,12 @@ from arcade.sdk.errors import ToolExecutionError
 
 from arcade_dropbox.enums import Endpoint, ItemCategory
 from arcade_dropbox.exceptions import DropboxPathNotFoundError
-from arcade_dropbox.utils import build_dropbox_json, clean_dropbox_entries, send_dropbox_request
+from arcade_dropbox.utils import (
+    build_dropbox_json,
+    clean_dropbox_entries,
+    parse_dropbox_path,
+    send_dropbox_request,
+)
 
 
 @tool(
@@ -49,7 +54,7 @@ async def list_items_in_folder(
         result = await send_dropbox_request(
             None if not context.authorization else context.authorization.token,
             endpoint=Endpoint.LIST_FOLDER,
-            path=folder_path,
+            path=parse_dropbox_path(folder_path),
             limit=limit,
             cursor=cursor,
         )
@@ -115,7 +120,7 @@ async def search_files_and_folders(
     options = build_dropbox_json(
         file_status="active",
         filename_only=False,
-        path=search_in_folder_path,
+        path=parse_dropbox_path(search_in_folder_path),
         max_results=limit,
         file_categories=[category.value for category in filter_by_category],
     )

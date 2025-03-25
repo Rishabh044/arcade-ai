@@ -6,7 +6,7 @@ from arcade.sdk.errors import ToolExecutionError
 
 from arcade_dropbox.enums import Endpoint
 from arcade_dropbox.exceptions import DropboxPathNotFoundError
-from arcade_dropbox.utils import send_dropbox_request
+from arcade_dropbox.utils import parse_dropbox_path, send_dropbox_request
 
 
 @tool(
@@ -41,7 +41,7 @@ async def download_file(
         result = await send_dropbox_request(
             None if not context.authorization else context.authorization.token,
             endpoint=Endpoint.DOWNLOAD_FILE,
-            path=file_path or file_id,
+            path=parse_dropbox_path(file_path) or file_id,
         )
     except DropboxPathNotFoundError:
         return {

@@ -83,3 +83,14 @@ def clean_dropbox_entry(entry: dict, default_type: Optional[str] = None) -> dict
 
 def clean_dropbox_entries(entries: list[dict]) -> list[dict]:
     return [clean_dropbox_entry(entry) for entry in entries]
+
+
+def parse_dropbox_path(path: Optional[str]) -> Optional[str]:
+    if not isinstance(path, str):
+        return None
+
+    if not path:
+        return ""
+
+    # Dropbox expects the path to always start with a slash
+    return "/" + path.strip("/")
