@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 
@@ -12,22 +12,25 @@ def build_dropbox_url(endpoint: DropboxEndpoint) -> str:
     )
 
 
-def build_dropbox_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+def build_dropbox_headers(token: Optional[str]) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"} if token else {}
 
 
-def build_dropbox_json(**kwargs) -> dict:
+def build_dropbox_json(**kwargs: Any) -> dict:
     return {key: value for key, value in kwargs.items() if value is not None}
 
 
 async def send_dropbox_request(
     authorization_token: Optional[str],
-    endpoint: str,
-    **kwargs,
-) -> dict:
+    endpoint: DropboxEndpoint,
+    **kwargs: Any,
+) -> Any:
     url = build_dropbox_url(endpoint)
     headers = build_dropbox_headers(authorization_token)
     json = build_dropbox_json(**kwargs)
+
+    if "cursor" in json:
+        url += "/continue"
 
     async with httpx.AsyncClient() as client:
         response = await client.post(url, headers=headers, json=json)
