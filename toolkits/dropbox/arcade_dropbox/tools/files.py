@@ -18,13 +18,11 @@ async def download_file(
     context: ToolContext,
     file_path: Annotated[
         Optional[str],
-        "The path to the file to get the contents of. E.g. '/AcmeInc/Reports/Q1_2025.txt'. "
-        "Defaults to None.",
+        "The path of the file to download. E.g. '/AcmeInc/Reports/Q1_2025.txt'. Defaults to None.",
     ] = None,
     file_id: Annotated[
         Optional[str],
-        "The ID of the file to get the contents of. E.g. 'id:a4ayc_80_OEAAAAAAAAAYa'. "
-        "Defaults to None.",
+        "The ID of the file to download. E.g. 'id:a4ayc_80_OEAAAAAAAAAYa'. Defaults to None.",
     ] = None,
 ) -> Annotated[dict, "Contents of the specified file"]:
     """Downloads the specified file.
