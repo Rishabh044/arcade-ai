@@ -36,17 +36,9 @@ def test_dashboard_url_construction(args, expected_url):
         # Run command
         result = runner.invoke(cli, ["dashboard", *args])
 
-        # Verify exit code
         assert result.exit_code == 0
-
-        # Verify browser was opened with the correct URL
         mock_open.assert_called_once_with(expected_url)
-
-        # Verify health check was called (or not, if --skip-check is used)
-        if "--skip-check" in args:
-            mock_health_check.assert_not_called()
-        else:
-            mock_health_check.assert_called_once()
+        mock_health_check.assert_called_once()
 
 
 def test_fallback_when_browser_fails():
