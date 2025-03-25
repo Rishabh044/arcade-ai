@@ -32,12 +32,17 @@ async def list_items_in_folder(
 ) -> Annotated[
     dict, "Dictionary containing the list of files and folders in the specified folder path"
 ]:
-    """Provides a dictionary containing the list of items in the specified folder path."""
+    """Provides a dictionary containing the list of items in the specified folder path.
+
+    Note 1: when paginating, it is not necessary to provide any other argument besides the cursor.
+    Note 2: when paginating, any given item (file or folder) may be returned in multiple pages.
+    """
     limit = min(limit, 2000)
 
-    # If cursor is provided, the folder path must not be provided again to avoid API error
+    # If cursor is provided, every other argument must be ignored to avoid API error
     if cursor:
         folder_path = None
+        limit = None
 
     result = await send_dropbox_request(
         None if not context.authorization else context.authorization.token,
@@ -89,8 +94,8 @@ async def search_files_and_folders(
 
     Note 1: the Dropbox API will return up to 10,000 (ten thousand) items cumulatively across
     multiple pagination requests using the cursor token.
-
-    Note 2: the Dropbox API will search for the keywords provided in the file name and content.
+    Note 2: when paginating, it is not necessary to provide any other argument besides the cursor.
+    Note 3: when paginating, any given item (file or folder) may be returned in multiple pages.
     """
     if len(keywords) > 1000:
         raise ToolExecutionError(
@@ -113,6 +118,7 @@ async def search_files_and_folders(
     if cursor:
         options = None
         keywords = None
+        limit = None
 
     result = await send_dropbox_request(
         None if not context.authorization else context.authorization.token,
