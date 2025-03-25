@@ -45,11 +45,6 @@ async def list_items_in_folder(
     """
     limit = min(limit, 2000)
 
-    # If cursor is provided, every other argument must be ignored to avoid API error
-    if cursor:
-        folder_path = None
-        limit = None
-
     try:
         result = await send_dropbox_request(
             None if not context.authorization else context.authorization.token,
@@ -124,12 +119,6 @@ async def search_files_and_folders(
         max_results=limit,
         file_categories=[category.value for category in filter_by_category],
     )
-
-    # If cursor is provided, every other argument must be ignored to avoid API error
-    if cursor:
-        options = None
-        keywords = None
-        limit = None
 
     try:
         result = await send_dropbox_request(

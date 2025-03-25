@@ -36,8 +36,10 @@ async def send_dropbox_request(
     headers = build_dropbox_headers(authorization_token)
     json_data = build_dropbox_json(**kwargs)
 
-    if "cursor" in json_data:
+    if json_data.get("cursor"):
         url += "/continue"
+        # If cursor is provided, every other argument must be ignored to avoid API error
+        json_data = {"cursor": json_data["cursor"]}
 
     if endpoint_type == EndpointType.CONTENT:
         headers["Dropbox-API-Arg"] = json.dumps(json_data)
