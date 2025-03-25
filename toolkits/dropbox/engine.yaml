@@ -1,0 +1,87 @@
+telemetry:
+  environment: ${env:TELEMETRY_ENVIRONMENT}
+  version: ${env:VERSION}
+  logging:
+    level: ${env:TELEMETRY_LOGGING_LEVEL} # debug, info, warn, error
+    encoding: ${env:TELEMETRY_LOGGING_ENCODING}
+
+api:
+  development: ${env:API_DEVELOPMENT}
+  host: ${env:ARCADE_API_HOST}
+  port: ${env:ARCADE_API_PORT}
+
+llm:
+  models:
+    - id: my-openai-model-provider
+      openai:
+        api_key: ${env:OPENAI_API_KEY}
+    #- id: my-anthropic-model-provider
+    #  anthropic:
+    #    api_key: ${env:ANTHROPIC_API_KEY}
+    # - id: my-ollama-model-provider
+    #   openai:
+    #     base_url: http://localhost:11434
+    #     chat_endpoint: /v1/chat/completions
+    #     model: llama3.2
+    #     api_key: ollama
+    #- id: my-groq-model-provider
+    #  openai:
+    #    base_url: "https://api.groq.com/openai/v1"
+    #    api_key: ${env:GROQ_API_KEY}
+
+security:
+  root_keys:
+    - id: key1
+      default: true
+      value: ${env:ROOT_KEY}
+
+storage:
+  #   sslmode: disable
+  sqlite: # Default for local development
+    connection_string: "/Users/spartee/.arcade/arcade-engine.sqlite3" # Stores DB in ~/.arcade/arcade-engine.sqlite3
+
+tools:
+  directors:
+    - id: default
+      enabled: true
+      workers:
+        - id: "worker"
+          enabled: true
+          http:
+            uri: ${env:ARCADE_WORKER_URI}
+            timeout: 30
+            retry: 3
+            secret: ${env:ARCADE_WORKER_SECRET}
+
+cache:
+  api_key_ttl: "10s"
+  in_memory: {}
+  # redis:
+  #   addr: "localhost:6379"
+  #   password: ""
+
+auth:
+  token_store:
+    # Uncomment to have persistent storage tokens through redis
+    # redis:
+    #   addr: ${env:REDIS_HOST}:${env:REDIS_PORT}
+    #   password: ""
+    in_memory:
+      max_size: 1000000
+
+  providers:
+    - id: default-google
+      description: "The default Google provider"
+      enabled: false
+      type: oauth2
+      provider_id: google
+      client_id: ${env:GOOGLE_CLIENT_ID}
+      client_secret: ${env:GOOGLE_CLIENT_SECRET}
+
+    - id: dropbox
+      description: "Dropbox provider"
+      enabled: true
+      type: oauth2
+      provider_id: dropbox
+      client_id: ${env:DROPBOX_CLIENT_ID}
+      client_secret: ${env:DROPBOX_CLIENT_SECRET}
