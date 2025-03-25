@@ -2,8 +2,13 @@ import json
 from typing import Any, Optional
 
 import httpx
+from arcade.sdk.errors import ToolExecutionError
 
-from arcade_dropbox.constants import API_BASE_URL, API_VERSION, ENDPOINT_URL_MAP
+from arcade_dropbox.constants import (
+    API_BASE_URL,
+    API_VERSION,
+    ENDPOINT_URL_MAP,
+)
 from arcade_dropbox.enums import Endpoint, EndpointType
 
 
@@ -39,7 +44,13 @@ async def send_dropbox_request(
 
     async with httpx.AsyncClient() as client:
         response = await client.post(url, headers=headers, json=json_data)
-        response.raise_for_status()
+
+        if response.status_code != 200:
+            message = (
+                f"Dropbox request failed with status code {response.status_code} "
+                f"and response: {response.text}"
+            )
+            raise ToolExecutionError(message)
 
         if endpoint_type == EndpointType.CONTENT:
             data = json.loads(response.headers["Dropbox-API-Result"])

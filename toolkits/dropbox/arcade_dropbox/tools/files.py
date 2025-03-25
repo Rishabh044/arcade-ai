@@ -13,7 +13,7 @@ from arcade_dropbox.utils import send_dropbox_request
         scopes=["files.content.read"],
     )
 )
-async def get_file_contents(
+async def download_file(
     context: ToolContext,
     file_path: Annotated[
         Optional[str],
@@ -25,7 +25,7 @@ async def get_file_contents(
         "Defaults to None.",
     ] = None,
 ) -> Annotated[dict, "Contents of the specified file"]:
-    """Returns the contents of the specified file.
+    """Downloads the specified file.
 
     Either `file_path` or `file_id` must be provided.
     """
@@ -41,4 +41,6 @@ async def get_file_contents(
         path=file_path or file_id,
     )
 
-    return result
+    return {
+        "file": result,
+    }

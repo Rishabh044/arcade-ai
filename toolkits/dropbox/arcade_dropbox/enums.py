@@ -10,3 +10,15 @@ class Endpoint(Enum):
     LIST_FOLDER = "/files/list_folder"
     SEARCH_FILES = "/files/search"
     DOWNLOAD_FILE = "/files/download"
+
+
+class FileCategory(Enum):
+    IMAGE = "image"
+    DOCUMENT = "document"
+    PDF = "pdf"
+    SPREADSHEET = "spreadsheet"
+    PRESENTATION = "presentation"
+    AUDIO = "audio"
+    VIDEO = "video"
+    FOLDER = "folder"
+    PAPER = "paper"

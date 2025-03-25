@@ -4,7 +4,7 @@ from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Dropbox
 from arcade.sdk.errors import ToolExecutionError
 
-from arcade_dropbox.enums import Endpoint
+from arcade_dropbox.enums import Endpoint, FileCategory
 from arcade_dropbox.utils import build_dropbox_json, clean_dropbox_entries, send_dropbox_request
 
 
@@ -17,8 +17,8 @@ async def list_items_in_folder(
     context: ToolContext,
     folder_path: Annotated[
         str,
-        "The path to the folder to list the contents of. "
-        "Defaults to an empty string (list items in Dropbox root folder).",
+        "The path to the folder to list the contents of. E.g. '/path/to/folder'. "
+        "Defaults to an empty string (list items in the Dropbox root folder).",
     ] = "",
     limit: Annotated[
         int,
@@ -26,10 +26,13 @@ async def list_items_in_folder(
     ] = 100,
     cursor: Annotated[
         Optional[str],
-        "The cursor token for the next page of results. Defaults to None (first page of results).",
+        "The cursor token for the next page of results. "
+        "Defaults to None (returns the first page of results).",
     ] = None,
-) -> Annotated[dict, "List of files and folders in the specified folder path"]:
-    """Returns a list of files and folders in the specified folder path."""
+) -> Annotated[
+    dict, "Dictionary containing the list of files and folders in the specified folder path"
+]:
+    """Provides a dictionary containing the list of items in the specified folder path."""
     limit = min(limit, 2000)
 
     result = await send_dropbox_request(
@@ -52,16 +55,23 @@ async def list_items_in_folder(
         scopes=["files.metadata.read"],
     )
 )
-async def search_items_by_keywords(
+async def search_files_and_folders(
     context: ToolContext,
     keywords: Annotated[
-        str, "The keywords to search for in the folder. Maximum length is 1000 characters."
+        str,
+        "The keywords to search for. E.g. 'quarterly report'. "
+        "Maximum length allowed by the Dropbox API is 1000 characters. ",
     ],
     search_in_folder_path: Annotated[
         str,
         "Restricts the search to the specified folder path. "
         "Defaults to an empty string (search in the entire Dropbox).",
     ] = "",
+    file_categories: Annotated[
+        Optional[list[FileCategory]],
+        "Restricts the search to the specified file category. Defaults to "
+        "None (returns all file categories).",
+    ] = None,
     limit: Annotated[
         int,
         "The maximum number of items to return. Defaults to 100. Maximum allowed is 1000.",
@@ -73,8 +83,10 @@ async def search_items_by_keywords(
 ) -> Annotated[dict, "List of items in the specified folder path matching the search criteria"]:
     """Returns a list of items in the specified folder path matching the search criteria.
 
-    Note: the Dropbox API will return up to 10,000 (ten thousand) items cumulatively across multiple
-    pagination requests using the cursor token.
+    Note 1: the Dropbox API will return up to 10,000 (ten thousand) items cumulatively across
+    multiple pagination requests using the cursor token.
+
+    Note 2: the Dropbox API will search for the keywords provided in the file name and content.
     """
     if len(keywords) > 1000:
         raise ToolExecutionError(
@@ -83,13 +95,18 @@ async def search_items_by_keywords(
 
     limit = min(limit, 1000)
 
+    file_categories = file_categories or []
+
     result = await send_dropbox_request(
         None if not context.authorization else context.authorization.token,
         endpoint=Endpoint.SEARCH_FILES,
         query=keywords,
         options=build_dropbox_json(
+            file_status="active",
+            filename_only=False,
             path=search_in_folder_path,
             max_results=limit,
+            file_categories=[category.value for category in file_categories],
         ),
         cursor=cursor,
     )
