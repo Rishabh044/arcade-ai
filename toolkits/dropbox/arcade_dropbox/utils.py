@@ -10,6 +10,7 @@ from arcade_dropbox.constants import (
     ENDPOINT_URL_MAP,
 )
 from arcade_dropbox.enums import Endpoint, EndpointType
+from arcade_dropbox.exceptions import DropboxPathNotFoundError
 
 
 def build_dropbox_url(endpoint_type: EndpointType, endpoint_path: str) -> str:
@@ -44,6 +45,14 @@ async def send_dropbox_request(
 
     async with httpx.AsyncClient() as client:
         response = await client.post(url, headers=headers, json=json_data)
+
+        try:
+            data = response.json()
+        except Exception:
+            data = {}
+
+        if response.status_code == 409 and "path/not_found" in data.get("error_summary", ""):
+            raise DropboxPathNotFoundError()
 
         if response.status_code != 200:
             message = (

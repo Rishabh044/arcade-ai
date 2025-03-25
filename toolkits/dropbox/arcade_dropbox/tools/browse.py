@@ -5,6 +5,7 @@ from arcade.sdk.auth import Dropbox
 from arcade.sdk.errors import ToolExecutionError
 
 from arcade_dropbox.enums import Endpoint, ItemCategory
+from arcade_dropbox.exceptions import DropboxPathNotFoundError
 from arcade_dropbox.utils import build_dropbox_json, clean_dropbox_entries, send_dropbox_request
 
 
@@ -44,13 +45,18 @@ async def list_items_in_folder(
         folder_path = None
         limit = None
 
-    result = await send_dropbox_request(
-        None if not context.authorization else context.authorization.token,
-        endpoint=Endpoint.LIST_FOLDER,
-        path=folder_path,
-        limit=limit,
-        cursor=cursor,
-    )
+    try:
+        result = await send_dropbox_request(
+            None if not context.authorization else context.authorization.token,
+            endpoint=Endpoint.LIST_FOLDER,
+            path=folder_path,
+            limit=limit,
+            cursor=cursor,
+        )
+    except DropboxPathNotFoundError:
+        return {
+            "error": f"The specified path was not found by Dropbox: '{folder_path}'",
+        }
 
     return {
         "items": clean_dropbox_entries(result["entries"]),
@@ -120,13 +126,18 @@ async def search_files_and_folders(
         keywords = None
         limit = None
 
-    result = await send_dropbox_request(
-        None if not context.authorization else context.authorization.token,
-        endpoint=Endpoint.SEARCH_FILES,
-        query=keywords,
-        options=options,
-        cursor=cursor,
-    )
+    try:
+        result = await send_dropbox_request(
+            None if not context.authorization else context.authorization.token,
+            endpoint=Endpoint.SEARCH_FILES,
+            query=keywords,
+            options=options,
+            cursor=cursor,
+        )
+    except DropboxPathNotFoundError:
+        return {
+            "error": f"The specified path was not found by Dropbox: '{search_in_folder_path}'",
+        }
 
     return {
         "items": clean_dropbox_entries([
