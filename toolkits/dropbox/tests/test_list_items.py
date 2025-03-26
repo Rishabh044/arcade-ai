@@ -48,7 +48,7 @@ async def test_list_items_success_empty_folder(
 
     tool_response = await list_items_in_folder(
         context=mock_context,
-        folder_path="test.txt",
+        folder_path="/path/to/folder",
     )
 
     assert tool_response == {
@@ -74,7 +74,7 @@ async def test_list_items_success_with_folder_entries(
 
     tool_response = await list_items_in_folder(
         context=mock_context,
-        folder_path="test.txt",
+        folder_path="/path/to/folder",
     )
 
     assert tool_response == {
@@ -104,7 +104,7 @@ async def test_list_items_success_with_more_items_to_paginate(
 
     tool_response = await list_items_in_folder(
         context=mock_context,
-        folder_path="test.txt",
+        folder_path="/path/to/folder",
     )
 
     assert tool_response == {
@@ -134,7 +134,7 @@ async def test_list_items_success_providing_cursor(
 
     tool_response = await list_items_in_folder(
         context=mock_context,
-        folder_path="test.txt",
+        folder_path="/path/to/folder",
         cursor="cursor1",
         limit=2,
     )
@@ -151,3 +151,24 @@ async def test_list_items_success_providing_cursor(
         headers={"Authorization": "Bearer fake-token"},
         json={"cursor": "cursor1"},
     )
+
+
+@pytest.mark.asyncio
+async def test_list_items_path_not_found(
+    mock_context,
+    mock_httpx_client,
+):
+    mock_httpx_response = MagicMock(spec=httpx.Response)
+    mock_httpx_response.status_code = 409
+    mock_httpx_response.json.return_value = {"error_summary": "path/not_found"}
+
+    mock_httpx_client.post.return_value = mock_httpx_response
+
+    tool_response = await list_items_in_folder(
+        context=mock_context,
+        folder_path="/not/exist/folder",
+    )
+
+    assert tool_response == {
+        "error": "The specified path was not found by Dropbox",
+    }
