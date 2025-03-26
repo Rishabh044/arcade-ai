@@ -1,0 +1,153 @@
+from unittest.mock import MagicMock
+
+import httpx
+import pytest
+
+from arcade_dropbox.tools.browse import list_items_in_folder
+from arcade_dropbox.utils import clean_dropbox_entries
+
+
+@pytest.fixture
+def sample_folder_entry():
+    return {
+        ".tag": "folder",
+        "name": "test.txt",
+        "path_display": "/TestFolder",
+        "path_lower": "/testfolder",
+        "id": "1234567890",
+        "client_modified": "2025-01-01T00:00:00Z",
+        "server_modified": "2025-01-01T00:00:00Z",
+        "rev": "1234567890",
+    }
+
+
+@pytest.fixture
+def sample_file_entry():
+    return {
+        ".tag": "file",
+        "name": "test.txt",
+        "path_display": "/TestFile.txt",
+        "path_lower": "/testfile.txt",
+        "id": "1234567890",
+        "client_modified": "2025-01-01T00:00:00Z",
+        "server_modified": "2025-01-01T00:00:00Z",
+        "rev": "1234567890",
+        "size": 1024,
+    }
+
+
+@pytest.mark.asyncio
+async def test_list_items_success_empty_folder(
+    mock_context,
+    mock_httpx_client,
+):
+    mock_httpx_response = MagicMock(spec=httpx.Response)
+    mock_httpx_response.status_code = 200
+    mock_httpx_response.json.return_value = {"entries": [], "cursor": None, "has_more": False}
+    mock_httpx_client.post.return_value = mock_httpx_response
+
+    tool_response = await list_items_in_folder(
+        context=mock_context,
+        folder_path="test.txt",
+    )
+
+    assert tool_response == {
+        "items": [],
+        "cursor": None,
+        "has_more": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_list_items_success_with_folder_entries(
+    mock_context,
+    mock_httpx_client,
+    sample_folder_entry,
+    sample_file_entry,
+):
+    entries = [sample_folder_entry, sample_file_entry]
+
+    mock_httpx_response = MagicMock(spec=httpx.Response)
+    mock_httpx_response.status_code = 200
+    mock_httpx_response.json.return_value = {"entries": entries, "cursor": None, "has_more": False}
+    mock_httpx_client.post.return_value = mock_httpx_response
+
+    tool_response = await list_items_in_folder(
+        context=mock_context,
+        folder_path="test.txt",
+    )
+
+    assert tool_response == {
+        "items": clean_dropbox_entries(entries),
+        "cursor": None,
+        "has_more": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_list_items_success_with_more_items_to_paginate(
+    mock_context,
+    mock_httpx_client,
+    sample_folder_entry,
+    sample_file_entry,
+):
+    entries = [sample_folder_entry, sample_file_entry]
+
+    mock_httpx_response = MagicMock(spec=httpx.Response)
+    mock_httpx_response.status_code = 200
+    mock_httpx_response.json.return_value = {
+        "entries": entries,
+        "cursor": "cursor",
+        "has_more": True,
+    }
+    mock_httpx_client.post.return_value = mock_httpx_response
+
+    tool_response = await list_items_in_folder(
+        context=mock_context,
+        folder_path="test.txt",
+    )
+
+    assert tool_response == {
+        "items": clean_dropbox_entries(entries),
+        "cursor": "cursor",
+        "has_more": True,
+    }
+
+
+@pytest.mark.asyncio
+async def test_list_items_success_providing_cursor(
+    mock_context,
+    mock_httpx_client,
+    sample_folder_entry,
+    sample_file_entry,
+):
+    entries = [sample_folder_entry, sample_file_entry]
+
+    mock_httpx_response = MagicMock(spec=httpx.Response)
+    mock_httpx_response.status_code = 200
+    mock_httpx_response.json.return_value = {
+        "entries": entries,
+        "cursor": "cursor2",
+        "has_more": True,
+    }
+    mock_httpx_client.post.return_value = mock_httpx_response
+
+    tool_response = await list_items_in_folder(
+        context=mock_context,
+        folder_path="test.txt",
+        cursor="cursor1",
+        limit=2,
+    )
+
+    assert tool_response == {
+        "items": clean_dropbox_entries(entries),
+        "cursor": "cursor2",
+        "has_more": True,
+    }
+
+    # Check that the request was made with the cursor and not the other arguments
+    mock_httpx_client.post.assert_called_with(
+        "https://api.dropboxapi.com/2/files/list_folder/continue",
+        headers={"Authorization": "Bearer fake-token"},
+        json={"cursor": "cursor1"},
+    )

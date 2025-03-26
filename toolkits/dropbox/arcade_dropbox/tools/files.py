@@ -42,9 +42,6 @@ async def download_file(
             path=parse_dropbox_path(file_path) or file_id,
         )
     except DropboxApiError as api_error:
-        return {
-            "http_status_code": api_error.status_code,
-            "error": api_error.message,
-        }
+        return {"error": api_error.message}
 
     return {"file": result}

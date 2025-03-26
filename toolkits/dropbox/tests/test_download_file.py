@@ -73,7 +73,6 @@ async def test_download_file_path_not_found(
 
     assert tool_response == {
         "error": "The specified path was not found by Dropbox",
-        "http_status_code": 409,
     }
 
 
@@ -95,7 +94,6 @@ async def test_download_file_unsupported_file(
 
     assert tool_response == {
         "error": "The specified file is not supported for the requested operation",
-        "http_status_code": 409,
     }
 
 
@@ -118,5 +116,4 @@ async def test_download_file_server_error(
 
     assert tool_response == {
         "error": "500 Internal server error",
-        "http_status_code": 500,
     }

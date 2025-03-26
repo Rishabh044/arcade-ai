@@ -5,7 +5,7 @@ from arcade.sdk.auth import Dropbox
 from arcade.sdk.errors import ToolExecutionError
 
 from arcade_dropbox.enums import Endpoint, ItemCategory
-from arcade_dropbox.exceptions import DropboxPathNotFoundError
+from arcade_dropbox.exceptions import DropboxApiError
 from arcade_dropbox.utils import (
     build_dropbox_json,
     clean_dropbox_entries,
@@ -53,10 +53,8 @@ async def list_items_in_folder(
             limit=limit,
             cursor=cursor,
         )
-    except DropboxPathNotFoundError:
-        return {
-            "error": f"The specified path was not found by Dropbox: '{folder_path}'",
-        }
+    except DropboxApiError as api_error:
+        return {"error": api_error.message}
 
     return {
         "items": clean_dropbox_entries(result["entries"]),
@@ -128,10 +126,8 @@ async def search_files_and_folders(
             options=options,
             cursor=cursor,
         )
-    except DropboxPathNotFoundError:
-        return {
-            "error": f"The specified path was not found by Dropbox: '{search_in_folder_path}'",
-        }
+    except DropboxApiError as api_error:
+        return {"error": api_error.message}
 
     return {
         "items": clean_dropbox_entries([
