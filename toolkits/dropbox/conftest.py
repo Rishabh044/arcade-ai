@@ -14,3 +14,32 @@ def mock_context():
 def mock_httpx_client(mocker):
     with patch("arcade_dropbox.utils.httpx") as mock_httpx:
         yield mock_httpx.AsyncClient().__aenter__.return_value
+
+
+@pytest.fixture
+def sample_folder_entry():
+    return {
+        ".tag": "folder",
+        "name": "test.txt",
+        "path_display": "/TestFolder",
+        "path_lower": "/testfolder",
+        "id": "1234567890",
+        "client_modified": "2025-01-01T00:00:00Z",
+        "server_modified": "2025-01-01T00:00:00Z",
+        "rev": "1234567890",
+    }
+
+
+@pytest.fixture
+def sample_file_entry():
+    return {
+        ".tag": "file",
+        "name": "test.txt",
+        "path_display": "/TestFile.txt",
+        "path_lower": "/testfile.txt",
+        "id": "1234567890",
+        "client_modified": "2025-01-01T00:00:00Z",
+        "server_modified": "2025-01-01T00:00:00Z",
+        "rev": "1234567890",
+        "size": 1024,
+    }

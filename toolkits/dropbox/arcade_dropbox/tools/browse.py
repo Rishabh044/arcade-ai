@@ -76,10 +76,10 @@ async def search_files_and_folders(
         "Maximum length allowed by the Dropbox API is 1000 characters. ",
     ],
     search_in_folder_path: Annotated[
-        str,
+        Optional[str],
         "Restricts the search to the specified folder path. E.g. '/AcmeInc/Reports'. "
-        "Defaults to an empty string (search in the entire Dropbox).",
-    ] = "",
+        "Defaults to None (search in the entire Dropbox).",
+    ] = None,
     filter_by_category: Annotated[
         Optional[list[ItemCategory]],
         "Restricts the search to the specified category(ies) of items. "

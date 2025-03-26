@@ -40,7 +40,7 @@ def search_files_and_folders_eval_suite() -> EvalSuite:
                 func=search_files_and_folders,
                 args={
                     "keywords": "quarterly report",
-                    "search_in_folder_path": "",
+                    "search_in_folder_path": None,
                     "filter_by_category": None,
                     "limit": 100,
                     "cursor": None,
