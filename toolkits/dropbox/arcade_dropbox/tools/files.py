@@ -5,7 +5,7 @@ from arcade.sdk.auth import Dropbox
 from arcade.sdk.errors import ToolExecutionError
 
 from arcade_dropbox.enums import Endpoint
-from arcade_dropbox.exceptions import DropboxPathNotFoundError
+from arcade_dropbox.exceptions import DropboxApiError
 from arcade_dropbox.utils import parse_dropbox_path, send_dropbox_request
 
 
@@ -41,11 +41,10 @@ async def download_file(
             endpoint=Endpoint.DOWNLOAD_FILE,
             path=parse_dropbox_path(file_path) or file_id,
         )
-    except DropboxPathNotFoundError:
+    except DropboxApiError as api_error:
         return {
-            "error": f"The specified path was not found by Dropbox: '{file_path}'",
+            "http_status_code": api_error.status_code,
+            "error": api_error.message,
         }
 
-    return {
-        "file": result,
-    }
+    return {"file": result}

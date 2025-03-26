@@ -2,7 +2,6 @@ import json
 from typing import Any, Optional
 
 import httpx
-from arcade.sdk.errors import ToolExecutionError
 
 from arcade_dropbox.constants import (
     API_BASE_URL,
@@ -10,7 +9,7 @@ from arcade_dropbox.constants import (
     ENDPOINT_URL_MAP,
 )
 from arcade_dropbox.enums import Endpoint, EndpointType
-from arcade_dropbox.exceptions import DropboxPathNotFoundError
+from arcade_dropbox.exceptions import DropboxApiError
 
 
 def build_dropbox_url(endpoint_type: EndpointType, endpoint_path: str) -> str:
@@ -53,15 +52,12 @@ async def send_dropbox_request(
         except Exception:
             data = {}
 
-        if response.status_code == 409 and "path/not_found" in data.get("error_summary", ""):
-            raise DropboxPathNotFoundError()
-
         if response.status_code != 200:
-            message = (
-                f"Dropbox request failed with status code {response.status_code} "
-                f"and response: {response.text}"
+            raise DropboxApiError(
+                status_code=response.status_code,
+                error_summary=data.get("error_summary", response.text),
+                user_message=data.get("user_message"),
             )
-            raise ToolExecutionError(message)
 
         if endpoint_type == EndpointType.CONTENT:
             data = json.loads(response.headers["Dropbox-API-Result"])
