@@ -7,4 +7,4 @@ ENDPOINT_URL_MAP = {
     Endpoint.SEARCH_FILES: (EndpointType.API, "files/search_v2"),
     Endpoint.DOWNLOAD_FILE: (EndpointType.CONTENT, "files/download"),
 }
-MAX_RESPONSE_BODY_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_RESPONSE_BODY_SIZE = 10 * 1024 * 1024  # 10 MiB
