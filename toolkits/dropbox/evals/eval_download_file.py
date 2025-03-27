@@ -4,7 +4,6 @@ from arcade.sdk.eval import (
     EvalRubric,
     EvalSuite,
     ExpectedToolCall,
-    NoneCritic,
     tool_eval,
 )
 
@@ -46,7 +45,7 @@ def download_file_eval_suite() -> EvalSuite:
         ],
         critics=[
             DropboxPathCritic(critic_field="file_path", weight=0.5),
-            NoneCritic(critic_field="file_id", weight=0.5),
+            BinaryCritic(critic_field="file_id", weight=0.5),
         ],
     )
 
@@ -64,7 +63,7 @@ def download_file_eval_suite() -> EvalSuite:
         ],
         critics=[
             DropboxPathCritic(critic_field="file_path", weight=0.5),
-            NoneCritic(critic_field="file_id", weight=0.5),
+            BinaryCritic(critic_field="file_id", weight=0.5),
         ],
     )
 
