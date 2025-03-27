@@ -4,7 +4,7 @@ from arcade.sdk import ToolContext, tool
 from arcade.sdk.auth import Dropbox
 from arcade.sdk.errors import ToolExecutionError
 
-from arcade_dropbox.enums import Endpoint, ItemCategory
+from arcade_dropbox.constants import Endpoint, ItemCategory
 from arcade_dropbox.exceptions import DropboxApiError
 from arcade_dropbox.utils import (
     build_dropbox_json,

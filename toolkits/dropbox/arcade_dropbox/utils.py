@@ -7,8 +7,9 @@ from arcade_dropbox.constants import (
     API_BASE_URL,
     API_VERSION,
     ENDPOINT_URL_MAP,
+    Endpoint,
+    EndpointType,
 )
-from arcade_dropbox.enums import Endpoint, EndpointType
 from arcade_dropbox.exceptions import DropboxApiError
 
 

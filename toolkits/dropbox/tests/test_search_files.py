@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from arcade_dropbox.enums import ItemCategory
+from arcade_dropbox.constants import ItemCategory
 from arcade_dropbox.tools.browse import search_files_and_folders
 from arcade_dropbox.utils import clean_dropbox_entry
 

@@ -8,8 +8,8 @@ from arcade.sdk.eval import (
 )
 
 import arcade_dropbox
+from arcade_dropbox.constants import ItemCategory
 from arcade_dropbox.critics import DropboxPathCritic
-from arcade_dropbox.enums import ItemCategory
 from arcade_dropbox.tools.browse import search_files_and_folders
 
 rubric = EvalRubric(
