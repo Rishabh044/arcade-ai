@@ -276,6 +276,7 @@ async def test_search_files_success_filtering_by_category(
         json={
             "query": "test",
             "options": {
+                "path": "",
                 "file_status": "active",
                 "filename_only": False,
                 "max_results": 100,
