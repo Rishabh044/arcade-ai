@@ -90,5 +90,11 @@ def parse_dropbox_path(path: Optional[str]) -> Optional[str]:
     if not path:
         return ""
 
+    if path in ["/", "\\"]:
+        return None
+
+    # Normalize windows-style paths to unix-style paths
+    path = path.replace("\\", "/")
+
     # Dropbox expects the path to always start with a slash
     return "/" + path.strip("/")
