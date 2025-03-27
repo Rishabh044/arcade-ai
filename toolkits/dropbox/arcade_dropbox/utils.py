@@ -10,7 +10,7 @@ from arcade_dropbox.constants import (
     Endpoint,
     EndpointType,
 )
-from arcade_dropbox.exceptions import DropboxApiError, DropboxPathError
+from arcade_dropbox.exceptions import DropboxApiError
 
 
 def build_dropbox_url(endpoint_type: EndpointType, endpoint_path: str) -> str:
@@ -91,7 +91,7 @@ def clean_dropbox_entries(entries: list[dict]) -> list[dict]:
 
 def parse_dropbox_path(path: Optional[str]) -> Optional[str]:
     if not isinstance(path, str):
-        raise DropboxPathError(path)
+        return ""
 
     if not path:
         return ""

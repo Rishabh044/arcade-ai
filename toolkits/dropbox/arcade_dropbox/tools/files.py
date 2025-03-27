@@ -5,7 +5,7 @@ from arcade.sdk.auth import Dropbox
 from arcade.sdk.errors import ToolExecutionError
 
 from arcade_dropbox.constants import Endpoint
-from arcade_dropbox.exceptions import DropboxApiError, DropboxPathError
+from arcade_dropbox.exceptions import DropboxApiError
 from arcade_dropbox.utils import parse_dropbox_path, send_dropbox_request
 
 
@@ -43,8 +43,5 @@ async def download_file(
         )
     except DropboxApiError as api_error:
         return {"error": api_error.message}
-
-    except DropboxPathError as path_error:
-        return {"error": path_error.message}
 
     return {"file": result}

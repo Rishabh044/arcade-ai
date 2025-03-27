@@ -5,7 +5,7 @@ from arcade.sdk.auth import Dropbox
 from arcade.sdk.errors import ToolExecutionError
 
 from arcade_dropbox.constants import Endpoint, ItemCategory
-from arcade_dropbox.exceptions import DropboxApiError, DropboxPathError
+from arcade_dropbox.exceptions import DropboxApiError
 from arcade_dropbox.utils import (
     build_dropbox_json,
     clean_dropbox_entries,
@@ -55,9 +55,6 @@ async def list_items_in_folder(
         )
     except DropboxApiError as api_error:
         return {"error": api_error.message}
-
-    except DropboxPathError as path_error:
-        return {"error": path_error.message}
 
     return {
         "items": clean_dropbox_entries(result["entries"]),
@@ -131,9 +128,6 @@ async def search_files_and_folders(
         )
     except DropboxApiError as api_error:
         return {"error": api_error.message}
-
-    except DropboxPathError as path_error:
-        return {"error": path_error.message}
 
     return {
         "items": clean_dropbox_entries([
