@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 
 class DropboxApiError(Exception):
@@ -16,3 +16,8 @@ class DropboxApiError(Exception):
             self.message = user_message or error_summary
 
         self.status_code = status_code
+
+
+class DropboxPathError(Exception):
+    def __init__(self, path: Any):
+        self.message = f"Path must be a string, got '{type(path).__name__}({path})', instead."
