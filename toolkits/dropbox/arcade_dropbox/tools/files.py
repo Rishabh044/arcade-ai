@@ -37,7 +37,7 @@ async def download_file(
 
     try:
         result = await send_dropbox_request(
-            None if not context.authorization else context.authorization.token,
+            context.get_auth_token_or_empty(),
             endpoint=Endpoint.DOWNLOAD_FILE,
             path=parse_dropbox_path(file_path) or file_id,
         )

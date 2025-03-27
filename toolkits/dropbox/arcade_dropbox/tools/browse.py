@@ -47,7 +47,7 @@ async def list_items_in_folder(
 
     try:
         result = await send_dropbox_request(
-            None if not context.authorization else context.authorization.token,
+            context.get_auth_token_or_empty(),
             endpoint=Endpoint.LIST_FOLDER,
             path=parse_dropbox_path(folder_path),
             limit=limit,
@@ -120,7 +120,7 @@ async def search_files_and_folders(
 
     try:
         result = await send_dropbox_request(
-            None if not context.authorization else context.authorization.token,
+            context.get_auth_token_or_empty(),
             endpoint=Endpoint.SEARCH_FILES,
             query=keywords,
             options=options,
