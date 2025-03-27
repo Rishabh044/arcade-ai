@@ -119,7 +119,7 @@ async def test_search_files_success_with_path_missing_leading_slash(
     }
 
     mock_httpx_client.post.assert_called_once_with(
-        "https://api.dropboxapi.com/2/files/search_v2",
+        url="https://api.dropboxapi.com/2/files/search_v2",
         headers={"Authorization": "Bearer fake-token"},
         json={
             "query": "test",
@@ -208,7 +208,7 @@ async def test_search_files_success_providing_pagination_cursor(
 
     # Assert that the request was made with the correct cursor and not other arguments
     mock_httpx_client.post.assert_called_once_with(
-        "https://api.dropboxapi.com/2/files/search_v2/continue",
+        url="https://api.dropboxapi.com/2/files/search_v2/continue",
         headers={"Authorization": "Bearer fake-token"},
         json={"cursor": "cursor"},
     )
@@ -271,7 +271,7 @@ async def test_search_files_success_filtering_by_category(
     }
 
     mock_httpx_client.post.assert_called_once_with(
-        "https://api.dropboxapi.com/2/files/search_v2",
+        url="https://api.dropboxapi.com/2/files/search_v2",
         headers={"Authorization": "Bearer fake-token"},
         json={
             "query": "test",

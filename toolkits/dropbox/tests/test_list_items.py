@@ -118,7 +118,7 @@ async def test_list_items_success_providing_cursor(
 
     # Check that the request was made with the cursor and not the other arguments
     mock_httpx_client.post.assert_called_with(
-        "https://api.dropboxapi.com/2/files/list_folder/continue",
+        url="https://api.dropboxapi.com/2/files/list_folder/continue",
         headers={"Authorization": "Bearer fake-token"},
         json={"cursor": "cursor1"},
     )
