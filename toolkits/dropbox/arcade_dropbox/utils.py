@@ -42,10 +42,15 @@ async def send_dropbox_request(
 
     if endpoint_type == EndpointType.CONTENT:
         headers["Dropbox-API-Arg"] = json.dumps(json_data)
-        json_data = {}
+        json_data = None
 
     async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=headers, json=json_data)
+        request_args: dict[str, Any] = {"url": url, "headers": headers}
+
+        if json_data:
+            request_args["json"] = json_data
+
+        response = await client.post(**request_args)
 
         try:
             data = response.json()
