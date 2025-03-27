@@ -91,13 +91,13 @@ def clean_dropbox_entries(entries: list[dict]) -> list[dict]:
 
 def parse_dropbox_path(path: Optional[str]) -> Optional[str]:
     if not isinstance(path, str):
-        return None
+        return ""
 
     if not path:
         return ""
 
     if path in ["/", "\\"]:
-        return None
+        return ""
 
     # Normalize windows-style paths to unix-style paths
     path = path.replace("\\", "/")
