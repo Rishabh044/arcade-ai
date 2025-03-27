@@ -43,7 +43,7 @@ async def send_dropbox_request(
 
     if endpoint_type == EndpointType.CONTENT:
         headers["Dropbox-API-Arg"] = json.dumps(json_data)
-        json_data = None
+        json_data = {}
 
     async with httpx.AsyncClient() as client:
         request_args: dict[str, Any] = {"url": url, "headers": headers}
