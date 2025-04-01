@@ -624,7 +624,7 @@ async def get_conversation_metadata_by_id(
     return dict(**extract_conversation_metadata(response["channel"]))
 
 
-@tool(requires_auth=Slack(scopes=["channels:read"]))
+@tool(requires_auth=Slack(scopes=["channels:read", "groups:read"]))
 async def get_channel_metadata_by_name(
     context: ToolContext,
     channel_name: Annotated[str, "The name of the channel to get metadata for"],
@@ -644,7 +644,14 @@ async def get_channel_metadata_by_name(
         should_continue = True
 
         while should_continue:
-            response = await list_conversations_metadata(context, next_cursor=next_cursor)
+            response = await list_conversations_metadata(
+                context=context,
+                conversation_types=[
+                    ConversationType.PUBLIC_CHANNEL,
+                    ConversationType.PRIVATE_CHANNEL,
+                ],
+                next_cursor=next_cursor,
+            )
             next_cursor = response.get("next_cursor")
 
             for channel in response["conversations"]:
