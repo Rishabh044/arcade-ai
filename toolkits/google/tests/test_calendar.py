@@ -7,6 +7,7 @@ from arcade.sdk import ToolAuthorizationContext, ToolContext
 from arcade.sdk.errors import RetryableToolError, ToolExecutionError
 from googleapiclient.errors import HttpError
 
+from arcade_google.models import EventVisibility, SendUpdatesOptions
 from arcade_google.tools.calendar import (
     create_event,
     delete_event,
@@ -14,7 +15,6 @@ from arcade_google.tools.calendar import (
     list_events,
     update_event,
 )
-from arcade_google.tools.models import EventVisibility, SendUpdatesOptions
 
 
 @pytest.fixture
@@ -163,7 +163,7 @@ async def test_delete_event(mock_build, mock_context):
 
 
 @pytest.mark.asyncio
-@patch("arcade_google.tools.utils.get_now")
+@patch("arcade_google.utils.get_now")
 @patch("arcade_google.tools.calendar.build")
 async def test_find_free_slots_happiest_path_single_user(mock_build, mock_get_now, mock_context):
     calendar_service = MagicMock()
@@ -225,7 +225,7 @@ async def test_find_free_slots_happiest_path_single_user(mock_build, mock_get_no
 
 
 @pytest.mark.asyncio
-@patch("arcade_google.tools.utils.get_now")
+@patch("arcade_google.utils.get_now")
 @patch("arcade_google.tools.calendar.build")
 async def test_find_free_slots_happiest_path_single_user_with_busy_times(
     mock_build, mock_get_now, mock_context
@@ -320,7 +320,7 @@ async def test_find_free_slots_happiest_path_single_user_with_busy_times(
 
 
 @pytest.mark.asyncio
-@patch("arcade_google.tools.utils.get_now")
+@patch("arcade_google.utils.get_now")
 @patch("arcade_google.tools.calendar.build")
 async def test_find_free_slots_happiest_path_multiple_users_with_busy_times(
     mock_build, mock_get_now, mock_context
@@ -427,7 +427,7 @@ async def test_find_free_slots_happiest_path_multiple_users_with_busy_times(
 
 
 @pytest.mark.asyncio
-@patch("arcade_google.tools.utils.get_now")
+@patch("arcade_google.utils.get_now")
 @patch("arcade_google.tools.calendar.build")
 async def test_find_free_slots_with_google_calendar_error_not_found(
     mock_build, mock_get_now, mock_context

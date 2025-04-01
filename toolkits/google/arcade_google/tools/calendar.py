@@ -10,8 +10,8 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from arcade_google.tools.models import EventVisibility, SendUpdatesOptions
-from arcade_google.tools.utils import (
+from arcade_google.models import EventVisibility, SendUpdatesOptions
+from arcade_google.utils import (
     compute_free_time_intersection,
     parse_datetime,
 )

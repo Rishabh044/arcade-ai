@@ -1,6 +1,6 @@
 import os
 
-from arcade_google.tools.models import GmailReplyToWhom
+from arcade_google.models import GmailReplyToWhom
 
 # The default reply in Gmail is to only the sender. Since Gmail also offers the possibility of
 # changing the default to 'reply to all', we support both options through an env variable.
@@ -19,3 +19,6 @@ except ValueError as e:
 
 
 DEFAULT_SEARCH_CONTACTS_LIMIT = 30
+
+DEFAULT_SHEET_ROW_COUNT = 1000
+DEFAULT_SHEET_COLUMN_COUNT = 26

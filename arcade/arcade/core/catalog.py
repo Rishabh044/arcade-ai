@@ -243,15 +243,19 @@ class ToolCatalog(BaseModel):
                     tool_func = getattr(module, tool_name)
                     self.add_tool(tool_func, toolkit, module)
 
-                except AttributeError:
+                except AttributeError as e:
                     raise ToolDefinitionError(
-                        f"Could not find tool {tool_name} in module {module_name}"
+                        f"Could not import tool {tool_name} in module {module_name}. Reason: {e}"
                     )
                 except ImportError as e:
                     raise ToolDefinitionError(f"Could not import module {module_name}. Reason: {e}")
                 except TypeError as e:
                     raise ToolDefinitionError(
                         f"Type error encountered while adding tool {tool_name} from {module_name}. Reason: {e}"
+                    )
+                except Exception as e:
+                    raise ToolDefinitionError(
+                        f"Error encountered while adding tool {tool_name} from {module_name}. Reason: {e}"
                     )
 
     def __getitem__(self, name: FullyQualifiedName) -> MaterializedTool:
@@ -571,7 +575,14 @@ def extract_field_info(param: inspect.Parameter) -> ToolParamInfo:
     elif len(str_annotations) == 1:
         param_info.description = str_annotations[0]
     elif len(str_annotations) == 2:
-        param_info.name = str_annotations[0]
+        new_name = str_annotations[0]
+        if not new_name.isidentifier():
+            raise ToolDefinitionError(
+                f"Invalid parameter name: '{new_name}' is not a valid identifier. "
+                "Identifiers must start with a letter or underscore, "
+                "and can only contain letters, digits, or underscores."
+            )
+        param_info.name = new_name
         param_info.description = str_annotations[1]
     else:
         raise ToolDefinitionError(
@@ -623,15 +634,18 @@ def get_wire_type_info(_type: type) -> WireTypeInfo:
 
     type_to_check = inner_type if is_list else _type
 
+    # Strip generic parameters if type_to_check is a parameterized generic
+    actual_type = get_origin(type_to_check) or type_to_check
+
     # Special case: Literal["string1", "string2"] can be enumerated on the wire
     if is_string_literal(type_to_check):
         is_enum = True
         enum_values = [str(e) for e in get_args(type_to_check)]
 
     # Special case: Enum can be enumerated on the wire
-    elif issubclass(type_to_check, Enum):
+    elif issubclass(actual_type, Enum):
         is_enum = True
-        enum_values = [e.value for e in type_to_check]  # type: ignore[union-attr]
+        enum_values = [e.value for e in actual_type]  # type: ignore[union-attr]
 
     return WireTypeInfo(wire_type, inner_wire_type, enum_values if is_enum else None)
 
@@ -732,10 +746,10 @@ def get_wire_type(
         if wire_type:
             return wire_type
 
-    if issubclass(_type, Enum):
+    if isinstance(_type, type) and issubclass(_type, Enum):
         return "string"
 
-    if issubclass(_type, BaseModel):
+    if isinstance(_type, type) and issubclass(_type, BaseModel):
         return "json"
 
     raise ToolDefinitionError(f"Unsupported parameter type: {_type}")

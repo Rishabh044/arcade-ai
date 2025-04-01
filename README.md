@@ -9,10 +9,10 @@
     <a href="https://github.com/arcadeai/arcade-ai/blob/main/LICENSE">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </a>
-    <a href="https://pepy.tech/project/arcade-ai">
-  <img src="https://static.pepy.tech/badge/arcade-ai" alt="Downloads">
-</a>
   <img src="https://img.shields.io/github/last-commit/ArcadeAI/arcade-ai" alt="GitHub last commit">
+</a>
+<a href="https://github.com/arcadeai/arcade-ai/actions/workflow/on-release-main.yml">
+<img src="https://img.shields.io/github/actions/workflow/status/arcadeai/arcade-ai/check-toolkits.yml" alt="GitHub Actions Status">
 </a>
 <a href="https://img.shields.io/pypi/pyversions/arcade-ai">
   <img src="https://img.shields.io/pypi/pyversions/arcade-ai" alt="Python Version">
@@ -33,17 +33,18 @@
 </div>
 
 <p align="center" style="display: flex; justify-content: center; gap: 5px; font-size: 15px;">
-    <a href="https://docs.arcade.dev/home" target="_blank">Docs</a> •
-    <a href="https://docs.arcade.dev/toolkits" target="_blank">Toolkits</a> •
-    <a href="https://docs.arcade.dev/home/supported-models" target="_blank">Model Providers</a> •
-    <a href="https://docs.arcade.dev/home/auth-providers" target="_blank">Auth Providers</a> •
-    <a href="https://github.com/ArcadeAI/arcade-ai/tree/main/examples" target="_blank">Examples</a>
+    <a href="https://docs.arcade.dev/home" target="_blank">Documentation</a> •
+    <a href="https://docs.arcade.dev/tools" target="_blank">Tools</a> •
+    <a href="https://docs.arcade.dev/home/quickstart" target="_blank">Quickstart</a> •
+    <a href="https://docs.arcade.dev/home/contact-us" target="_blank">Contact Us</a>
 
-## What is Arcade?
+# Arcade Tool SDK
 
-[Arcade](https://arcade.dev?ref=github) provides developer-focused tooling and APIs designed to improve the capabilities of LLM applications and agents.
+Arcade is a developer platform that lets you build, deploy, and manage tools for AI agents.
 
-By removing the complexity of connecting agentic applications with your users' data and services, Arcade enables developers to focus on building their agentic applications.
+The Tool SDK makes it easy to create powerful, secure tools that your agents can use to interact with the world.
+
+![diagram](https://github.com/user-attachments/assets/1a567e5f-d6b4-4b1e-9918-c401ad232ebb)
 
 To learn more, check out our [documentation](https://docs.arcade.dev/home).
 
@@ -53,273 +54,434 @@ _Pst. hey, you, give us a star if you like it!_
   <img src="https://img.shields.io/github/stars/ArcadeAI/arcade-ai.svg" alt="GitHub stars">
 </a>
 
-## Quickstart
+## Table of Contents
 
-### Requirements
+-   [Quickstart: Install and call a tool](#quickstart-install-and-call-a-tool)
+-   [Build LLM Tools with Arcade SDK](#build-llm-tools-with-arcade-sdk)
+    -   [Tool SDK Installation](#tool-sdk-installation)
+    -   [Creating a new Toolkit](#creating-a-new-toolkit)
+    -   [Deploy your tools to call with LLMs](#deploy-your-tools-to-call-with-llms)
+-   [Calling your tools](#calling-your-tools)
+    -   [LLM API](#llm-api)
+    -   [Tools API](#tools-api)
+    -   [Integrating with Agent Frameworks](#integrating-with-agent-frameworks)
+    -   [Arcade Auth API](#arcade-auth-api)
+-   [Client Libraries](#client-libraries)
+-   [Support and Community](#support-and-community)
 
-1. An **[Arcade account](https://account.arcade.dev/register?return_to=https%3A%2F%2Fapi.arcade.dev%2Fdashboard%2Fwelcome)**
-2. **Python 3.10+** and **pip**
-
-### Installation
-
-Install the package:
+## Quickstart: Install and call a tool
 
 ```bash
+# Install the Arcade CLI
 pip install arcade-ai
-```
 
-Log in to your account via the CLI:
-
-```bash
+# Log in to Arcade
 arcade login
+
+# Show what tools are hosted by Arcade
+arcade show
+
+# show what tools are in a toolkit
+arcade show -T GitHub
+
+# look at the definition of a tool
+arcade show -t GitHub.SetStarred
 ```
 
-This opens a browser window for authentication.
-
-### Verify Installation with `arcade chat`
-
-Use the `arcade chat` CLI app to test tools:
+The GitHub.SetStarred tool is hosted by Arcade, so you can call it directly
+without any additional setup of OAuth or servers. A simple way to test tools,
+wether hosted by Arcade or not, is to use the `arcade chat` app.
 
 ```bash
 arcade chat
 ```
 
-This connects to the Arcade Cloud Engine (`api.arcade.dev`) with all pre-built Arcade tools.
+This will start a chat with an LLM that can call tools.
 
-For example, try:
+try calling the GitHub.SetStarred tool with a message like "Star the arcade-ai repo"
 
-```text
-User (dev@arcade.dev):
-> star the ArcadeAI/arcade-ai repo on Github
+```
+> arcade chat
+
+=== Arcade Chat ===
+
+Chatting with Arcade Engine at https://api.arcade.dev
+
+User sam@arcade.dev:
+star the arcadeai/arcade-ai repo
+
+Assistant:
+Thanks for authorizing the action! Sending your request...
+
+Assistant:
+I have successfully starred the repository arcadeai/arcade-ai for you.
 ```
 
-Arcade will prompt you to authorize with GitHub and will star the [ArcadeAI/arcade-ai](https://github.com/ArcadeAI/arcade-ai) repo on your behalf.
+If Arcade already hosts the tools you need to build your agent, you
+can navigate to the [Quickstart](https://docs.arcade.dev/home/quickstart) to
+learn how to call tools programmatically in Python, Typescript, or HTTP.
 
-You'll see:
+You can also build your own tools with the SDK and deploy them in one command
+on Arcade Cloud
 
-```text
-Assistant (gpt-4o):
-I starred the ArcadeAI/arcade-ai repo on Github for you!
+## Build LLM Tools with Arcade SDK
+
+Arcade provides a tool SDK that allows you to build your own tools and use them in your agentic applications just like the existing tools Arcade provides. This is useful for building new tools, customizing existing tools to fit your needs, combining multiple tools, or building tools that are not yet supported by Arcade.
+
+### Tool SDK Installation
+
+**Prerequisites**
+
+-   **Python 3.10+** and **pip**
+
+Now you can install the Tool SDK through pip.
+
+1. **Install the Arcade CLI:**
+
+    ```bash
+    pip install arcade-ai
+    ```
+
+    If you plan on writing evaluations for your tools and the LLMs you use, you will also need to install the `evals` extra.
+
+    ```bash
+    pip install 'arcade-ai[evals]'
+    ```
+
+2. **Log in to Arcade:**
+    ```bash
+    arcade login
+    ```
+    This will prompt you to open a browser and authorize the CLI. It will then save the credentials to your machine typically in `~/.arcade/credentials.json`. If you haven't used the CLI before, you will need to create an account on this page.
+
+Now you're ready to build tools with Arcade!
+
+### Creating a New Toolkit
+
+Toolkits are the main building blocks of Arcade. They are a collection of tools that are related to a specific service, use case,
+or agent. Toolkits are created and distributed python packages to facilitate version, dependency, and distribution.
+
+To create a new toolkit, you can use the `arcade new` command. This will create a new toolkit in the current directory.
+
+1. **Generate a new toolkit template:**
+
+    ```bash
+    arcade new
+    ```
+
+    ```text
+    Name of the new toolkit?: mytoolkit
+    Description of the toolkit?: myToolkit is a toolkit for ...
+    Github owner username?: mytoolkit
+    Author's email?: user@example.com
+    ```
+
+    This will create a new toolkit in the current directory.
+
+    The generated toolkit includes all the scaffolding you need for a working tool. Look for the `mytoolkit/tool.py` file to customize the behavior of your tool.
+
+2. **Install your new toolkit:**
+
+    ```bash
+    # make sure you have python installed
+    python --version
+
+    # install your new toolkit
+    cd mytoolkit
+    make install
+    ```
+
+    This will install the toolkit in your local python environment using poetry.
+
+    The template is meant to be customized so feel free to change anything about the structure,
+    package management, linting, etc.
+
+3. **Show the tools in the template Toolkit:**
+
+    ```bash
+    # show the tools in Mytoolkit
+    arcade show --local -T Mytoolkit
+
+    # show the definition of a tool
+    arcade show --local -t Mytoolkit.SayHello
+
+    # show all tools installed in your local python environment
+    arcade show --local
+    ```
+
+Now you can edit the `mytoolkit/tool.py` file to customize the behavior of your tool. Next,
+you can host your tools to call with LLMs by deploying your toolkit to Arcade Cloud.
+
+### Deploy your tools to call with LLMs
+
+To make your tools in the toolkit available to call with LLMs, you can deploy your toolkit to Arcade Cloud.
+
+The `worker.toml` file created in the directory where you ran `arcade new` will be used to deploy your toolkit.
+
+In that directory, run the following command to deploy your toolkit:
+
+```bash
+# from inside the mytoolkit dir
+cd ../
+
+arcade deploy
 ```
 
-Press `Ctrl-C` to exit the chat.
+This command will package your toolkit and deploy it as a worker instance in Arcade's cloud infrastructure:
 
-## Arcade Cloud
+```
+[11:52:44] Deploying 'demo-worker...'
+⠦ Deploying 1 workers             Changed Packages
+┏━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Added    ┃ Removed ┃ Updated ┃ No Changes ┃
+┡━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━┩
+│ Mytoolkit│         │         │            │
+└──────────┴─────────┴─────────┴────────────┘
+[11:53:13] ✅ Worker 'demo-worker' deployed successfully.
+```
 
-Arcade Cloud is a hosted version of the Arcade engine that hosts a number of prebuilt toolkits for interacting with a variety of services.
+You can manage your deployed workers with the following commands:
 
-### Prebuilt Toolkits
+```bash
+# List all workers (both local and cloud-deployed)
+arcade worker list
 
-Arcade offers a number of prebuilt toolkits that can be used by agents to interact with a variety of services.
+# Remove a deployed worker
+arcade worker rm demo-worker
+```
 
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: center;">Service</th>
-      <th style="text-align: center;">Auth Type</th>
-      <th style="text-align: center;">Toolkit</th>
-      <th style="text-align: center;">Documentation</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/github.png" alt="GitHub" width="30" /></td>
-      <td style="text-align: center;">OAuth</td>
-      <td style="text-align: center;"><a href="https://github.com/ArcadeAI/arcade-ai/tree/main/toolkits/github">Github</a></td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/toolkits/development/github/github">GitHub Toolkit Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/gmail.png" alt="Gmail" width="30" /></td>
-      <td style="text-align: center;">OAuth</td>
-      <td style="text-align: center;"><a href="https://github.com/ArcadeAI/arcade-ai/tree/main/toolkits/google/arcade_google/tools/gmail">Google</a></td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/toolkits/productivity/google/gmail">Gmail Toolkit Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/google_calendar.png" alt="Google Calendar" width="30" /></td>
-      <td style="text-align: center;">OAuth</td>
-      <td style="text-align: center;"><a href="https://github.com/ArcadeAI/arcade-ai/tree/main/toolkits/google/arcade_google/tools/calendar">Google</a></td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/toolkits/productivity/google/calendar">Google Calendar Toolkit Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/google_docs.png" alt="Google Docs" width="30" /></td>
-      <td style="text-align: center;">OAuth</td>
-      <td style="text-align: center;"><a href="https://github.com/ArcadeAI/arcade-ai/tree/main/toolkits/google/arcade_google/tools/docs">Google</a></td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/toolkits/productivity/google/docs">Google Docs Toolkit Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/google_drive.png" alt="Google Drive" width="30" /></td>
-      <td style="text-align: center;">OAuth</td>
-      <td style="text-align: center;"><a href="https://github.com/ArcadeAI/arcade-ai/tree/main/toolkits/google/arcade_google/tools/drive">Google</a></td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/toolkits/productivity/google/drive">Google Drive Toolkit Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/serpapi.png" alt="Search" width="30" /></td>
-      <td style="text-align: center;">API Key</td>
-      <td style="text-align: center;"><a href="https://github.com/ArcadeAI/arcade-ai/tree/main/toolkits/search">Search</a></td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/toolkits/development/search">Search Toolkit Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/slack.png" alt="Slack" width="30" /></td>
-      <td style="text-align: center;">OAuth</td>
-      <td style="text-align: center;"><a href="https://github.com/ArcadeAI/arcade-ai/tree/main/toolkits/slack">Slack</a></td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/toolkits/social-communication/slack">Slack Toolkit Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/spotify.png" alt="Spotify" width="30" /></td>
-      <td style="text-align: center;">OAuth</td>
-      <td style="text-align: center;"><a href="https://github.com/ArcadeAI/arcade-ai/tree/main/toolkits/spotify">Spotify</a></td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/toolkits/entertainment/spotify">Spotify Toolkit Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/web.png" alt="Web" width="30" /></td>
-      <td style="text-align: center;">API Key</td>
-      <td style="text-align: center;"><a href="https://github.com/ArcadeAI/arcade-ai/tree/main/toolkits/web">Web</a></td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/toolkits/development/web/web">Web Toolkit Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/twitter.png" alt="Twitter" width="30" /></td>
-      <td style="text-align: center;">OAuth</td>
-      <td style="text-align: center;"><a href="https://github.com/ArcadeAI/arcade-ai/tree/main/toolkits/x">X</a></td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/toolkits/social-communication/x">X Toolkit Docs</a></td>
-    </tr>
-  </tbody>
-</table>
+Once deployed, your toolkit is immediately available through the Arcade platform. You can now call your tools through the playground, LLM API, or Tools API without any additional setup.
 
-<br>
+For local development and testing when running the Arcade Engine locally or tunneling to it, you can
+use `arcade serve` to host your toolkit locally and connect it to the Arcade Engine.
 
-### Supported Auth Providers
+If you are running the Arcade Engine locally, go to localhost:9099 (or other local address)
+and add the worker address in the "workers" page.
 
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: center;">Provider</th>
-      <th style="text-align: center;">Name</th>
-      <th style="text-align: center;">Documentation</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/github.png" alt="GitHub" width="30" /></td>
-      <td style="text-align: center;">github</td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/home/auth-providers/github">GitHub Auth Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/google.png" alt="Google" width="30" /></td>
-      <td style="text-align: center;">google</td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/home/auth-providers/google">Google Auth Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/linkedin.png" alt="LinkedIn" width="30" /></td>
-      <td style="text-align: center;">linkedin</td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/home/auth-providers/linkedin">LinkedIn Auth Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/msft.png" alt="Microsoft" width="30" /></td>
-      <td style="text-align: center;">microsoft</td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/home/auth-providers/microsoft">Microsoft Auth Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/slack.png" alt="Slack" width="30" /></td>
-      <td style="text-align: center;">slack</td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/home/auth-providers/slack">Slack Auth Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/spotify.png" alt="Spotify" width="30" /></td>
-      <td style="text-align: center;">spotify</td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/home/auth-providers/spotify">Spotify Auth Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/twitter.png" alt="X" width="30" /></td>
-      <td style="text-align: center;">x</td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/home/auth-providers/x">X Auth Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/zoom.png" alt="Zoom" width="30" /></td>
-      <td style="text-align: center;">zoom</td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/home/auth-providers/zoom">Zoom Auth Docs</a></td>
-    </tr>
-    <tr>
-      <td style="text-align: center;"><img src="https://docs.arcade.dev/images/icons/oauth2.png" alt="OAuth 2.0" width="30" /></td>
-      <td style="text-align: center;">oauth2</td>
-      <td style="text-align: center;"><a href="https://docs.arcade.dev/home/auth-providers/oauth2">Generic OAuth2 Auth Docs</a></td>
-    </tr>
-  </tbody>
-</table>
+## Calling your tools
 
-### Supported Language Models
+Arcade provides multiple ways to use your tools with various agent frameworks. Depending on your use case, you can choose the best method for your application.
 
-The LLM API supports a variety of language models. Currently, the ones supported in Arcade Cloud are OpenAI, Anthropic, Ollama, and Groq.
+### LLM API
 
-<table>
-  <thead>
-    <tr>
-      <th style="text-align: center;">Model</th>
-      <th style="text-align: center;">Provider</th>
-      <th style="text-align: center;">Documentation</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align: center;">
-        <img src="https://docs.arcade.dev/images/icons/openai.png" alt="OpenAI" width="30" height="30" />
-      </td>
-      <td style="text-align: center;">OpenAI</td>
-      <td style="text-align: center;">
-        <a href="https://docs.arcade.dev/home/supported-models/openai">OpenAI Models Docs</a>
-      </td>
-    </tr>
-    <tr>
-      <td style="text-align: center;">
-        <img src="https://docs.arcade.dev/images/icons/anthropic.png" alt="Anthropic" width="30" height="30" />
-      </td>
-      <td style="text-align: center;">Anthropic</td>
-      <td style="text-align: center;">
-        <a href="https://docs.arcade.dev/home/supported-models/anthropic">Anthropic Models Docs</a>
-      </td>
-    </tr>
-    <tr>
-      <td style="text-align: center;">
-        <img src="https://docs.arcade.dev/images/icons/ollama.png" alt="Ollama" width="30" height="30" />
-      </td>
-      <td style="text-align: center;">Ollama</td>
-      <td style="text-align: center;">
-        <a href="https://docs.arcade.dev/home/supported-models/ollama">Ollama Models Docs</a>
-      </td>
-    </tr>
-    <tr>
-      <td style="text-align: center;">
-        <img src="https://docs.arcade.dev/images/icons/groq.png" alt="Groq" width="30" height="30" />
-      </td>
-      <td style="text-align: center;">Groq</td>
-      <td style="text-align: center;">
-        <a href="https://docs.arcade.dev/home/supported-models/groq">Groq Models Docs</a>
-      </td>
-    </tr>
-  </tbody>
-</table>
+The LLM API provides the simplest way to integrate Arcade tools into your application. It extends the standard OpenAI API with additional capabilities:
 
-For more information, refer to the [supported models documentation](https://docs.arcade.dev/home/supported-models).
+```python
+import os
+from openai import OpenAI
 
-### Get Started with Arcade
+prompt = "Say hello to Sam"
 
-To get started with Arcade, check out our [quickstart guide](https://docs.arcade.dev/home/quickstart).
+api_key = os.environ["ARCADE_API_KEY"]
+openai = OpenAI(
+    base_url="https://api.arcade.dev/v1",
+    api_key=api_key,
+)
 
-### Building Your Own Tools
+response = openai.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": prompt},
+    ],
+    tools=["Mytoolkit.SayHello"],
+    tool_choice="generate",
+    user="user@example.com"
+)
 
-Learn how to build your own tools by following our [creating a custom toolkit guide](https://docs.arcade.dev/home/build-tools/create-a-toolkit).
+print(response.choices[0].message.content)
+```
 
-### Evaluating Tools
+When a user hasn't authorized a service, the API seamlessly returns an authorization link in the response:
 
-Arcade enables you to evaluate your custom tools to ensure they function correctly with the AI assistant, including defining evaluation cases and using different critics.
+```
+Please authorize the tool by visiting: https://some.auth.url.arcade.will.generate.for.you...
 
-Learn how to evaluate your tools by following our [evaluating tools guide](https://docs.arcade.dev/home/evaluate-tools/create-an-evaluation-suite).
+```
 
-## Contributing
+All you need to do is show the url to the user, and from then on, the user will never have to do this again. All future requests will use the authorized token.
 
-We love contributions! Please read our [contributing guide](CONTRIBUTING.md) before submitting a pull request. If you'd like to self-host, refer to the [self-hosting documentation](https://docs.arcade.dev/home/install/overview).
+After authorization, the same API call returns the completed action:
 
-<p align="right" style="font-size: 14px; color: #555; margin-top: 20px;">
-    <a href="#readme-top" style="text-decoration: none; color: #007bff; font-weight: bold;">
-        ↑ Back to Top ↑
-    </a>
-</p>
+```
+Hello Sam!
+```
+
+### Tools API
+
+Use the Tools API when you want to integrate Arcade's runtime for tool calling into an agent framework (like LangChain or LangGraph), or if you're using your own approach and want to call Arcade tools or tools you've built with the Arcade Tool SDK.
+
+Here's an example of how to use the Tools API to call a tool directly without a framework:
+
+```python
+import os
+from arcadepy import Arcade
+
+client = Arcade(api_key=os.environ["ARCADE_API_KEY"])
+
+# Start the authorization process for Slack
+auth_response = client.tools.authorize(
+    tool_name="Mytoolkit.SayHello",
+    user_id="user@example.com",
+)
+
+# If the tool is not already authorized, prompt the user to authenticate
+if auth_response.status != "completed":
+    print("Please authorize by visiting:")
+    print(auth_response.url)
+    client.auth.wait_for_completion(auth_response)
+
+# Execute the tool to send a Slack message after authorization
+tool_input = {
+    "username": "sam",
+    "message": "I'll be late to the meeting"
+}
+response = client.tools.execute(
+    tool_name="Mytoolkit.SayHello",
+    input=tool_input,
+    user_id="user@example.com",
+)
+print(response)
+
+```
+
+### Integrating with Agent Frameworks
+
+You can also use the Tools API with a framework like LangChain or LangGraph.
+
+Currently Arcade provides ease-of-use integrations for the following frameworks:
+
+-   LangChain/Langgraph
+-   CrewAI
+-   LlamaIndex (coming soon)
+
+Here's an example of how to use the Tools API with LangChain/Langgraph:
+
+```python
+import os
+
+from langchain_arcade import ToolManager
+from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import create_react_agent
+
+# 1) Set API keys (place your real keys in env variables or directly below)
+arcade_api_key = os.environ.get("ARCADE_API_KEY", "YOUR_ARCADE_API_KEY")
+openai_api_key = os.environ.get("OPENAI_API_KEY", "YOUR_OPENAI_API_KEY")
+
+# 2) Create an ToolManager and fetch/add tools/toolkits
+manager = ToolManager(api_key=arcade_api_key)
+
+# Tool names follow the format "ToolkitName.ToolName"
+tools = manager.init_tools(tools=["Web.ScrapeUrl"])
+print(manager.tools)
+
+# Get all tools from a toolkit
+tools = manager.init_tools(toolkits=["github"])
+print(manager.tools)
+
+# add a tool
+manager.add_tool("Search.SearchGoogle")
+print(manager.tools)
+
+# add a toolkit
+manager.add_toolkit("Search")
+print(manager.tools)
+
+# 3) Get StructuredTool objects for langchain
+lc_tools = manager.to_langchain()
+
+# 4) Create a ChatOpenAI model and bind the Arcade tools.
+model = ChatOpenAI(model="gpt-4o", api_key=openai_api_key)
+bound_model = model.bind_tools(lc_tools)
+
+# 5) Use MemorySaver for checkpointing.
+memory = MemorySaver()
+
+# 6) Create a ReAct-style agent from the prebuilt function.
+graph = create_react_agent(model=bound_model, tools=lc_tools, checkpointer=memory)
+
+# 7) Provide basic config and a user query.
+# Note: user_id is required for the tool to be authorized
+config = {"configurable": {"thread_id": "1", "user_id": "user@example.com"}}
+user_input = {"messages": [("user", "star the arcadeai/arcade-ai repo on github")]}
+
+# 8) Stream the agent's output. If the tool is unauthorized, it may trigger interrupts
+for chunk in graph.stream(user_input, config, stream_mode="values"):
+    chunk["messages"][-1].pretty_print()
+
+# if we were interrupted, we can check for interrupts in state
+current_state = graph.get_state(config)
+if current_state.tasks:
+    for task in current_state.tasks:
+        if hasattr(task, "interrupts"):
+            for interrupt in task.interrupts:
+                print(interrupt.value)
+```
+
+The last message may result in an authorization prompt.
+
+If so, the user will need to authorize the tool by visiting the url in the response. Once authorized, running the
+same script will return the completed action since the tool will be authorized for that
+user.
+
+### Arcade Auth API
+
+The Auth API provides the lowest-level integration with Arcade, for when you only need Arcade's authentication capabilities. This API is ideal for:
+
+-   Framework developers building their own agent systems
+-   Applications with existing tool execution mechanisms
+-   Developers who need fine-grained control over LLM interactions and tool execution
+
+With the Auth API, Arcade handles all the complex authentication tasks (OAuth flow management, link creation, token storage, refresh cycles), while you retain complete control over how you interact with LLMs and execute tools.
+
+```python
+from arcadepy import Arcade
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
+client = Arcade()
+
+# Get this user UNIQUE ID from a trusted source,
+# like your database or user management system
+user_id = "user@example.com"
+
+# Start the authorization process
+response = client.auth.start(
+    user_id=user_id,
+    provider="google",
+    scopes=["https://www.googleapis.com/auth/gmail.readonly"],
+)
+
+if response.status != "completed":
+    print("Please complete the authorization challenge in your browser:")
+    print(response.url)
+
+# Wait for the authorization to complete
+auth_response = client.auth.wait_for_completion(response)
+
+# Use the authorized token in your own tool execution logic
+token = auth_response.context.token
+
+# Example: Using the token with your own Gmail API implementation
+credentials = Credentials(token=token)
+gmail_service = build('gmail', 'v1', credentials=credentials)
+emails = gmail_service.users().messages().list(userId='me').execute()
+```
+
+## Client Libraries
+
+-   **[ArcadeAI/arcade-py](https://github.com/ArcadeAI/arcade-py):**
+    The Python client for interacting with Arcade.
+
+-   **[ArcadeAI/arcade-js](https://github.com/ArcadeAI/arcade-js):**
+    The JavaScript client for interacting with Arcade.
+
+-   **[ArcadeAI/arcade-go](https://github.com/ArcadeAI/arcade-go):** (coming soon)
+    The Go client for interacting with Arcade.
+
+## Support and Community
+
+-   **Discord:** Join our [Discord community](https://discord.com/invite/GUZEMpEZ9p) for real-time support and discussions.
+-   **GitHub:** Contribute or report issues on the [Arcade GitHub repository](https://github.com/ArcadeAI/arcade-ai).
+-   **Documentation:** Find in-depth guides and API references at [Arcade Documentation](https://docs.arcade.dev).

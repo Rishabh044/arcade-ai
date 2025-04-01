@@ -55,7 +55,7 @@ def create_cli_catalog(
     Load toolkits from the python environment.
     """
     if toolkit:
-        toolkit = toolkit.lower()
+        toolkit = toolkit.lower().replace("-", "_")
         try:
             prefixed_toolkit = "arcade_" + toolkit
             toolkits = [Toolkit.from_package(prefixed_toolkit)]
@@ -80,7 +80,7 @@ def create_cli_catalog(
     return catalog
 
 
-def compute_engine_base_url(
+def compute_base_url(
     force_tls: bool,
     force_no_tls: bool,
     host: str,
@@ -193,7 +193,7 @@ def get_tools_from_engine(
     toolkit: str | None = None,
 ) -> list[ToolDefinition]:
     config = validate_and_get_config()
-    base_url = compute_engine_base_url(force_tls, force_no_tls, host, port)
+    base_url = compute_base_url(force_tls, force_no_tls, host, port)
     client = Arcade(api_key=config.api.key, base_url=base_url)
 
     tools = []
