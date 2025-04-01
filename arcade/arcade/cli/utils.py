@@ -2,6 +2,7 @@ import importlib.util
 import ipaddress
 import webbrowser
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
@@ -658,3 +659,9 @@ def version_callback(value: bool) -> None:
         version = importlib.import_module("arcade").__version__
         console.print(f"[bold]Arcade[/bold] (version {version})")
         exit()
+
+
+def get_today_context() -> str:
+    today = datetime.now().strftime("%Y-%m-%d")
+    day_of_week = datetime.now().strftime("%A")
+    return f"Today is {today}, {day_of_week}."
