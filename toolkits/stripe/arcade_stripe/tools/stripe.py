@@ -19,7 +19,7 @@ def run_stripe_tool(context: ToolContext, method_name: str, params: dict) -> str
 def create_customer(
     context: ToolContext,
     name: Annotated[str, "The name of the customer."],
-    email: Annotated[Optional[str], "The email of the customer."],
+    email: Annotated[Optional[str], "The email of the customer."] = None,
 ) -> Annotated[str, "This tool will create a customer in Stripe."]:
     """This tool will create a customer in Stripe."""
     return run_stripe_tool(context, "create_customer", {"name": name, "email": email})
@@ -31,12 +31,12 @@ def list_customers(
     limit: Annotated[
         Optional[int],
         "A limit on the number of objects to be returned. Limit can range between 1 and 100.",
-    ],
+    ] = None,
     email: Annotated[
         Optional[str],
         "A case-sensitive filter on the list based on the customer's email field. "
         "The value must be a string.",
-    ],
+    ] = None,
 ) -> Annotated[str, "This tool will fetch a list of Customers from Stripe."]:
     """This tool will fetch a list of Customers from Stripe."""
     return run_stripe_tool(context, "list_customers", {"limit": limit, "email": email})
@@ -46,7 +46,7 @@ def list_customers(
 def create_product(
     context: ToolContext,
     name: Annotated[str, "The name of the product."],
-    description: Annotated[Optional[str], "The description of the product."],
+    description: Annotated[Optional[str], "The description of the product."] = None,
 ) -> Annotated[str, "This tool will create a product in Stripe."]:
     """This tool will create a product in Stripe."""
     return run_stripe_tool(context, "create_product", {"name": name, "description": description})
@@ -57,9 +57,9 @@ def list_products(
     context: ToolContext,
     limit: Annotated[
         Optional[int],
-        "A limit on the number of objects to be returned. "
-        "Limit can range between 1 and 100, and the default is 10.",
-    ],
+        "A limit on the number of objects to be returned. Limit can range between 1 and 100, "
+        "and the default is 10.",
+    ] = None,
 ) -> Annotated[str, "This tool will fetch a list of Products from Stripe."]:
     """This tool will fetch a list of Products from Stripe."""
     return run_stripe_tool(context, "list_products", {"limit": limit})
@@ -83,12 +83,12 @@ def create_price(
 @tool(requires_secrets=["STRIPE_SECRET_KEY"])
 def list_prices(
     context: ToolContext,
-    product: Annotated[Optional[str], "The ID of the product to list prices for."],
+    product: Annotated[Optional[str], "The ID of the product to list prices for."] = None,
     limit: Annotated[
         Optional[int],
-        "A limit on the number of objects to be returned. "
-        "Limit can range between 1 and 100, and the default is 10.",
-    ],
+        "A limit on the number of objects to be returned. Limit can range between 1 and 100, "
+        "and the default is 10.",
+    ] = None,
 ) -> Annotated[str, "This tool will fetch a list of Prices from Stripe."]:
     """This tool will fetch a list of Prices from Stripe."""
     return run_stripe_tool(context, "list_prices", {"product": product, "limit": limit})
@@ -107,12 +107,12 @@ def create_payment_link(
 @tool(requires_secrets=["STRIPE_SECRET_KEY"])
 def list_invoices(
     context: ToolContext,
-    customer: Annotated[Optional[str], "The ID of the customer to list invoices for."],
+    customer: Annotated[Optional[str], "The ID of the customer to list invoices for."] = None,
     limit: Annotated[
         Optional[int],
-        "A limit on the number of objects to be returned. "
-        "Limit can range between 1 and 100, and the default is 10.",
-    ],
+        "A limit on the number of objects to be returned. Limit can range between 1 and 100, "
+        "and the default is 10.",
+    ] = None,
 ) -> Annotated[str, "This tool will list invoices in Stripe."]:
     """This tool will list invoices in Stripe."""
     return run_stripe_tool(context, "list_invoices", {"customer": customer, "limit": limit})
@@ -122,7 +122,7 @@ def list_invoices(
 def create_invoice(
     context: ToolContext,
     customer: Annotated[str, "The ID of the customer to create the invoice for."],
-    days_until_due: Annotated[Optional[int], "The number of days until the invoice is due."],
+    days_until_due: Annotated[Optional[int], "The number of days until the invoice is due."] = None,
 ) -> Annotated[str, "This tool will create an invoice in Stripe."]:
     """This tool will create an invoice in Stripe."""
     return run_stripe_tool(
@@ -163,7 +163,7 @@ def retrieve_balance(
 def create_refund(
     context: ToolContext,
     payment_intent: Annotated[str, "The ID of the PaymentIntent to refund."],
-    amount: Annotated[Optional[int], "The amount to refund in cents."],
+    amount: Annotated[Optional[int], "The amount to refund in cents."] = None,
 ) -> Annotated[str, "This tool will refund a payment intent in Stripe."]:
     """This tool will refund a payment intent in Stripe."""
     return run_stripe_tool(
@@ -174,11 +174,13 @@ def create_refund(
 @tool(requires_secrets=["STRIPE_SECRET_KEY"])
 def list_payment_intents(
     context: ToolContext,
-    customer: Annotated[Optional[str], "The ID of the customer to list payment intents for."],
+    customer: Annotated[
+        Optional[str], "The ID of the customer to list payment intents for."
+    ] = None,
     limit: Annotated[
         Optional[int],
         "A limit on the number of objects to be returned. Limit can range between 1 and 100.",
-    ],
+    ] = None,
 ) -> Annotated[str, "This tool will list payment intents in Stripe."]:
     """This tool will list payment intents in Stripe."""
     return run_stripe_tool(context, "list_payment_intents", {"customer": customer, "limit": limit})
@@ -188,7 +190,7 @@ def list_payment_intents(
 def create_billing_portal_session(
     context: ToolContext,
     customer: Annotated[str, "The ID of the customer to create the billing portal session for."],
-    return_url: Annotated[Optional[str], "The default URL to return to afterwards."],
+    return_url: Annotated[Optional[str], "The default URL to return to afterwards."] = None,
 ) -> Annotated[str, "This tool will create a billing portal session."]:
     """This tool will create a billing portal session."""
     return run_stripe_tool(

@@ -75,7 +75,7 @@ def run_stripe_tool(context: ToolContext, method_name: str, params: dict) -> str
                         if is_optional_type:
                             params_list.append(
                                 f"{name}: Annotated[Optional[{get_type_str(arg_type)}], "
-                                f'"{field.description}"]'
+                                f'"{field.description}"] = None'
                             )
                         else:
                             params_list.append(
