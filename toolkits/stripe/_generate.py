@@ -63,7 +63,7 @@ def run_stripe_tool(context: ToolContext, method_name: str, params: dict) -> str
                 arg_types = [args_schema.__annotations__[field] for field in arg_names]
 
                 params_list = []
-                for name, arg_type in zip(arg_names, arg_types):
+                for name, arg_type in zip(arg_names, arg_types, strict=False):
                     field = args_schema.model_fields[name]
                     # Check if the type annotation already includes Optional (i.e. Union[..., None])
                     is_optional_type = (
@@ -74,7 +74,7 @@ def run_stripe_tool(context: ToolContext, method_name: str, params: dict) -> str
                     if field.is_required:
                         if is_optional_type:
                             params_list.append(
-                                f"{name}: Annotated[Optional[{get_type_str(arg_type)}], "
+                                f"{name}: Annotated[{get_type_str(arg_type)} | None, "
                                 f'"{field.description}"] = None'
                             )
                         else:
